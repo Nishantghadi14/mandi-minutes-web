@@ -16,11 +16,13 @@ const PAYMENT_METHODS = [
   { id: 'cod', label: 'Cash on Delivery', icon: Wallet, desc: 'Pay with cash upon delivery' },
 ];
 
-const SLOTS = [
-  { id: 'express', label: 'Express', time: '10-20 min', icon: Zap, extra: 'Fastest!' },
-  { id: 'slot1', label: 'Today 12PM–2PM', time: '1-3 hrs', icon: Clock },
-  { id: 'slot2', label: 'Today 4PM–6PM', time: '3-5 hrs', icon: Clock },
-  { id: 'slot3', label: 'Tomorrow 9AM–11AM', time: 'Next day', icon: Clock },
+const SCHEDULED_WINDOWS = [
+  { id: 'today-aft', date: 'Today', timeWindow: '12:00 PM – 02:00 PM', label: 'Today (12PM–2PM)' },
+  { id: 'today-eve', date: 'Today', timeWindow: '04:00 PM – 06:00 PM', label: 'Today (4PM–6PM)' },
+  { id: 'today-night', date: 'Today', timeWindow: '07:00 PM – 09:00 PM', label: 'Today (7PM–9PM)' },
+  { id: 'tom-morn', date: 'Tomorrow', timeWindow: '08:00 AM – 10:00 AM', label: 'Tomorrow (8AM–10AM)' },
+  { id: 'tom-noon', date: 'Tomorrow', timeWindow: '11:00 AM – 01:00 PM', label: 'Tomorrow (11AM–1PM)' },
+  { id: 'tom-eve', date: 'Tomorrow', timeWindow: '04:00 PM – 06:00 PM', label: 'Tomorrow (4PM–6PM)' },
 ];
 
 export default function CheckoutPage() {
@@ -36,7 +38,8 @@ export default function CheckoutPage() {
   const [showAddressForm, setShowAddressForm] = useState(!user?.addresses?.length);
   const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', city: 'Virar, Palghar', pincode: '401305' });
   const [addressErrors, setAddressErrors] = useState({});
-  const [selectedSlot, setSelectedSlot] = useState('express');
+  const [deliveryMode, setDeliveryMode] = useState('express'); // 'express' | 'scheduled'
+  const [selectedWindowId, setSelectedWindowId] = useState('today-aft');
   const [selectedPayment, setSelectedPayment] = useState('upi');
   const [placing, setPlacing] = useState(false);
   const [step, setStep] = useState(1);
@@ -81,12 +84,21 @@ export default function CheckoutPage() {
 
     setPlacing(true);
     try {
+      const isScheduled = deliveryMode === 'scheduled';
+      const chosenWindow = SCHEDULED_WINDOWS.find(w => w.id === selectedWindowId);
+      const scheduledSlot = isScheduled && chosenWindow ? {
+        date: chosenWindow.date,
+        timeWindow: chosenWindow.timeWindow,
+        label: chosenWindow.label,
+      } : null;
+
       // 1. Calculate price server-side and validate against Firestore product catalog with idempotency
       const verifiedOrder = await createSecureOrder({
         items,
         storeId,
         address: selectedAddress,
-        deliveryType: selectedSlot,
+        deliveryType: isScheduled ? 'scheduled' : 'express',
+        scheduledSlot,
         couponCode: coupon?.code || null,
         paymentMethod: selectedPayment === 'cod' ? 'Cash on Delivery' : 'UPI / Online Gateway',
       });
@@ -98,8 +110,13 @@ export default function CheckoutPage() {
         // Cash on Delivery
         clearCart();
         notifyOrderPlaced(verifiedOrder);
-        addToast('Order placed successfully! Pay on delivery 🎉', 'success');
-        navigate(`/order-status/${verifiedOrder.id}`, { state: { order: verifiedOrder, autoProgress: true } });
+        addToast(
+          isScheduled 
+            ? `Order scheduled for ${chosenWindow?.label}! Pay on delivery 🎉` 
+            : 'Order placed successfully! Pay on delivery 🎉', 
+          'success'
+        );
+        navigate(`/order-status/${verifiedOrder.id}`, { state: { order: verifiedOrder, autoProgress: !isScheduled } });
       }
     } catch (err) {
       console.error('Order creation error:', err);
@@ -214,24 +231,54 @@ export default function CheckoutPage() {
           {step >= 2 && (
             <div className="card p-5 space-y-4">
               <div>
-                <h3 className="text-mandi-text font-bold text-sm mb-3">Delivery Speed</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {SLOTS.map(s => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={s.id} onClick={() => setSelectedSlot(s.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedSlot === s.id ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-mandi-text text-xs font-semibold">{s.label}</span>
-                          {s.extra && <span className="badge-green text-[10px]">{s.extra}</span>}
-                        </div>
-                        <div className="flex items-center gap-1 text-mandi-muted text-xs">
-                          <Icon size={12} className="text-mandi-green" />
-                          <span>{s.time}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <h3 className="text-mandi-text font-bold text-sm mb-3">Delivery Mode</h3>
+                
+                {/* Express vs Scheduled Toggle */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div
+                    onClick={() => setDeliveryMode('express')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'express' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-mandi-text text-xs font-semibold">⚡ Express Delivery</span>
+                      <span className="badge-green text-[10px]">10-15 Min</span>
+                    </div>
+                    <p className="text-mandi-muted text-xs">Direct hyperlocal fulfillment</p>
+                  </div>
+
+                  <div
+                    onClick={() => setDeliveryMode('scheduled')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'scheduled' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-mandi-text text-xs font-semibold">📅 Scheduled Slot</span>
+                      <span className="bg-orange-950 text-orange-300 border border-orange-800 text-[10px] px-1.5 py-0.5 rounded font-bold">Choose Time</span>
+                    </div>
+                    <p className="text-mandi-muted text-xs">2-hour delivery window</p>
+                  </div>
                 </div>
+
+                {/* Scheduled 2-Hour Windows Grid */}
+                {deliveryMode === 'scheduled' && (
+                  <div className="space-y-2 pt-1 pb-2">
+                    <p className="text-xs font-medium text-mandi-subtle">Select preferred 2-hour slot:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {SCHEDULED_WINDOWS.map(w => (
+                        <div
+                          key={w.id}
+                          onClick={() => setSelectedWindowId(w.id)}
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${selectedWindowId === w.id ? 'border-mandi-green bg-mandi-surface ring-1 ring-mandi-green' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-mandi-text">{w.date}</span>
+                            <Clock size={12} className="text-mandi-green" />
+                          </div>
+                          <span className="text-mandi-muted text-[11px] font-mono">{w.timeWindow}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

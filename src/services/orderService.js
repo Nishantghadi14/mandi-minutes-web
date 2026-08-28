@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, query, collection, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { validateAddress } from '../utils/validators';
 
@@ -52,6 +52,7 @@ export async function createSecureOrder({
   storeId,
   address,
   deliveryType = 'express',
+  scheduledSlot = null,
   couponCode = null,
   paymentMethod = 'Cash on Delivery',
 }) {
@@ -210,6 +211,7 @@ export async function createSecureOrder({
       { status: 'placed', time: placedAt, note: 'Order placed with verified catalog pricing' },
     ],
     deliveryType,
+    scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
     placedAt,
   };
 

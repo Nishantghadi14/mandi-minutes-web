@@ -25,7 +25,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
   }
 
   const customerId = context.auth.uid;
-  const { items, storeId, address, deliveryType, couponCode, paymentMethod, idempotencyKey } = data;
+  const { items, storeId, address, deliveryType, scheduledSlot, couponCode, paymentMethod, idempotencyKey } = data;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'Cart contains no items.');
@@ -153,6 +153,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
       { status: 'placed', time: placedAt, note: 'Order placed and validated by Mandi Minutes backend' },
     ],
     deliveryType: deliveryType || 'express',
+    scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
     placedAt,
   };
 

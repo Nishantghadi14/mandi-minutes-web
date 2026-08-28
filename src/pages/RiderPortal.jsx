@@ -106,9 +106,14 @@ export default function RiderPortal() {
             <div key={order.id} className="card p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-mandi-border">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
                     <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
+                    {order.deliveryType === 'scheduled' && (
+                      <span className="bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        📅 {order.scheduledSlot?.label || order.scheduledSlot?.timeWindow || 'Scheduled'}
+                      </span>
+                    )}
                   </div>
                   <p className="text-mandi-muted text-xs mt-0.5">Store: <strong>{order.storeName}</strong></p>
                 </div>

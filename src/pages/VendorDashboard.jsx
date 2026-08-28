@@ -54,19 +54,24 @@ export default function VendorDashboard() {
       let slaStatus = 'ok';
       let slaMessage = '';
 
-      if (order.status === 'placed') {
-        if (elapsedMinutes >= 5) {
-          slaStatus = 'breached';
-          slaMessage = `Acceptance delayed (${elapsedMinutes}m ago)`;
-        } else if (elapsedMinutes >= 3) {
-          slaStatus = 'warning';
-          slaMessage = `Accept within ${5 - elapsedMinutes}m`;
+      // Only express orders are subjected to the strict 5-min express SLA timer
+      if (order.deliveryType !== 'scheduled') {
+        if (order.status === 'placed') {
+          if (elapsedMinutes >= 5) {
+            slaStatus = 'breached';
+            slaMessage = `Acceptance delayed (${elapsedMinutes}m ago)`;
+          } else if (elapsedMinutes >= 3) {
+            slaStatus = 'warning';
+            slaMessage = `Accept within ${5 - elapsedMinutes}m`;
+          }
+        } else if (order.status === 'accepted' || order.status === 'preparing') {
+          if (elapsedMinutes >= 15) {
+            slaStatus = 'breached';
+            slaMessage = `Packing delayed (${elapsedMinutes}m total)`;
+          }
         }
-      } else if (order.status === 'accepted' || order.status === 'preparing') {
-        if (elapsedMinutes >= 15) {
-          slaStatus = 'breached';
-          slaMessage = `Packing delayed (${elapsedMinutes}m total)`;
-        }
+      } else {
+        slaMessage = `Scheduled for ${order.scheduledSlot?.label || order.scheduledSlot?.date || 'Slot'}`;
       }
 
       return {
@@ -338,6 +343,11 @@ export default function VendorDashboard() {
                       {order.slaStatus === 'warning' && (
                         <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-md">
                           ⏳ {order.slaMessage}
+                        </span>
+                      )}
+                      {order.deliveryType === 'scheduled' && (
+                        <span className="bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                          📅 Scheduled: {order.scheduledSlot?.label || order.scheduledSlot?.timeWindow || '2-Hour Slot'}
                         </span>
                       )}
                     </div>
