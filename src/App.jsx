@@ -12,6 +12,7 @@ import Footer from './components/common/Footer';
 import CartDrawer from './components/common/CartDrawer';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Lazy load pages for chunk splitting & mobile optimization
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -68,25 +69,27 @@ export default function App() {
                 <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
                   <Navbar />
                   <main className="flex-1">
-                    <Suspense fallback={<PageLoader />}>
-                      <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/store/:storeId" element={<StorePage />} />
-                        <Route path="/search" element={<SearchPage />} />
-                        <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
-                        <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                        <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
-                        <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
-                        <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
-                        <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
-                        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
-                        <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
-                        <Route path="/about" element={<AboutPage />} />
-                        <Route path="/contact" element={<ContactPage />} />
-                        <Route path="/privacy" element={<PrivacyPage />} />
-                        <Route path="/terms" element={<TermsPage />} />
-                      </Routes>
-                    </Suspense>
+                    <ErrorBoundary>
+                      <Suspense fallback={<PageLoader />}>
+                        <Routes>
+                          <Route path="/" element={<HomePage />} />
+                          <Route path="/store/:storeId" element={<StorePage />} />
+                          <Route path="/search" element={<SearchPage />} />
+                          <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+                          <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                          <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
+                          <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
+                          <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
+                          <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+                          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
+                          <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+                          <Route path="/about" element={<AboutPage />} />
+                          <Route path="/contact" element={<ContactPage />} />
+                          <Route path="/privacy" element={<PrivacyPage />} />
+                          <Route path="/terms" element={<TermsPage />} />
+                        </Routes>
+                      </Suspense>
+                    </ErrorBoundary>
                   </main>
                   <Footer />
                   <BottomNav />
