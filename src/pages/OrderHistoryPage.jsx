@@ -3,15 +3,102 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/common/Toast';
-import { Package, RefreshCw, ChevronRight, Store, Calendar, ArrowRight, WifiOff } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Package, RefreshCw, ChevronRight, Store, Calendar, ArrowRight, WifiOff, Star, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+function ReviewModal({ order, onClose, onSubmit }) {
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    await onSubmit({
+      storeId: order.storeId,
+      orderId: order.id,
+      rating,
+      comment,
+    });
+    setSubmitting(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
+      <div className="card max-w-md w-full p-6 space-y-4 relative bg-mandi-card border-mandi-border">
+        <button onClick={onClose} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text">
+          <X size={18} />
+        </button>
+
+        <div>
+          <h2 className="text-lg font-bold text-mandi-text">Rate Your Experience</h2>
+          <p className="text-mandi-muted text-xs mt-0.5">Order from {order.storeName}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Star selector */}
+          <div className="flex flex-col items-center justify-center py-3 bg-mandi-surface rounded-xl border border-mandi-border">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                >
+                  <Star
+                    size={28}
+                    className={`transition-colors ${(hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-mandi-subtle'}`}
+                  />
+                </button>
+              ))}
+            </div>
+            <span className="text-xs font-bold mt-2 text-mandi-text">
+              {['Poor', 'Fair', 'Good', 'Very Good', 'Excellent!'][((hoverRating || rating) - 1)] || 'Good'}
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-mandi-muted mb-1">
+              Feedback / Review (optional)
+            </label>
+            <textarea
+              rows={3}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="How was the packaging, item freshness, and delivery speed?"
+              className="input-field text-xs w-full"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-outline flex-1 py-2 text-xs">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary flex-1 py-2 text-xs font-bold"
+            >
+              {submitting ? 'Submitting...' : 'Submit Rating'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function OrderHistoryPage() {
   const { user, openAuthModal } = useAuth();
-  const { getOrdersByCustomer, loadingStates, errorStates, retryFetch } = useData();
+  const { getOrdersByCustomer, loadingStates, errorStates, retryFetch, addStoreReview } = useData();
   const { addItem, setIsOpen } = useCart();
   const { addToast } = useToast();
-  const navigate = useNavigate();
+  const [reviewingOrder, setReviewingOrder] = useState(null);
 
   if (!user) {
     return (
@@ -34,6 +121,22 @@ export default function OrderHistoryPage() {
     });
     addToast('Items added to cart!', 'success');
     setIsOpen(true);
+  };
+
+  const handleReviewSubmit = async ({ storeId, orderId, rating, comment }) => {
+    try {
+      await addStoreReview({
+        storeId,
+        orderId,
+        rating,
+        comment,
+        userId: user.id,
+        userName: user.name || user.displayName || 'Customer',
+      });
+      addToast('Thank you for rating your order!', 'success');
+    } catch {
+      addToast('Could not submit review. Please try again.', 'error');
+    }
   };
 
   if (isLoading && userOrders.length === 0) {
@@ -82,50 +185,77 @@ export default function OrderHistoryPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {userOrders.map(order => (
-            <div key={order.id} className="card p-5 hover:border-mandi-border-light transition-all">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-mandi-border gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
-                    <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-mandi-muted text-xs mt-1">
-                    <Store size={12} className="text-mandi-green" />
-                    <span>{order.storeName}</span>
-                    <span>•</span>
-                    <Calendar size={12} />
-                    <span>{new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 sm:self-center">
-                  <span className="text-mandi-text font-extrabold text-lg">₹{order.total}</span>
-                  <Link to={`/order-status/${order.id}`} className="btn-ghost p-1.5"><ChevronRight size={18} /></Link>
-                </div>
-              </div>
+          {userOrders.map(order => {
+            const isDelivered = order.status === 'delivered';
+            const isReviewed = Boolean(order.isReviewed || order.reviewRating);
 
-              {/* Items summary */}
-              <div className="py-3 flex flex-wrap gap-2">
-                {order.items.map((item, i) => (
-                  <span key={i} className="text-xs bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1 text-mandi-muted">
-                    {item.quantity}x {item.name}
-                  </span>
-                ))}
-              </div>
+            return (
+              <div key={order.id} className="card p-5 hover:border-mandi-border-light transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-mandi-border gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
+                      <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
+                      {isReviewed && (
+                        <span className="bg-yellow-950 text-yellow-300 border border-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Star size={10} className="fill-yellow-400" /> Rated {order.reviewRating || 5}★
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-mandi-muted text-xs mt-1">
+                      <Store size={12} className="text-mandi-green" />
+                      <span>{order.storeName}</span>
+                      <span>•</span>
+                      <Calendar size={12} />
+                      <span>{new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 sm:self-center">
+                    <span className="text-mandi-text font-extrabold text-lg">₹{order.total}</span>
+                    <Link to={`/order-status/${order.id}`} className="btn-ghost p-1.5"><ChevronRight size={18} /></Link>
+                  </div>
+                </div>
 
-              {/* Footer actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-mandi-border text-xs">
-                <span className="text-mandi-subtle">{order.items.length} items • {order.paymentMethod}</span>
-                <div className="flex gap-2">
-                  <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
-                    <RefreshCw size={12} />Reorder
-                  </button>
-                  <Link to={`/order-status/${order.id}`} className="btn-ghost py-1.5 px-3 text-xs">Track</Link>
+                {/* Items summary */}
+                <div className="py-3 flex flex-wrap gap-2">
+                  {order.items.map((item, i) => (
+                    <span key={i} className="text-xs bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1 text-mandi-muted">
+                      {item.quantity}x {item.name}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Footer actions */}
+                <div className="flex items-center justify-between pt-3 border-t border-mandi-border text-xs">
+                  <span className="text-mandi-subtle">{order.items.length} items • {order.paymentMethod}</span>
+                  <div className="flex gap-2">
+                    {isDelivered && !isReviewed && (
+                      <button
+                        onClick={() => setReviewingOrder(order)}
+                        className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1 text-yellow-400 border-yellow-500 hover:bg-yellow-500 hover:text-black font-semibold"
+                      >
+                        <Star size={12} className="fill-yellow-400" /> Rate Store
+                      </button>
+                    )}
+                    <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
+                      <RefreshCw size={12} />Reorder
+                    </button>
+                    <Link to={`/order-status/${order.id}`} className="btn-ghost py-1.5 px-3 text-xs">Track</Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewingOrder && (
+        <ReviewModal
+          order={reviewingOrder}
+          onClose={() => setReviewingOrder(null)}
+          onSubmit={handleReviewSubmit}
+        />
       )}
     </div>
   );

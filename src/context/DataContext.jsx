@@ -45,6 +45,7 @@ export const useData = () => {
   const deleteBanner = useDataStore(state => state.deleteBanner);
   const addTicket = useDataStore(state => state.addTicket);
   const resolveTicket = useDataStore(state => state.resolveTicket);
+  const addStoreReview = useDataStore(state => state.addStoreReview);
 
   return {
     stores,
@@ -73,5 +74,6 @@ export const useData = () => {
     deleteBanner,
     addTicket,
     resolveTicket,
+    addStoreReview,
   };
 };

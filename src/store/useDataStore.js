@@ -470,4 +470,62 @@ export const useDataStore = create((set, get) => ({
       }
     }
   },
+
+  // Store Reviews
+  addStoreReview: async ({ storeId, orderId, rating, comment, userId, userName }) => {
+    const reviewId = `rev-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    const reviewPayload = {
+      id: reviewId,
+      userId,
+      userName: userName || 'Verified Customer',
+      rating: Number(rating) || 5,
+      comment: comment || '',
+      orderId,
+      createdAt,
+    };
+
+    // 1. Update local state
+    set(state => ({
+      orders: state.orders.map(o => o.id === orderId ? { ...o, isReviewed: true, review: reviewPayload } : o),
+      stores: state.stores.map(s => {
+        if (s.id !== storeId) return s;
+        const currentCount = Number(s.totalRatings) || 0;
+        const currentAvg = Number(s.rating) || 4.5;
+        const newCount = currentCount + 1;
+        const newAvg = Number(((currentAvg * currentCount + Number(rating)) / newCount).toFixed(1));
+        return { ...s, rating: newAvg, totalRatings: newCount };
+      })
+    }));
+
+    // 2. Persist to Firestore
+    if (db) {
+      try {
+        await setDoc(doc(db, 'stores', storeId, 'reviews', reviewId), reviewPayload);
+        await updateDoc(doc(db, 'orders', orderId), {
+          isReviewed: true,
+          reviewRating: Number(rating),
+        });
+
+        const storeRef = doc(db, 'stores', storeId);
+        const storeSnap = await getDoc(storeRef);
+        if (storeSnap.exists()) {
+          const storeData = storeSnap.data();
+          const currentCount = Number(storeData.totalRatings) || 0;
+          const currentAvg = Number(storeData.rating) || 4.5;
+          const newCount = currentCount + 1;
+          const newAvg = Number(((currentAvg * currentCount + Number(rating)) / newCount).toFixed(1));
+
+          await updateDoc(storeRef, {
+            rating: newAvg,
+            totalRatings: newCount,
+          });
+        }
+      } catch (err) {
+        console.error('Error adding store review to Firestore:', err);
+      }
+    }
+
+    return reviewPayload;
+  },
 }));
