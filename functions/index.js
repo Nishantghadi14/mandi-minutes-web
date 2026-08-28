@@ -276,7 +276,8 @@ exports.onOrderCreated = functions.firestore
   });
 
 /**
- * FCM Push Trigger: Order Status Changed -> Notify Customer
+ * FCM Push Trigger: Order Status Changed -> Notify Customer, Vendor, and Rider
+ * Also prunes stale/invalid FCM tokens automatically via sendEachForMulticast responses.
  */
 exports.onOrderStatusChanged = functions.firestore
   .document('orders/{orderId}')
@@ -285,36 +286,120 @@ exports.onOrderStatusChanged = functions.firestore
     const after = change.after.data();
     const orderId = context.params.orderId;
 
+    // Only act on actual status transitions
     if (before.status === after.status) return null;
 
-    try {
-      const userDoc = await db.collection('users').doc(after.customerId).get();
-      const customerTokens = userDoc.data()?.fcmTokens || [];
+    /**
+     * Helper to send FCM notifications and prune stale tokens.
+     * @param {string} userId - UID of user to notify
+     * @param {object} notification - { title, body }
+     * @param {object} data - payload data map for the notification click
+     */
+    async function notifyUser(userId, notification, data = {}) {
+      if (!userId) return;
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists) return;
 
-      if (customerTokens.length === 0) return null;
+      const tokens = userDoc.data()?.fcmTokens || [];
+      if (tokens.length === 0) return;
 
-      const statusMessages = {
-        accepted: { title: 'Order Accepted! 👨‍🍳', body: `${after.storeName} has accepted your grocery order.` },
-        preparing: { title: 'Packing Items... 📦', body: 'Your items are being packed fresh from the store.' },
-        out_for_delivery: { title: 'Out for Delivery! 🚴‍♂️', body: 'Rider is on the way with your grocery order.' },
-        delivered: { title: 'Delivered! 🎉', body: 'Your Mandi Minutes order has been delivered. Enjoy!' },
-        cancelled: { title: 'Order Cancelled', body: 'Your order was cancelled.' },
-      };
+      try {
+        const response = await admin.messaging().sendEachForMulticast({
+          tokens,
+          notification,
+          data: { orderId, ...data },
+        });
 
-      const msg = statusMessages[after.status] || {
-        title: 'Order Updated',
-        body: `Order status is now ${after.status.replace(/_/g, ' ')}.`,
-      };
+        // Prune stale or invalid tokens that returned errors
+        const staleTokens = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success && resp.error) {
+            const errorCode = resp.error.code;
+            if (
+              errorCode === 'messaging/invalid-registration-token' ||
+              errorCode === 'messaging/registration-token-not-registered'
+            ) {
+              staleTokens.push(tokens[idx]);
+            }
+          }
+        });
 
-      await admin.messaging().sendEachForMulticast({
-        tokens: customerTokens,
-        notification: {
-          title: msg.title,
-          body: msg.body,
-        },
-        data: { orderId, status: after.status, url: `/order-status/${orderId}` },
-      });
-    } catch (fcmErr) {
-      console.warn('FCM status change trigger error:', fcmErr);
+        if (staleTokens.length > 0) {
+          await db.collection('users').doc(userId).update({
+            fcmTokens: admin.firestore.FieldValue.arrayRemove(...staleTokens),
+          });
+          console.log(`Pruned ${staleTokens.length} stale FCM token(s) for user ${userId}`);
+        }
+      } catch (fcmErr) {
+        console.warn(`FCM send error for user ${userId}:`, fcmErr?.message);
+      }
     }
+
+    const statusMessages = {
+      accepted:         { title: 'Order Accepted! 👨‍🍳',     body: `${after.storeName} has confirmed your grocery order.` },
+      preparing:        { title: 'Packing Items... 📦',     body: 'Your items are being packed fresh from the store.' },
+      out_for_delivery: { title: 'Out for Delivery! 🛵',    body: 'Your rider is on the way with your groceries. ~10-15 mins.' },
+      delivered:        { title: 'Delivered! 🎉',           body: 'Enjoy your fresh groceries from Mandi Minutes!' },
+      cancelled:        { title: 'Order Cancelled',         body: 'Your order was cancelled. Contact the store if needed.' },
+    };
+
+    const msg = statusMessages[after.status] || {
+      title: 'Order Updated',
+      body: `Your order status is now: ${after.status.replace(/_/g, ' ')}.`,
+    };
+
+    try {
+      // 1. Notify Customer for every status change
+      await notifyUser(after.customerId, msg, { status: after.status, url: `/order-status/${orderId}` });
+
+      // 2. Notify Vendor when order is delivered (mission accomplished signal)
+      if (after.status === 'delivered') {
+        const vendorQuery = await db
+          .collection('users')
+          .where('storeId', '==', after.storeId)
+          .where('role', '==', 'vendor')
+          .limit(1)
+          .get();
+
+        if (!vendorQuery.empty) {
+          const vendorId = vendorQuery.docs[0].id;
+          await notifyUser(vendorId, {
+            title: '✅ Order Delivered Successfully!',
+            body: `Order #${orderId.slice(-6).toUpperCase()} worth ₹${after.total} was delivered to the customer.`,
+          }, { url: '/vendor' });
+        }
+      }
+
+      // 3. Notify Rider when order moves to out_for_delivery
+      if (after.status === 'out_for_delivery') {
+        // Look up the assigned rider by riderId field if set on the order
+        const assignedRiderId = after.riderId || null;
+        if (assignedRiderId) {
+          await notifyUser(assignedRiderId, {
+            title: '🛵 New Delivery Assignment!',
+            body: `Order #${orderId.slice(-6).toUpperCase()} (₹${after.total}) is ready for pickup at ${after.storeName}.`,
+          }, { url: '/rider' });
+        } else {
+          // Broadcast to all available riders if no specific assignment
+          const riderQuery = await db
+            .collection('users')
+            .where('role', '==', 'rider')
+            .limit(5)
+            .get();
+
+          const riderNotifyPromises = riderQuery.docs.map(doc =>
+            notifyUser(doc.id, {
+              title: '🛵 Delivery Available!',
+              body: `Order #${orderId.slice(-6).toUpperCase()} from ${after.storeName} needs a rider.`,
+            }, { url: '/rider' })
+          );
+          await Promise.allSettled(riderNotifyPromises);
+        }
+      }
+    } catch (err) {
+      console.error('onOrderStatusChanged FCM dispatch error:', err);
+    }
+
+    return null;
   });
+

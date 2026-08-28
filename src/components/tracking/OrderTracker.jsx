@@ -15,11 +15,21 @@ const STATUS_IDX = { placed: 0, accepted: 1, preparing: 2, out_for_delivery: 3, 
 export default function OrderTracker({ order = {}, autoProgress = false }) {
   const statusKey = order?.status || 'placed';
   const [currentIdx, setCurrentIdx] = useState(STATUS_IDX[statusKey] ?? 0);
+  const prevStatusRef = useState(statusKey);
   const { notifyStatusUpdate } = useNotifications();
 
+  // Update tracker step when real Firestore status changes
   useEffect(() => {
-    setCurrentIdx(STATUS_IDX[order?.status] ?? 0);
-  }, [order?.status]);
+    const newIdx = STATUS_IDX[order?.status] ?? 0;
+    const prevStatus = prevStatusRef[0];
+    // Fire browser notification when status genuinely advances (not on initial render)
+    if (order?.status && order.status !== prevStatus && prevStatus !== order?.status) {
+      notifyStatusUpdate(order.status, order?.id);
+    }
+    // Update prevStatus ref using the setter
+    prevStatusRef[1](order?.status || 'placed');
+    setCurrentIdx(newIdx);
+  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!autoProgress || currentIdx >= 4) return;
