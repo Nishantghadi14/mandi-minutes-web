@@ -95,10 +95,11 @@ function ReviewModal({ order, onClose, onSubmit }) {
 
 export default function OrderHistoryPage() {
   const { user, openAuthModal } = useAuth();
-  const { getOrdersByCustomer, loadingStates, errorStates, retryFetch, addStoreReview } = useData();
-  const { addItem, setIsOpen } = useCart();
+  const { getOrdersByCustomer, products, loadingStates, errorStates, retryFetch, addStoreReview } = useData();
+  const { addItem, clearCart, setIsOpen, storeId: currentCartStoreId, items: cartItems } = useCart();
   const { addToast } = useToast();
   const [reviewingOrder, setReviewingOrder] = useState(null);
+  const [cartConflictOrder, setCartConflictOrder] = useState(null);
 
   if (!user) {
     return (
@@ -115,12 +116,72 @@ export default function OrderHistoryPage() {
   const hasError = Boolean(errorStates?.orders);
   const userOrders = getOrdersByCustomer(user.id);
 
-  const handleReorder = (order) => {
+  const processReorder = (order) => {
+    let addedCount = 0;
+
     order.items.forEach(item => {
-      addItem({ id: item.productId, name: item.name, price: item.price, unit: item.unit, image: item.image, storeId: order.storeId });
+      // Check live product catalog for stock availability
+      const liveProduct = products.find(p => p.id === item.productId);
+
+      if (!liveProduct || liveProduct.isAvailable === false || Number(liveProduct.stock) <= 0) {
+        addToast(`${item.name} is currently out of stock at ${order.storeName}.`, 'warning');
+        return;
+      }
+
+      const availableStock = Number(liveProduct.stock) || 99;
+      const requestedQty = Number(item.quantity) || 1;
+
+      if (availableStock < requestedQty) {
+        addItem(
+          {
+            id: liveProduct.id,
+            name: liveProduct.name,
+            price: liveProduct.price,
+            unit: liveProduct.unit,
+            image: liveProduct.image,
+            storeId: order.storeId,
+          },
+          availableStock
+        );
+        addToast(`Only ${availableStock} of ${liveProduct.name} available; added ${availableStock} to cart.`, 'info');
+        addedCount += availableStock;
+      } else {
+        addItem(
+          {
+            id: liveProduct.id,
+            name: liveProduct.name,
+            price: liveProduct.price,
+            unit: liveProduct.unit,
+            image: liveProduct.image,
+            storeId: order.storeId,
+          },
+          requestedQty
+        );
+        addedCount += requestedQty;
+      }
     });
-    addToast('Items added to cart!', 'success');
-    setIsOpen(true);
+
+    if (addedCount > 0) {
+      addToast(`Added ${addedCount} items from ${order.storeName} to cart!`, 'success');
+      setIsOpen(true);
+    }
+  };
+
+  const handleReorder = (order) => {
+    // If cart has items from another store, show replacement confirmation modal
+    if (cartItems.length > 0 && currentCartStoreId && currentCartStoreId !== order.storeId) {
+      setCartConflictOrder(order);
+      return;
+    }
+
+    processReorder(order);
+  };
+
+  const handleConfirmReplaceCart = () => {
+    if (!cartConflictOrder) return;
+    clearCart();
+    processReorder(cartConflictOrder);
+    setCartConflictOrder(null);
   };
 
   const handleReviewSubmit = async ({ storeId, orderId, rating, comment }) => {
@@ -237,8 +298,8 @@ export default function OrderHistoryPage() {
                         <Star size={12} className="fill-yellow-400" /> Rate Store
                       </button>
                     )}
-                    <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
-                      <RefreshCw size={12} />Reorder
+                    <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1 hover:border-mandi-green font-semibold">
+                      <RefreshCw size={12} />Buy Again
                     </button>
                     <Link to={`/order-status/${order.id}`} className="btn-ghost py-1.5 px-3 text-xs">Track</Link>
                   </div>
@@ -256,6 +317,42 @@ export default function OrderHistoryPage() {
           onClose={() => setReviewingOrder(null)}
           onSubmit={handleReviewSubmit}
         />
+      )}
+
+      {/* Cart Store Conflict Confirmation Modal */}
+      {cartConflictOrder && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
+          <div className="card max-w-md w-full p-6 space-y-4 relative bg-mandi-card border-mandi-border">
+            <button onClick={() => setCartConflictOrder(null)} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text">
+              <X size={18} />
+            </button>
+            <div className="w-12 h-12 rounded-2xl bg-orange-950 bg-opacity-50 border border-orange-500 border-opacity-40 flex items-center justify-center text-orange-400">
+              <Store size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-mandi-text">Replace items already in cart?</h3>
+              <p className="text-mandi-muted text-xs mt-1 leading-relaxed">
+                Your cart currently has items from another store. In Mandi Minutes, each order is fulfilled by a single local Kirana shop to guarantee 10-15 min express delivery.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCartConflictOrder(null)}
+                className="btn-outline flex-1 py-2 text-xs"
+              >
+                Keep Current Cart
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReplaceCart}
+                className="btn-primary flex-1 py-2 text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white"
+              >
+                Replace & Buy Again
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
