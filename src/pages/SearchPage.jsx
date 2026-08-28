@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import StoreCard from '../components/common/StoreCard';
+import { searchProducts, searchStores, useDebounce } from '../utils/searchProducts';
 import { Search, SlidersHorizontal, Package, Store as StoreIcon, X } from 'lucide-react';
 
 export default function SearchPage() {
@@ -18,28 +19,28 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState(1000);
   const [activeTab, setActiveTab] = useState('products');
 
+  const debouncedQuery = useDebounce(query, 250);
+
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
     setSelectedCat(searchParams.get('category') || 'all');
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const matchQuery = !query || p.name.toLowerCase().includes(query.toLowerCase()) || p.brand?.toLowerCase().includes(query.toLowerCase());
-      const matchCat = selectedCat === 'all' || p.category === selectedCat;
-      const matchStore = selectedStore === 'all' || p.storeId === selectedStore;
-      const matchPrice = p.price <= maxPrice;
-      return matchQuery && matchCat && matchStore && matchPrice;
+    return searchProducts(products, {
+      query: debouncedQuery,
+      category: selectedCat,
+      storeId: selectedStore,
+      maxPrice: maxPrice,
     });
-  }, [products, query, selectedCat, selectedStore, maxPrice]);
+  }, [products, debouncedQuery, selectedCat, selectedStore, maxPrice]);
 
   const filteredStores = useMemo(() => {
-    return stores.filter(s => {
-      const matchQuery = !query || s.name.toLowerCase().includes(query.toLowerCase()) || s.city.toLowerCase().includes(query.toLowerCase());
-      const matchCat = selectedCat === 'all' || s.categories?.includes(selectedCat);
-      return matchQuery && matchCat;
+    return searchStores(stores, {
+      query: debouncedQuery,
+      category: selectedCat,
     });
-  }, [stores, query, selectedCat]);
+  }, [stores, debouncedQuery, selectedCat]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
