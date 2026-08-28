@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import { VIRAR_RIDERS } from '../data/virarCoordinates';
-import RiderTrackerMap from '../components/common/RiderTrackerMap';
-import { Navigation, Phone, CheckCircle, Package, MapPin, ShieldCheck, Bike, ArrowRight, Radio } from 'lucide-react';
+import { Phone, Package, MapPin, ShieldCheck, Bike, ArrowRight, Radio } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 
 export default function RiderPortal() {

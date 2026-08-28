@@ -129,7 +129,7 @@ service cloud.firestore {
         && request.resource.data.status == 'placed'
         && request.resource.data.paymentStatus in ['pending', 'cod_pending'];
 
-      // Client update rule: Only validated lifecycle transitions allowed
+      // Client update rule: Only validated lifecycle transitions and rider GPS broadcasts allowed
       allow update: if isAdmin() || (
         // Vendor lifecycle progression: placed -> accepted -> preparing -> out_for_delivery
         isStoreVendor(resource.data.storeId) 
@@ -142,13 +142,15 @@ service cloud.firestore {
           (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery')
         )
       ) || (
-        // Rider lifecycle progression: preparing/out_for_delivery -> delivered
+        // Rider lifecycle progression or live GPS broadcast (lat/lng/updatedAt)
         isRider()
         && request.resource.data.customerId == resource.data.customerId
         && request.resource.data.total == resource.data.total
+        && request.resource.data.paymentStatus == resource.data.paymentStatus
         && (
           (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery') ||
-          (resource.data.status == 'out_for_delivery' && request.resource.data.status == 'delivered')
+          (resource.data.status == 'out_for_delivery' && request.resource.data.status == 'delivered') ||
+          (resource.data.status == 'out_for_delivery' && request.resource.data.status == resource.data.status)
         )
       ) || (
         // Customer cancellation only before store accepts

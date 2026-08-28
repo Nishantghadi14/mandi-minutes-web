@@ -137,6 +137,7 @@ export default function OrderStatusPage() {
           <Bike size={16} className="text-mandi-green" /> Virar Live GPS Delivery Map
         </h3>
         <RiderTrackerMap 
+          orderId={order.id}
           storeId={order.storeId || 'store-mahalaxmi-1'} 
           customerPincode={order.address?.pincode || '401305'} 
           orderStatus={order.status || 'out_for_delivery'} 

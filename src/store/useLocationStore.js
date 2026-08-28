@@ -46,7 +46,7 @@ export const useLocationStore = create((set, get) => ({
   },
 
   startRiderTracking: (orderId = null) => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       set({ riderGpsStatus: 'unsupported' });
       return;
     }
@@ -58,12 +58,15 @@ export const useLocationStore = create((set, get) => ({
     if (get().riderWatchId !== null) return;
 
     set({ riderGpsStatus: 'requesting' });
+    let lastBroadcastAt = 0;
+
     const watchId = navigator.geolocation.watchPosition(
       async ({ coords }) => {
+        const now = Date.now();
         const pos = { 
           lat: coords.latitude, 
           lng: coords.longitude, 
-          accuracy: coords.accuracy,
+          accuracy: coords.accuracy || 10,
           updatedAt: new Date().toISOString() 
         };
 
@@ -72,21 +75,24 @@ export const useLocationStore = create((set, get) => ({
           riderGpsStatus: 'active',
         });
 
-        // Broadcast to Firestore if tracking an active order
+        // Throttle write to Firestore: at most once every 6 seconds
         const currentOrderId = get().activeBroadcastOrderId;
-        if (currentOrderId && db) {
+        if (currentOrderId && db && (now - lastBroadcastAt >= 6000)) {
+          lastBroadcastAt = now;
           try {
             await updateDoc(doc(db, 'orders', currentOrderId), {
               riderLocation: pos,
             });
           } catch (err) {
-            // Non-blocking log
             console.debug('Rider live coordinate sync:', err?.message);
           }
         }
       },
-      () => set({ riderGpsStatus: 'denied', riderWatchId: null }),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      (err) => {
+        console.warn('Rider geolocation denied/failed:', err?.message);
+        set({ riderGpsStatus: 'denied', riderWatchId: null });
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
     );
     set({ riderWatchId: watchId });
   },

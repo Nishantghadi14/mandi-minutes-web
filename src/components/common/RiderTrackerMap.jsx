@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import { STORE_COORDINATES, VIRAR_LOCALITIES } from '../../data/virarCoordinates';
 import { useLocationStore } from '../../store/useLocationStore';
 
@@ -32,12 +34,16 @@ class MapErrorBoundary extends React.Component {
   }
 }
 
-function VirarVisualTimeline({ storeName, targetName, progress }) {
+function VirarVisualTimeline({ storeName, targetName, progress, isLive }) {
   return (
     <div className="w-full h-[240px] bg-mandi-surface rounded-2xl border border-mandi-border p-5 flex flex-col justify-between shadow-card">
       <div className="flex items-center justify-between">
-        <span className="badge-green text-xs font-bold flex items-center gap-1">⚡ Express Route Virar</span>
-        <span className="text-mandi-muted text-xs font-mono">Arriving in ~12 Mins</span>
+        <span className="badge-green text-xs font-bold flex items-center gap-1">
+          {isLive ? '⚡ Live GPS Route Virar' : '⏱️ Estimated Route (Virar)'}
+        </span>
+        <span className="text-mandi-muted text-xs font-mono">
+          {isLive ? 'Live Tracking Active' : 'Estimated ~12 Mins'}
+        </span>
       </div>
       
       <div className="flex items-center justify-between my-4 relative px-2">
@@ -54,7 +60,9 @@ function VirarVisualTimeline({ storeName, targetName, progress }) {
 
       <div className="flex justify-between text-xs text-mandi-muted border-t border-mandi-border pt-3">
         <span className="font-medium text-mandi-text">{storeName}</span>
-        <span className="text-mandi-green font-bold">{Math.round(progress * 100)}% Route Covered</span>
+        <span className="text-mandi-green font-bold">
+          {isLive ? 'Live GPS Coordinate Pin' : `${Math.round(progress * 100)}% Estimated Track`}
+        </span>
         <span className="font-medium text-mandi-text">{targetName}</span>
       </div>
     </div>
@@ -165,9 +173,16 @@ function LeafletMapInner({ storeLatLng, customerLatLng, currentRiderLatLng, rout
   );
 }
 
-export default function RiderTrackerMap({ storeId = 'store-mahalaxmi-1', customerPincode = '401305', orderStatus = 'out_for_delivery', liveRiderLocation = null }) {
+export default function RiderTrackerMap({ 
+  orderId = null,
+  storeId = 'store-mahalaxmi-1', 
+  customerPincode = '401305', 
+  orderStatus = 'out_for_delivery', 
+  liveRiderLocation = null 
+}) {
   const [mounted, setMounted] = useState(false);
   const [progress, setProgress] = useState(0.4);
+  const [firestoreRiderLocation, setFirestoreRiderLocation] = useState(null);
   const riderPosition = useLocationStore(state => state.riderPosition);
   const riderGpsStatus = useLocationStore(state => state.riderGpsStatus);
 
@@ -180,6 +195,22 @@ export default function RiderTrackerMap({ storeId = 'store-mahalaxmi-1', custome
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Real-time Firestore listener for rider location broadcast on the specific order
+  useEffect(() => {
+    if (!orderId || !db) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'orders', orderId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.riderLocation?.lat && data.riderLocation?.lng) {
+          setFirestoreRiderLocation(data.riderLocation);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [orderId]);
 
   useEffect(() => {
     if (orderStatus !== 'out_for_delivery') return;
@@ -197,17 +228,25 @@ export default function RiderTrackerMap({ storeId = 'store-mahalaxmi-1', custome
     storeLatLng[1] + (customerLatLng[1] - storeLatLng[1]) * progress,
   ];
 
+  const resolvedLiveLocation = firestoreRiderLocation || liveRiderLocation;
   // Prioritize live coordinates from Firestore order, then local rider GPS state, then simulated track
-  const isLiveGps = Boolean(liveRiderLocation || (riderPosition && riderGpsStatus === 'active'));
-  const currentRiderLatLng = liveRiderLocation
-    ? [liveRiderLocation.lat, liveRiderLocation.lng]
+  const isLiveGps = Boolean(resolvedLiveLocation || (riderPosition && riderGpsStatus === 'active'));
+  const currentRiderLatLng = resolvedLiveLocation
+    ? [resolvedLiveLocation.lat, resolvedLiveLocation.lng]
     : riderPosition
     ? [riderPosition.lat, riderPosition.lng]
     : simulatedRiderLatLng;
 
   const routePolyline = [storeLatLng, currentRiderLatLng, customerLatLng];
 
-  const fallback = <VirarVisualTimeline storeName={storePos.name} targetName={targetLoc.name} progress={progress} />;
+  const fallback = (
+    <VirarVisualTimeline 
+      storeName={storePos.name} 
+      targetName={targetLoc.name} 
+      progress={progress} 
+      isLive={isLiveGps} 
+    />
+  );
 
   if (!mounted) return fallback;
 
