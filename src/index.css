@@ -1,0 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-mandi-dark text-mandi-text font-sans;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-mandi-dark;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-mandi-border-light rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-mandi-muted;
+  }
+
+  input, textarea, select {
+    @apply bg-mandi-surface border border-mandi-border text-mandi-text placeholder-mandi-subtle rounded-xl outline-none;
+    transition: border-color 0.2s ease;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    @apply border-mandi-green;
+    box-shadow: 0 0 0 3px rgba(0, 200, 81, 0.1);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-mandi-green text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:bg-mandi-green-dark active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply border border-mandi-green text-mandi-green font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:bg-mandi-green hover:text-black active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-mandi-muted font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:bg-mandi-surface hover:text-mandi-text;
+  }
+
+  .card {
+    @apply bg-mandi-card border border-mandi-border rounded-2xl;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-mandi-border-light hover:shadow-card-hover cursor-pointer;
+  }
+
+  .section-title {
+    @apply text-xl font-bold text-mandi-text mb-4;
+  }
+
+  .badge-green {
+    @apply bg-mandi-green text-black text-xs font-semibold px-2.5 py-1 rounded-full;
+  }
+
+  .badge-muted {
+    @apply bg-mandi-surface text-mandi-muted text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+
+  .input-field {
+    @apply w-full bg-mandi-surface border border-mandi-border text-mandi-text placeholder-mandi-subtle rounded-xl px-4 py-3 outline-none transition-all duration-200 focus:border-mandi-green;
+  }
+
+  .nav-link {
+    @apply text-mandi-muted font-medium transition-colors duration-200 hover:text-mandi-green;
+  }
+
+  .nav-link-active {
+    @apply text-mandi-green font-semibold;
+  }
+
+  .shimmer {
+    @apply bg-shimmer-gradient animate-shimmer;
+    background-size: 2000px 100%;
+  }
+
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all duration-200 cursor-pointer;
+  }
+
+  .tag {
+    @apply bg-mandi-green-muted text-mandi-green text-xs font-medium px-2.5 py-1 rounded-lg border border-mandi-green border-opacity-20;
+  }
+
+  .divider {
+    @apply border-t border-mandi-border;
+  }
+
+  .overlay {
+    @apply fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-40;
+  }
+}
+
+@layer utilities {
+  .text-gradient-green {
+    background: linear-gradient(135deg, #00C851, #00E65C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .glass {
+    background: rgba(30, 30, 30, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Custom range input */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #2A2A2A;
+  height: 4px;
+  border-radius: 4px;
+  border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #00C851;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 200, 81, 0.4);
+}
+
+/* Toast animation */
+@keyframes toast-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+.toast-enter {
+  animation: toast-slide-in 0.3s ease forwards;
+}
+
+.toast-exit {
+  animation: toast-slide-out 0.3s ease forwards;
+}
+
+/* Ripple effect on buttons */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.btn-ripple:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* UPI Payment success bounce-in animation */
+@keyframes bounce-in {
+  0%   { transform: scale(0);   opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  80%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}

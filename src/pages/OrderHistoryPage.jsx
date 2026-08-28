@@ -1,0 +1,132 @@
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import { useCart } from '../context/CartContext';
+import { useToast } from '../components/common/Toast';
+import { Package, RefreshCw, ChevronRight, Store, Calendar, ArrowRight, WifiOff } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+
+export default function OrderHistoryPage() {
+  const { user, openAuthModal } = useAuth();
+  const { getOrdersByCustomer, loadingStates, errorStates, retryFetch } = useData();
+  const { addItem, setIsOpen } = useCart();
+  const { addToast } = useToast();
+  const navigate = useNavigate();
+
+  if (!user) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-20 text-center">
+        <Package size={48} className="text-mandi-subtle mx-auto mb-4" />
+        <h2 className="text-mandi-text font-bold text-2xl mb-2">Login Required</h2>
+        <p className="text-mandi-muted text-sm mb-6">Please log in to view your past orders</p>
+        <button onClick={() => openAuthModal('login')} className="btn-primary">Login Now</button>
+      </div>
+    );
+  }
+
+  const isLoading = Boolean(loadingStates?.orders);
+  const hasError = Boolean(errorStates?.orders);
+  const userOrders = getOrdersByCustomer(user.id);
+
+  const handleReorder = (order) => {
+    order.items.forEach(item => {
+      addItem({ id: item.productId, name: item.name, price: item.price, unit: item.unit, image: item.image, storeId: order.storeId });
+    });
+    addToast('Items added to cart!', 'success');
+    setIsOpen(true);
+  };
+
+  if (isLoading && userOrders.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6 space-y-4 animate-pulse">
+        <div className="h-8 bg-mandi-card rounded-xl w-40" />
+        {[1, 2, 3].map(i => (
+          <div key={i} className="card p-5 space-y-3">
+            <div className="h-5 bg-mandi-surface rounded w-2/3" />
+            <div className="h-4 bg-mandi-surface rounded w-1/3" />
+            <div className="h-4 bg-mandi-surface rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      <h1 className="text-mandi-text font-black text-2xl mb-6">My Orders</h1>
+
+      {/* Error Recovery Banner */}
+      {hasError && (
+        <div className="mb-4 p-4 rounded-2xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between gap-3 text-red-200">
+          <div className="flex items-center gap-3">
+            <WifiOff size={18} className="text-red-400 flex-shrink-0" />
+            <p className="text-xs">
+              <span className="font-semibold">Sync error:</span> Some orders may not be visible.
+            </p>
+          </div>
+          <button
+            onClick={() => retryFetch?.('orders')}
+            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 bg-red-600 hover:bg-red-500"
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      )}
+
+      {userOrders.length === 0 ? (
+        <div className="card p-12 text-center">
+          <Package size={48} className="text-mandi-subtle mx-auto mb-4" />
+          <h2 className="text-mandi-text font-bold text-xl mb-1">No orders yet</h2>
+          <p className="text-mandi-muted text-sm mb-6">Start shopping from local kirana stores around you!</p>
+          <Link to="/" className="btn-primary inline-flex items-center gap-2">Browse Stores <ArrowRight size={16} /></Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {userOrders.map(order => (
+            <div key={order.id} className="card p-5 hover:border-mandi-border-light transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-mandi-border gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
+                    <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-mandi-muted text-xs mt-1">
+                    <Store size={12} className="text-mandi-green" />
+                    <span>{order.storeName}</span>
+                    <span>•</span>
+                    <Calendar size={12} />
+                    <span>{new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 sm:self-center">
+                  <span className="text-mandi-text font-extrabold text-lg">₹{order.total}</span>
+                  <Link to={`/order-status/${order.id}`} className="btn-ghost p-1.5"><ChevronRight size={18} /></Link>
+                </div>
+              </div>
+
+              {/* Items summary */}
+              <div className="py-3 flex flex-wrap gap-2">
+                {order.items.map((item, i) => (
+                  <span key={i} className="text-xs bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1 text-mandi-muted">
+                    {item.quantity}x {item.name}
+                  </span>
+                ))}
+              </div>
+
+              {/* Footer actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-mandi-border text-xs">
+                <span className="text-mandi-subtle">{order.items.length} items • {order.paymentMethod}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
+                    <RefreshCw size={12} />Reorder
+                  </button>
+                  <Link to={`/order-status/${order.id}`} className="btn-ghost py-1.5 px-3 text-xs">Track</Link>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

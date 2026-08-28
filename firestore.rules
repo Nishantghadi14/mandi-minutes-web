@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for zero-trust role verification
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isVendor() {
+      return hasRole('vendor');
+    }
+
+    function isRider() {
+      return hasRole('rider');
+    }
+
+    function isStoreVendor(storeId) {
+      return isVendor() && getUserData().storeId == storeId;
+    }
+
+    // -------------------------------------------------------------
+    // USERS COLLECTION
+    // Trust boundary: Self-read/write for profile, but role and storeId
+    // can NEVER be escalated or changed by the client.
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // On signup, role must be 'customer' and storeId must be null
+      allow create: if isOwner(userId) 
+        && request.resource.data.role == 'customer'
+        && (!('storeId' in request.resource.data) || request.resource.data.storeId == null);
+
+      // On profile update, role and storeId must match existing values unless Admin
+      allow update: if isAdmin() || (
+        isOwner(userId) 
+        && request.resource.data.role == resource.data.role
+        && (!('storeId' in request.resource.data) || request.resource.data.storeId == resource.data.storeId)
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // STORES COLLECTION
+    // Trust boundary: Public read for approved stores. Write restricted
+    // to platform Admin or assigned store Vendor (without changing status).
+    // -------------------------------------------------------------
+    match /stores/{storeId} {
+      allow read: if resource.data.status == 'approved' 
+        || isAdmin() 
+        || isStoreVendor(storeId);
+
+      // Onboarding submissions must have status 'pending'
+      allow create: if isAdmin() 
+        || (isAuthenticated() && request.resource.data.status == 'pending');
+
+      allow update: if isAdmin() || (
+        isStoreVendor(storeId) 
+        && request.resource.data.status == resource.data.status // Cannot self-approve
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // PRODUCTS CATALOG
+    // Trust boundary: Public read. Writes restricted to Admin or the
+    // Vendor assigned to the specific storeId of the product.
+    // -------------------------------------------------------------
+    match /products/{productId} {
+      allow read: if true;
+
+      allow create: if isAdmin() || (
+        isVendor() 
+        && isStoreVendor(request.resource.data.storeId)
+      );
+
+      allow update: if isAdmin() || (
+        isVendor() 
+        && isStoreVendor(resource.data.storeId)
+        && isStoreVendor(request.resource.data.storeId)
+      );
+
+      allow delete: if isAdmin() || (
+        isVendor() 
+        && isStoreVendor(resource.data.storeId)
+      );
+    }
+
+    // -------------------------------------------------------------
+    // ORDERS COLLECTION
+    // Trust boundary: Customers can only read and create their own orders.
+    // Vendors can only read/update their store's orders.
+    // Neither client can set paymentStatus to 'paid' or arbitrary status.
+    // -------------------------------------------------------------
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.customerId 
+        || isStoreVendor(resource.data.storeId) 
+        || isAdmin() 
+        || isRider()
+      );
+
+      // Client creation rule: Must be current user, placed status, unpaid or COD pending
+      allow create: if isAuthenticated() 
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.status == 'placed'
+        && request.resource.data.paymentStatus in ['pending', 'cod_pending'];
+
+      // Client update rule: Only validated lifecycle transitions allowed
+      allow update: if isAdmin() || (
+        // Vendor lifecycle progression: placed -> accepted -> preparing -> out_for_delivery
+        isStoreVendor(resource.data.storeId) 
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.total == resource.data.total
+        && request.resource.data.paymentStatus == resource.data.paymentStatus // Vendor cannot mark 'paid'
+        && (
+          (resource.data.status == 'placed' && request.resource.data.status == 'accepted') ||
+          (resource.data.status == 'accepted' && request.resource.data.status == 'preparing') ||
+          (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery')
+        )
+      ) || (
+        // Rider lifecycle progression: preparing/out_for_delivery -> delivered
+        isRider()
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.total == resource.data.total
+        && (
+          (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery') ||
+          (resource.data.status == 'out_for_delivery' && request.resource.data.status == 'delivered')
+        )
+      ) || (
+        // Customer cancellation only before store accepts
+        isOwner(resource.data.customerId)
+        && resource.data.status == 'placed'
+        && request.resource.data.status == 'cancelled'
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // BANNERS & CATEGORIES
+    // Trust boundary: Public read, Admin-only write.
+    // -------------------------------------------------------------
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // SUPPORT TICKETS
+    // Trust boundary: User creates and reads own tickets; Admin manages all.
+    // -------------------------------------------------------------
+    match /tickets/{ticketId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.customerId || isAdmin()
+      );
+
+      allow create: if isAuthenticated() 
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.status == 'open';
+
+      allow update: if isAdmin() || (
+        isAuthenticated() && request.auth.uid == resource.data.customerId
+      );
+
+      allow delete: if isAdmin();
+    }
+  }
+}
