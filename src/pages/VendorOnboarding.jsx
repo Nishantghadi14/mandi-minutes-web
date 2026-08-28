@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Store, CheckCircle, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Store, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import { useNavigate } from 'react-router-dom';
-import { validateIndianPhone, validateEmail, validatePincode, sanitizeText } from '../utils/validators';
+import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanitizeText } from '../utils/validators';
 
 export default function VendorOnboarding() {
   const { addStore } = useData();
@@ -19,6 +19,7 @@ export default function VendorOnboarding() {
     city: 'Virar, Palghar',
     pincodes: '401305, 401303',
     gstin: '',
+    upiId: '',
     bankAccount: '',
     description: '',
   });
@@ -73,8 +74,9 @@ export default function VendorOnboarding() {
       }
     }
 
-    if (!form.bankAccount || sanitizeText(form.bankAccount).length < 4) {
-      newErrors.bankAccount = 'Please enter a valid Bank Account No or UPI ID';
+    const upiCheck = validateUPI(form.upiId);
+    if (!upiCheck.valid) {
+      newErrors.upiId = upiCheck.error;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -95,7 +97,8 @@ export default function VendorOnboarding() {
         pincodes: rawPincodes,
         status: 'pending',
         gstin: sanitizeText(form.gstin || '', 20),
-        bankAccount: sanitizeText(form.bankAccount, 40),
+        upiId: upiCheck.value,
+        bankAccount: sanitizeText(form.bankAccount || '', 40),
         description: sanitizeText(form.description || '', 400),
         rating: 5.0,
         totalRatings: 1,
@@ -229,6 +232,17 @@ export default function VendorOnboarding() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Merchant UPI ID *</label>
+                  <input 
+                    required 
+                    value={form.upiId} 
+                    onChange={e => handleChange('upiId', e.target.value)} 
+                    placeholder="e.g. storename@okaxis" 
+                    className={`input-field text-sm ${errors.upiId ? 'border-red-500' : ''}`} 
+                  />
+                  {errors.upiId && <p className="text-red-400 text-xs mt-1">{errors.upiId}</p>}
+                </div>
+                <div>
                   <label className="block text-mandi-muted text-xs font-medium mb-1">GSTIN (Optional)</label>
                   <input 
                     value={form.gstin} 
@@ -237,17 +251,16 @@ export default function VendorOnboarding() {
                     className="input-field text-sm" 
                   />
                 </div>
-                <div>
-                  <label className="block text-mandi-muted text-xs font-medium mb-1">Bank Account / UPI ID *</label>
-                  <input 
-                    required 
-                    value={form.bankAccount} 
-                    onChange={e => handleChange('bankAccount', e.target.value)} 
-                    placeholder="Account No or VPA" 
-                    className={`input-field text-sm ${errors.bankAccount ? 'border-red-500' : ''}`} 
-                  />
-                  {errors.bankAccount && <p className="text-red-400 text-xs mt-1">{errors.bankAccount}</p>}
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-mandi-muted text-xs font-medium mb-1">Bank Account Number (Optional)</label>
+                <input 
+                  value={form.bankAccount} 
+                  onChange={e => handleChange('bankAccount', e.target.value)} 
+                  placeholder="Optional bank account number" 
+                  className="input-field text-sm" 
+                />
               </div>
 
               <div>

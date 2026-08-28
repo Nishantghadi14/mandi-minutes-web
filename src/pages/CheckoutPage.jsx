@@ -335,6 +335,13 @@ export default function CheckoutPage() {
         onClose={() => setShowUpiModal(false)}
         amount={pendingOrder.total}
         orderId={pendingOrder.id}
+        store={store}
+        storeId={storeId || pendingOrder.storeId}
+        storeName={store?.name}
+        upiId={store?.upiId}
+        customerName={user?.name}
+        customerEmail={user?.email}
+        customerPhone={user?.phone}
         onSuccess={handleUpiSuccess}
       />
     )}

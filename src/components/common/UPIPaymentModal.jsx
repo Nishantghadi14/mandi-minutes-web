@@ -6,12 +6,19 @@ import { db } from '../../config/firebase';
 import { useToast } from './Toast';
 import { loadRazorpayScript } from '../../services/orderService';
 
-// Store merchant UPI IDs for Virar stores
-const STORE_UPI = {
-  'store-mahalaxmi-1': 'mahalaxmi.kirana@okicici',
-  'store-virar-1': 'mahalaxmi.kirana@okicici',
-  'default': 'mahalaxmi.kirana@okicici',
-};
+/**
+ * TODO: Architectural Tradeoff — Direct Peer UPI vs. Razorpay Route (Split Payments):
+ * 
+ * 1. Direct Peer UPI (Current):
+ *    - Pros: 0% payment gateway fees for Kirana merchants, instant bank-to-bank settlement.
+ *    - Cons: Cannot programmatically deduct platform commission (e.g. 10%) or delivery fees at the time of transaction;
+ *      reconciliation requires store-specific UPI handles or manual invoice settlements.
+ * 
+ * 2. Razorpay Route (Recommended Long-term):
+ *    - Pros: Automatically splits customer payments at checkout into vendor payout (e.g. 90%) and platform commission (10%),
+ *      handles refunds/reversals automatically, simplifies tax and escrow accounting.
+ *    - Cons: Incurs standard payment gateway fees (~2%) + Razorpay Route addon fee; requires automated vendor linked account KYC.
+ */
 
 export default function UPIPaymentModal({ 
   isOpen, 
@@ -20,6 +27,8 @@ export default function UPIPaymentModal({
   amount, 
   storeId, 
   storeName, 
+  store,
+  upiId: propUpiId,
   orderId,
   customerName,
   customerEmail,
@@ -32,9 +41,9 @@ export default function UPIPaymentModal({
   const [copied, setCopied] = useState(false);
   const [loadingGateway, setLoadingGateway] = useState(false);
 
-  const upiId = STORE_UPI[storeId] || STORE_UPI['default'];
+  const activeUpiId = propUpiId || store?.upiId || 'mahalaxmi.kirana@okicici';
   const txnNote = `MandiMinutes-${orderId || Date.now()}`;
-  const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(storeName || 'Mandi Minutes')}&am=${amount}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
+  const upiString = `upi://pay?pa=${activeUpiId}&pn=${encodeURIComponent(storeName || store?.name || 'Mandi Minutes')}&am=${amount}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
 
   // Generate dynamic QR code
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function UPIPaymentModal({
   }, [isOpen, orderId, addToast]);
 
   const handleCopyUPI = () => {
-    navigator.clipboard.writeText(upiId).then(() => {
+    navigator.clipboard.writeText(activeUpiId).then(() => {
       setCopied(true);
       addToast('UPI ID copied!', 'success');
       setTimeout(() => setCopied(false), 2000);
@@ -94,7 +103,7 @@ export default function UPIPaymentModal({
         amount: amount * 100, // amount in paise
         currency: 'INR',
         name: 'Mandi Minutes Virar',
-        description: `Order #${orderId} - ${storeName}`,
+        description: `Order #${orderId} - ${storeName || store?.name || 'Store'}`,
         image: '/favicon.svg',
         handler: function (response) {
           setStatus('verifying');
@@ -135,7 +144,7 @@ export default function UPIPaymentModal({
             </div>
             <div>
               <h2 className="text-mandi-text font-bold">UPI / Online Gateway</h2>
-              <p className="text-mandi-muted text-xs">{storeName}</p>
+              <p className="text-mandi-muted text-xs">{storeName || store?.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1">
@@ -185,7 +194,7 @@ export default function UPIPaymentModal({
               <div className="flex items-center justify-between bg-mandi-surface rounded-xl px-4 py-3 border border-mandi-border mb-4">
                 <div>
                   <p className="text-mandi-subtle text-xs mb-0.5">Merchant UPI ID</p>
-                  <p className="text-mandi-text text-sm font-mono font-semibold">{upiId}</p>
+                  <p className="text-mandi-text text-sm font-mono font-semibold">{activeUpiId}</p>
                 </div>
                 <button onClick={handleCopyUPI} className="flex items-center gap-1.5 text-mandi-green text-xs font-semibold hover:opacity-80 transition-opacity">
                   {copied ? <Check size={14} /> : <Copy size={14} />}

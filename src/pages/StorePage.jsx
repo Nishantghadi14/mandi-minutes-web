@@ -17,6 +17,21 @@ export default function StorePage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState('default');
 
+  const storeCategories = useMemo(() => {
+    if (!store) return [];
+    return categories.filter(c => store.categories?.includes(c.id));
+  }, [categories, store]);
+
+  const filteredProducts = useMemo(() => {
+    let p = allProducts;
+    if (activeCategory !== 'all') p = p.filter(prod => prod.category === activeCategory);
+    if (search.trim()) p = p.filter(prod => prod.name.toLowerCase().includes(search.toLowerCase()) || prod.brand?.toLowerCase().includes(search.toLowerCase()));
+    if (sortBy === 'price-asc') p = [...p].sort((a, b) => a.price - b.price);
+    if (sortBy === 'price-desc') p = [...p].sort((a, b) => b.price - a.price);
+    if (sortBy === 'discount') p = [...p].sort((a, b) => (b.discount || 0) - (a.discount || 0));
+    return p;
+  }, [allProducts, activeCategory, search, sortBy]);
+
   const isLoading = Boolean(loadingStates?.stores || loadingStates?.products);
   const hasError = Boolean(errorStates?.products || errorStates?.stores);
 
@@ -52,18 +67,6 @@ export default function StorePage() {
       </div>
     );
   }
-
-  const storeCategories = categories.filter(c => store.categories?.includes(c.id));
-
-  const filteredProducts = useMemo(() => {
-    let p = allProducts;
-    if (activeCategory !== 'all') p = p.filter(prod => prod.category === activeCategory);
-    if (search.trim()) p = p.filter(prod => prod.name.toLowerCase().includes(search.toLowerCase()) || prod.brand?.toLowerCase().includes(search.toLowerCase()));
-    if (sortBy === 'price-asc') p = [...p].sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-desc') p = [...p].sort((a, b) => b.price - a.price);
-    if (sortBy === 'discount') p = [...p].sort((a, b) => (b.discount || 0) - (a.discount || 0));
-    return p;
-  }, [allProducts, activeCategory, search, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto pb-24 md:pb-6">

@@ -16,6 +16,7 @@ export const initialStores = [
     image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
     coverImage: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80',
     badge: 'Premier Kirana & Grains Hub',
+    upiId: 'mahalaxmi.kirana@okicici',
     isOpen: true,
     status: 'approved',
     categories: ['cat-rice', 'cat-daal', 'cat-grains', 'cat-3', 'cat-1', 'cat-2', 'cat-4'],

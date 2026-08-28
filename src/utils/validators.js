@@ -55,6 +55,19 @@ export function validateEmail(email) {
 }
 
 /**
+ * Validates a UPI Virtual Payment Address (VPA) / UPI ID (e.g., storename@okicici, name@upi).
+ */
+export function validateUPI(upi) {
+  if (!upi) return { valid: false, error: 'UPI ID is required' };
+  const trimmed = String(upi).trim();
+  const re = /^[\w.-]{2,100}@[a-zA-Z0-9]{2,50}$/;
+  if (!re.test(trimmed)) {
+    return { valid: false, error: 'Please enter a valid UPI ID (e.g. yourstore@okaxis, shop@upi)' };
+  }
+  return { valid: true, value: trimmed };
+}
+
+/**
  * Sanitizes input string to prevent XSS and strip unwanted HTML/script characters.
  */
 export function sanitizeText(str, maxLength = 500) {

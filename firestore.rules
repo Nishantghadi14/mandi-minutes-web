@@ -61,20 +61,24 @@ service cloud.firestore {
     // -------------------------------------------------------------
     // STORES COLLECTION
     // Trust boundary: Public read for approved stores. Write restricted
-    // to platform Admin or assigned store Vendor (without changing status).
+    // to platform Admin or assigned store Vendor (without changing status or modifying other stores).
     // -------------------------------------------------------------
     match /stores/{storeId} {
       allow read: if resource.data.status == 'approved' 
         || isAdmin() 
         || isStoreVendor(storeId);
 
-      // Onboarding submissions must have status 'pending'
+      // Onboarding submissions must have status 'pending' and valid upiId string if provided
       allow create: if isAdmin() 
-        || (isAuthenticated() && request.resource.data.status == 'pending');
+        || (isAuthenticated() 
+            && request.resource.data.status == 'pending'
+            && (!('upiId' in request.resource.data) || request.resource.data.upiId is string));
 
+      // Vendors can only update their own store (including their upiId) and cannot change status or alter other stores
       allow update: if isAdmin() || (
         isStoreVendor(storeId) 
         && request.resource.data.status == resource.data.status // Cannot self-approve
+        && (!('upiId' in request.resource.data) || request.resource.data.upiId is string)
       );
 
       allow delete: if isAdmin();
