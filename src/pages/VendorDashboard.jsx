@@ -7,24 +7,24 @@ import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
 import { 
   Store, 
-  Package, 
   ShoppingBag, 
   TrendingUp, 
   Plus, 
   Edit, 
   Trash2, 
   Printer, 
-  Check, 
-  X, 
   Clock, 
   AlertTriangle, 
   MessageCircle, 
-  BellRing, 
   ShieldAlert, 
   Zap, 
-  CheckCircle2 
+  DollarSign,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+
+const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
   const { user } = useAuth();
@@ -41,6 +41,8 @@ export default function VendorDashboard() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
+  const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d'
+  const [stockThreshold, setStockThreshold] = useState(5);
 
   // SLA Calculation for Active Orders
   const ordersWithSla = useMemo(() => {
@@ -83,7 +85,7 @@ export default function VendorDashboard() {
   const stats = useMemo(() => {
     const totalRev = storeOrders.reduce((s, o) => s + o.total, 0);
     const pending = storeOrders.filter(o => ['placed', 'accepted', 'preparing'].includes(o.status)).length;
-    const lowStock = products.filter(p => p.stock <= 5).length;
+    const lowStock = products.filter(p => p.stock <= stockThreshold).length;
     
     // SLA compliance calculation
     const completedOrOut = storeOrders.filter(o => ['delivered', 'out_for_delivery'].includes(o.status));
@@ -96,24 +98,51 @@ export default function VendorDashboard() {
     const slaRate = completedOrOut.length > 0 ? Math.round((onTimeOrders.length / completedOrOut.length) * 100) : 100;
 
     return { rev: totalRev, count: storeOrders.length, pending, lowStock, slaRate };
-  }, [storeOrders, products]);
+  }, [storeOrders, products, stockThreshold]);
 
-  // Real Dynamic Analytics Chart Data based on actual Firestore orders
-  const dynamicSalesData = useMemo(() => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const map = {};
-    days.forEach(d => { map[d] = 0; });
+  // Sales Over Time (7 / 30 Days)
+  const salesOverTime = useMemo(() => {
+    const numDays = timeframe === '30d' ? 30 : 7;
+    const now = new Date();
+    const data = [];
 
-    storeOrders.forEach(o => {
-      const d = new Date(o.placedAt || Date.now());
-      const dayName = days[d.getDay()];
-      map[dayName] = (map[dayName] || 0) + (o.total || 0);
-    });
+    for (let i = numDays - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const label = numDays === 7 
+        ? d.toLocaleDateString('en-IN', { weekday: 'short' })
+        : `${d.getDate()}/${d.getMonth() + 1}`;
 
-    return days.map(day => ({
-      day,
-      sales: map[day] || 0,
-    }));
+      const dayTotal = storeOrders
+        .filter(o => (o.placedAt || '').startsWith(dateStr))
+        .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+      const dayOrders = storeOrders
+        .filter(o => (o.placedAt || '').startsWith(dateStr)).length;
+
+      data.push({
+        date: label,
+        fullDate: dateStr,
+        sales: dayTotal,
+        orders: dayOrders,
+      });
+    }
+    return data;
+  }, [storeOrders, timeframe]);
+
+  // Low-Stock Products List
+  const lowStockProducts = useMemo(() => {
+    return products.filter(p => Number(p.stock) <= stockThreshold);
+  }, [products, stockThreshold]);
+
+  // Earnings Summary
+  const earningsSummary = useMemo(() => {
+    const grossSales = storeOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const platformCommission = Math.round(grossSales * PLATFORM_COMMISSION_RATE);
+    const netPayout = grossSales - platformCommission;
+    const deliveredCount = storeOrders.filter(o => o.status === 'delivered').length;
+    return { grossSales, platformCommission, netPayout, deliveredCount, rate: PLATFORM_COMMISSION_RATE * 100 };
   }, [storeOrders]);
 
   // Top Selling Products Calculated Dynamically from Firestore Orders
@@ -414,25 +443,78 @@ export default function VendorDashboard() {
       {/* TAB 3: Analytics */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
+          {/* Earnings Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-mandi-muted text-xs font-semibold uppercase tracking-wider">Gross Sales</span>
+                <div className="w-8 h-8 rounded-xl bg-blue-900 bg-opacity-30 flex items-center justify-center text-blue-400">
+                  <DollarSign size={16} />
+                </div>
+              </div>
+              <p className="text-2xl font-black text-mandi-text">₹{earningsSummary.grossSales.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-subtle text-xs mt-1">Total revenue across {storeOrders.length} order{storeOrders.length === 1 ? '' : 's'}</p>
+            </div>
+
+            <div className="card p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-mandi-muted text-xs font-semibold uppercase tracking-wider">Platform Fee ({earningsSummary.rate}%)</span>
+                <div className="w-8 h-8 rounded-xl bg-yellow-900 bg-opacity-30 flex items-center justify-center text-yellow-400">
+                  <Layers size={16} />
+                </div>
+              </div>
+              <p className="text-2xl font-black text-yellow-400">-₹{earningsSummary.platformCommission.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-subtle text-xs mt-1">App infrastructure & delivery logistics</p>
+            </div>
+
+            <div className="card p-5 bg-gradient-to-br from-[#0d2a14] to-mandi-card border-mandi-green border-opacity-40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-green-300 text-xs font-semibold uppercase tracking-wider">Net Vendor Payout</span>
+                <div className="w-8 h-8 rounded-xl bg-mandi-green bg-opacity-20 flex items-center justify-center text-mandi-green">
+                  <ArrowUpRight size={18} />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-mandi-green">₹{earningsSummary.netPayout.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-muted text-xs mt-1">Direct settlement to your registered UPI / Bank</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sales Chart */}
+            {/* Sales Over Time Line Chart */}
             <div className="lg:col-span-2 card p-6">
-              <h3 className="text-mandi-text font-bold text-lg mb-1">Weekly Store Sales (₹)</h3>
-              <p className="text-mandi-muted text-xs mb-4">Calculated in real-time from verified customer orders</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-mandi-text font-bold text-lg">Sales Trend (₹)</h3>
+                  <p className="text-mandi-muted text-xs">Daily store revenue calculated from confirmed orders</p>
+                </div>
+                <div className="flex bg-mandi-surface rounded-xl p-1 border border-mandi-border self-start sm:self-auto">
+                  <button
+                    onClick={() => setTimeframe('7d')}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === '7d' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
+                  >
+                    Last 7 Days
+                  </button>
+                  <button
+                    onClick={() => setTimeframe('30d')}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === '30d' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
+                  >
+                    Last 30 Days
+                  </button>
+                </div>
+              </div>
+
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dynamicSalesData}>
-                    <defs>
-                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#00C851" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#00C851" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="day" stroke="#6B6B6B" />
-                    <YAxis stroke="#6B6B6B" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#2A2A2A', color: '#FFF' }} />
-                    <Area type="monotone" dataKey="sales" stroke="#00C851" fillOpacity={1} fill="url(#colorSales)" />
-                  </AreaChart>
+                  <LineChart data={salesOverTime} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                    <XAxis dataKey="date" stroke="#6B6B6B" fontSize={11} />
+                    <YAxis stroke="#6B6B6B" fontSize={11} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#2A2A2A', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                      formatter={(val) => [`₹${val}`, 'Sales']}
+                    />
+                    <Line type="monotone" dataKey="sales" stroke="#00C851" strokeWidth={3} dot={{ r: 4, fill: '#00C851' }} activeDot={{ r: 6 }} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -440,7 +522,7 @@ export default function VendorDashboard() {
             {/* Top Products */}
             <div className="card p-6">
               <h3 className="text-mandi-text font-bold text-lg mb-1">Top Selling Items</h3>
-              <p className="text-mandi-muted text-xs mb-4">Most ordered items from your store</p>
+              <p className="text-mandi-muted text-xs mb-4">Most popular staples ordered from your store</p>
               {topSellingProducts.length === 0 ? (
                 <p className="text-mandi-subtle text-xs py-8 text-center">No sales recorded yet</p>
               ) : (
@@ -448,12 +530,79 @@ export default function VendorDashboard() {
                   {topSellingProducts.map((it, idx) => (
                     <div key={idx} className="flex items-center justify-between border-b border-mandi-border pb-2 text-xs">
                       <span className="text-mandi-text font-medium truncate max-w-[160px]">{it.name}</span>
-                      <span className="badge-green font-bold">{it.units} sold</span>
+                      <span className="badge-green font-bold">{it.units} units</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Low-Stock Alert List */}
+          <div className="card p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-yellow-400" />
+                <h3 className="text-mandi-text font-bold text-lg">Low Stock Alerts ({lowStockProducts.length})</h3>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-mandi-muted">
+                <span>Alert threshold:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={stockThreshold}
+                  onChange={e => setStockThreshold(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-16 input-field py-1 px-2 text-xs text-center font-bold"
+                />
+                <span>units or fewer</span>
+              </div>
+            </div>
+
+            {lowStockProducts.length === 0 ? (
+              <div className="p-6 text-center text-mandi-muted text-xs bg-mandi-surface rounded-xl border border-mandi-border">
+                ✅ All products have sufficient stock (above {stockThreshold} units).
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-mandi-surface text-mandi-muted border-b border-mandi-border">
+                    <tr>
+                      <th className="p-3">Product</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Price</th>
+                      <th className="p-3">Current Stock</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-mandi-border">
+                    {lowStockProducts.map(p => (
+                      <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
+                        <td className="p-3 flex items-center gap-3">
+                          <LazyImage src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover" />
+                          <span className="font-semibold text-mandi-text">{p.name}</span>
+                        </td>
+                        <td className="p-3 text-mandi-muted">{p.category}</td>
+                        <td className="p-3 text-mandi-green font-bold">₹{p.price}</td>
+                        <td className="p-3">
+                          <span className="bg-red-950 text-red-300 font-bold px-2 py-0.5 rounded border border-red-800">
+                            {p.stock} {p.unit} remaining
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                            className="btn-outline py-1 px-2.5 text-xs text-mandi-green hover:bg-mandi-green hover:text-black font-semibold"
+                          >
+                            Update Stock
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
