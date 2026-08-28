@@ -2,16 +2,14 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
+const {
+  SERVER_COUPONS,
+  applyCoupon,
+  calculateDeliveryCharge,
+} = require('./pricing');
 
 admin.initializeApp();
 const db = admin.firestore();
-
-// Active server-side promo coupon rules
-const SERVER_COUPONS = {
-  'NEWUSER': { discount: 20, type: 'percent', maxDiscount: 100 },
-  'MANDI10': { discount: 10, type: 'percent', maxDiscount: 50 },
-  'FLAT50': { discount: 50, type: 'flat', minOrder: 299 },
-};
 
 /**
  * Server-side order calculation and creation with Idempotency.
@@ -93,21 +91,10 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
   }
 
   // 5. Server-side discount computation
-  let computedDiscount = 0;
-  if (couponCode && SERVER_COUPONS[couponCode.toUpperCase()]) {
-    const coupon = SERVER_COUPONS[couponCode.toUpperCase()];
-    if (coupon.type === 'percent') {
-      const disc = Math.round((computedSubtotal * coupon.discount) / 100);
-      computedDiscount = coupon.maxDiscount ? Math.min(disc, coupon.maxDiscount) : disc;
-    } else if (coupon.type === 'flat') {
-      if (!coupon.minOrder || computedSubtotal >= coupon.minOrder) {
-        computedDiscount = coupon.discount;
-      }
-    }
-  }
+  const computedDiscount = applyCoupon(computedSubtotal, couponCode, SERVER_COUPONS);
 
   // 6. Server-side delivery charge computation
-  const deliveryCharge = computedSubtotal > 199 ? 0 : 20;
+  const deliveryCharge = calculateDeliveryCharge(computedSubtotal);
   const computedTotal = Math.max(0, computedSubtotal - computedDiscount + deliveryCharge);
 
   // 7. Generate order ID and timestamps
