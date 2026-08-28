@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import LazyImage from '../components/common/LazyImage';
@@ -70,6 +71,15 @@ export default function StorePage() {
 
   return (
     <div className="max-w-7xl mx-auto pb-24 md:pb-6">
+      <Helmet>
+        <title>{store ? `${store.name} — Virar Kirana Delivery | Mandi Minutes` : 'Store | Mandi Minutes'}</title>
+        <meta name="description" content={store?.description || `Order fresh groceries, rice, daal, and essentials directly from ${store?.name || 'local kirana store'} in Virar.`} />
+        <meta property="og:title" content={`${store?.name || 'Local Store'} | Mandi Minutes`} />
+        <meta property="og:description" content={store?.description || 'Hyperlocal grocery delivery in Virar.'} />
+        <meta property="og:image" content={store?.image || '/favicon.svg'} />
+        <meta property="og:type" content="business.business" />
+      </Helmet>
+
       {/* Network Alert */}
       {hasError && (
         <div className="mx-4 mt-4 p-3.5 rounded-xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between text-red-200 text-xs">

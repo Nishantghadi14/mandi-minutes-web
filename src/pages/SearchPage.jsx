@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import StoreCard from '../components/common/StoreCard';
@@ -44,6 +45,13 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      <Helmet>
+        <title>{debouncedQuery ? `Search: "${debouncedQuery}" | Mandi Minutes` : 'Search Groceries & Stores | Mandi Minutes'}</title>
+        <meta name="description" content="Search local groceries, staples, snacks, and Kirana stores across Virar, Maharashtra on Mandi Minutes." />
+        <meta property="og:title" content="Search Mandi Minutes Virar" />
+        <meta property="og:description" content="Search and order groceries from neighborhood shops in Virar." />
+      </Helmet>
+
       {/* Search Header */}
       <div className="mb-6">
         <div className="relative max-w-2xl mx-auto">

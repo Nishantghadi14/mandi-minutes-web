@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LocationProvider } from './context/LocationContext';
@@ -60,48 +61,50 @@ function PageLoader() {
 
 export default function App() {
   return (
-    <Router>
-      <ToastProvider>
-        <AuthProvider>
-          <DataProvider>
-            <LocationProvider>
-              <CartProvider>
-                <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
-                  <Navbar />
-                  <main className="flex-1">
-                    <ErrorBoundary>
-                      <Suspense fallback={<PageLoader />}>
-                        <Routes>
-                          <Route path="/" element={<HomePage />} />
-                          <Route path="/store/:storeId" element={<StorePage />} />
-                          <Route path="/search" element={<SearchPage />} />
-                          <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
-                          <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                          <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
-                          <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
-                          <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
-                          <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
-                          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
-                          <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
-                          <Route path="/about" element={<AboutPage />} />
-                          <Route path="/contact" element={<ContactPage />} />
-                          <Route path="/privacy" element={<PrivacyPage />} />
-                          <Route path="/terms" element={<TermsPage />} />
-                        </Routes>
-                      </Suspense>
-                    </ErrorBoundary>
-                  </main>
-                  <Footer />
-                  <BottomNav />
-                  <CartDrawer />
-                  <LocationModal />
-                  <AuthModal />
-                </div>
-              </CartProvider>
-            </LocationProvider>
-          </DataProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </Router>
+    <HelmetProvider>
+      <Router>
+        <ToastProvider>
+          <AuthProvider>
+            <DataProvider>
+              <LocationProvider>
+                <CartProvider>
+                  <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
+                    <Navbar />
+                    <main className="flex-1">
+                      <ErrorBoundary>
+                        <Suspense fallback={<PageLoader />}>
+                          <Routes>
+                            <Route path="/" element={<HomePage />} />
+                            <Route path="/store/:storeId" element={<StorePage />} />
+                            <Route path="/search" element={<SearchPage />} />
+                            <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+                            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                            <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
+                            <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
+                            <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
+                            <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+                            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
+                            <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+                            <Route path="/about" element={<AboutPage />} />
+                            <Route path="/contact" element={<ContactPage />} />
+                            <Route path="/privacy" element={<PrivacyPage />} />
+                            <Route path="/terms" element={<TermsPage />} />
+                          </Routes>
+                        </Suspense>
+                      </ErrorBoundary>
+                    </main>
+                    <Footer />
+                    <BottomNav />
+                    <CartDrawer />
+                    <LocationModal />
+                    <AuthModal />
+                  </div>
+                </CartProvider>
+              </LocationProvider>
+            </DataProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </Router>
+    </HelmetProvider>
   );
 }

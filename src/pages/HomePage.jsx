@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useLocation } from '../context/LocationContext';
 import { useData } from '../context/DataContext';
 import StoreCard from '../components/common/StoreCard';
@@ -63,6 +64,14 @@ export default function HomePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      <Helmet>
+        <title>Mandi Minutes — Hyperlocal Kirana Delivery in Virar (10-15 Mins)</title>
+        <meta name="description" content="Get fresh groceries, daily staples, Gokul milk, and household essentials from your neighborhood Kirana stores in Virar West & East in 10-15 minutes." />
+        <meta property="og:title" content="Mandi Minutes — Hyperlocal Kirana Delivery Virar" />
+        <meta property="og:description" content="Virar's local Kirana stores delivered to your doorstep in 10-15 minutes." />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       {/* Network / Connection Error Warning Banner */}
       {hasStoreError && (
         <div className="mb-6 p-4 rounded-2xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between gap-3 text-red-200">

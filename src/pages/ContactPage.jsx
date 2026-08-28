@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Mail, Phone, MapPin, Send, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,13 @@ export default function ContactPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <Helmet>
+        <title>Help & Support — Mandi Minutes Customer Service</title>
+        <meta name="description" content="Contact Mandi Minutes support for help with your Virar grocery orders, refunds, and vendor partner inquiries." />
+        <meta property="og:title" content="Help & Support | Mandi Minutes Virar" />
+        <meta property="og:description" content="Customer support and ticketing for Mandi Minutes grocery deliveries in Virar." />
+      </Helmet>
+
       <h1 className="text-3xl font-black text-mandi-text mb-2">Help & Support</h1>
       <p className="text-mandi-muted text-sm mb-8">We are here to assist you with your orders, refunds, and partner inquiries.</p>
 

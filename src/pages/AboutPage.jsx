@@ -1,9 +1,17 @@
-import { Zap, Store, Heart, ShieldCheck, Users, Truck } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
+import { Zap, Store, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <Helmet>
+        <title>About Us — Mandi Minutes Kirana Delivery Virar</title>
+        <meta name="description" content="Empowering Virar Kirana store owners with digital quick-commerce capabilities. 10-20 min deliveries directly from local neighborhood shops in Palghar district." />
+        <meta property="og:title" content="About Mandi Minutes — Hyperlocal Virar Kirana Delivery" />
+        <meta property="og:description" content="Connecting local grocery shops with residents across Virar West and Virar East." />
+      </Helmet>
+
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto mb-12">
         <div className="w-14 h-14 bg-mandi-green rounded-2xl flex items-center justify-center mx-auto mb-4">
