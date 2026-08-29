@@ -87,11 +87,12 @@ export const useAuthStore = create((set, get) => ({
 
     const isAdminEmail = (email) => {
       if (!email) return false;
-      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com,admin@mandi.in')
+      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com')
         .toLowerCase()
         .split(',')
-        .map(e => e.trim());
-      return configuredAdmins.includes(email.toLowerCase()) || email.toLowerCase().startsWith('admin@');
+        .map(e => e.trim())
+        .filter(Boolean);
+      return configuredAdmins.includes(email.toLowerCase());
     };
 
     const resolvedRole = userData?.role === 'admin' || isAdminEmail(firebaseUser.email) 
