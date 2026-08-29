@@ -48,6 +48,7 @@ export function generateIdempotencyKey(customerId, storeId, items) {
 export async function createSecureOrder({
   items,
   storeId,
+  storeName = 'Local Store',
   address,
   deliveryType = 'express',
   scheduledSlot = null,
@@ -132,7 +133,7 @@ export async function createSecureOrder({
     customerEmail,
     customerPhone,
     storeId,
-    storeName: 'Mahalaxmi Kirana',
+    storeName,
     items: items.map(i => ({
       productId: i.productId || i.id,
       name: i.name,

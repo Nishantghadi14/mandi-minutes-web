@@ -113,6 +113,7 @@ export default function CheckoutPage() {
       const verifiedOrder = await createSecureOrder({
         items,
         storeId,
+        storeName: store?.name || 'Local Store',
         address: selectedAddress,
         deliveryType: isScheduled ? 'scheduled' : 'express',
         scheduledSlot,

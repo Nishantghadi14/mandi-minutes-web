@@ -3,7 +3,6 @@ import { doc, setDoc, getDocs, collection, query, limit } from 'firebase/firesto
 import { initialStores } from '../data/initialStores';
 import { initialProducts } from '../data/initialProducts';
 import { initialCategories } from '../data/initialCategories';
-import { sampleOrders } from '../data/sampleOrders';
 
 const defaultBanners = [
   { id: 'b1', title: '🎉 Flat 20% off on first order!', subtitle: 'Use code NEWUSER at checkout', color: 'from-green-900 to-mandi-dark', active: true },
@@ -25,17 +24,7 @@ export async function seedVirarDatabase(force = false) {
     const storesSnapshot = await getDocs(storesQuery);
 
     if (!storesSnapshot.empty && !force) {
-      // Stores exist — but still seed orders if missing
-      const ordersSnap = await getDocs(query(collection(db, 'orders'), limit(1)));
-      if (ordersSnap.empty) {
-        console.log('Seeding sample orders into empty orders collection...');
-        for (const order of sampleOrders) {
-          await setDoc(doc(db, 'orders', order.id), order, { merge: true });
-        }
-        console.log(`✅ Seeded ${sampleOrders.length} sample orders.`);
-        return { success: true, message: `Seeded ${sampleOrders.length} sample orders into Firestore!` };
-      }
-      console.log('Firestore already contains all collections. Skipping auto-seed.');
+      console.log('Firestore already contains catalog. Skipping auto-seed.');
       return { success: true, message: 'Database already populated' };
     }
 
@@ -59,35 +48,14 @@ export async function seedVirarDatabase(force = false) {
       await setDoc(doc(db, 'categories', cat.id), cat, { merge: true });
     }
 
-    // 5. Seed sample orders
-    for (const order of sampleOrders) {
-      await setDoc(doc(db, 'orders', order.id), order, { merge: true });
-    }
-
-    console.log('✅ Firestore database seeded successfully with production initial data.');
+    console.log('✅ Firestore catalog synchronized successfully.');
     return { 
       success: true, 
       mode: 'firebase', 
-      message: `Seeded ${initialStores.length} stores, ${initialProducts.length} products, ${sampleOrders.length} orders into Firestore!` 
+      message: `Catalog synchronized: ${initialStores.length} stores, ${initialProducts.length} products.` 
     };
   } catch (err) {
     console.error('Database seeding failed:', err);
-    throw err;
-  }
-}
-
-// Force seed only orders — used by the Admin Panel "Re-Seed" button
-export async function seedSampleOrders() {
-  if (!isFirebaseConfigured || !db) {
-    return { success: false, message: 'Firebase not configured' };
-  }
-  try {
-    for (const order of sampleOrders) {
-      await setDoc(doc(db, 'orders', order.id), order, { merge: true });
-    }
-    return { success: true, message: `✅ Seeded ${sampleOrders.length} sample orders into Firestore!` };
-  } catch (err) {
-    console.error('seedSampleOrders failed:', err);
     throw err;
   }
 }

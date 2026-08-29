@@ -99,6 +99,16 @@ export const useAuthStore = create((set, get) => ({
       ? 'admin' 
       : (userData?.role || 'customer');
 
+    // Persist admin role to Firestore so security rules also see role='admin'
+    if (resolvedRole === 'admin' && userData?.role !== 'admin' && db) {
+      try {
+        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'admin' }, { merge: true });
+        if (userData) userData.role = 'admin';
+      } catch (e) {
+        console.warn('Could not persist admin role to Firestore:', e.message);
+      }
+    }
+
     const profileUser = {
       id: firebaseUser.uid,
       uid: firebaseUser.uid,

@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
-import { seedVirarDatabase, seedSampleOrders } from '../config/seedDatabase';
 import { isFirebaseConfigured } from '../config/firebase';
 import { 
   Shield, 
@@ -13,19 +12,37 @@ import {
   X, 
   Plus, 
   Trash2, 
-  Database, 
+  RefreshCw, 
   ShieldAlert, 
-  Activity,
+  Activity, 
   TrendingUp,
+  Database,
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from 'recharts';
 
 export default function AdminPanel() {
-  const { stores, addStore, updateStore, deleteStore, products, deleteProduct, orders, updateOrderStatus, banners, addBanner, deleteBanner, tickets, resolveTicket } = useData();
+  const { 
+    stores, 
+    addStore, 
+    updateStore, 
+    deleteStore, 
+    products, 
+    deleteProduct, 
+    orders, 
+    updateOrderStatus, 
+    banners, 
+    addBanner, 
+    deleteBanner, 
+    tickets, 
+    resolveTicket,
+    retryFetch,
+    loadingStates,
+  } = useData();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('analytics');
+  const [activeTab, setActiveTab] = useState('orders');
   const [showAddStoreModal, setShowAddStoreModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [newStore, setNewStore] = useState({
     name: '',
     ownerName: '',
@@ -38,11 +55,20 @@ export default function AdminPanel() {
     minOrder: 99,
     image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
   });
-  const [seeding, setSeeding] = useState(false);
 
   const [newBannerTitle, setNewBannerTitle] = useState('');
   const [newBannerSub, setNewBannerSub] = useState('');
   const [replyText, setReplyText] = useState({});
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      retryFetch('orders');
+      addToast('Real-time database sync refreshed!', 'success');
+    } finally {
+      setTimeout(() => setRefreshing(false), 600);
+    }
+  };
 
   // ── Real KPI Aggregates ───────────────────────────────────────
   const completedOrders = useMemo(() => orders.filter(o => o.status === 'delivered'), [orders]);
@@ -133,31 +159,6 @@ export default function AdminPanel() {
     }
   };
 
-  const handleSeedVirar = async () => {
-    setSeeding(true);
-    try {
-      const res = await seedVirarDatabase(true); // force=true always re-seeds
-      addToast(res.message, 'success', 5000);
-      window.location.reload();
-    } catch (err) {
-      addToast('Failed to seed database: ' + err.message, 'error');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const handleSeedOrders = async () => {
-    setSeeding(true);
-    try {
-      const res = await seedSampleOrders();
-      addToast(res.message, 'success', 5000);
-    } catch (err) {
-      addToast('Failed to seed orders: ' + err.message, 'error');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   const handleCreateBanner = (e) => {
     e.preventDefault();
     if (!newBannerTitle.trim()) return;
@@ -178,19 +179,22 @@ export default function AdminPanel() {
             <div className="flex items-center gap-2">
               <h1 className="text-mandi-text font-black text-2xl">Super Admin Panel</h1>
               <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${isFirebaseConfigured ? 'bg-mandi-green-muted text-mandi-green border border-mandi-green border-opacity-30' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'}`}>
-                {isFirebaseConfigured ? '🔥 Firebase Active' : '💾 Local Virar Engine'}
+                {isFirebaseConfigured ? '🔥 Firebase Real-Time Active' : '💾 Local Engine'}
               </span>
             </div>
-            <p className="text-mandi-muted text-xs">Virar Region (Palghar District, MH) Control Center</p>
+            <p className="text-mandi-muted text-xs">Live Order Oversight, Inventory & Operations Dashboard</p>
           </div>
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <button onClick={handleSeedOrders} disabled={seeding} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-blue-500 text-blue-400 hover:bg-blue-950 transition-all">
-            <Database size={14} /> {seeding ? 'Seeding...' : 'Seed Sample Orders'}
-          </button>
-          <button onClick={handleSeedVirar} disabled={seeding} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-green text-mandi-green hover:bg-mandi-green hover:text-black transition-all">
-            <Database size={14} /> {seeding ? 'Seeding...' : 'Re-Seed Virar Catalog'}
+          <button 
+            onClick={handleRefresh} 
+            disabled={refreshing} 
+            className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green hover:text-mandi-green transition-all"
+            title="Refresh real-time Firestore listeners"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin text-mandi-green' : ''} />
+            {refreshing ? 'Syncing...' : 'Sync Live Orders'}
           </button>
           <button onClick={() => setShowAddStoreModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5">
             <Plus size={14} /> Add Kirana Store
