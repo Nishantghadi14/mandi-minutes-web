@@ -43,7 +43,8 @@ export const useAuthStore = create((set, get) => ({
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
-        set({ user: null, loading: false });
+        const localUser = getInitialUser();
+        set({ user: localUser, loading: false });
         return;
       }
 
@@ -76,21 +77,25 @@ export const useAuthStore = create((set, get) => ({
           }
         }
 
+        const profileUser = {
+          id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          phone: firebaseUser.phoneNumber,
+          displayName: firebaseUser.displayName,
+          role: userData?.role || 'customer',
+          storeId: userData?.storeId || null,
+          addresses: userData?.addresses?.length ? userData.addresses : [
+            { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+          ],
+          wishlist: userData?.wishlist || [],
+          avatar: userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
+          name: userData?.name || firebaseUser.displayName || 'Customer',
+          ...userData,
+        };
+        localStorage.setItem('mandi_local_user', JSON.stringify(profileUser));
         set({
-          user: {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            phone: firebaseUser.phoneNumber,
-            displayName: firebaseUser.displayName,
-            role: userData?.role || 'customer',
-            storeId: userData?.storeId || null,
-            addresses: userData?.addresses || [],
-            wishlist: userData?.wishlist || [],
-            avatar: userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
-            name: userData?.name || firebaseUser.displayName || 'Customer',
-            ...userData,
-          },
+          user: profileUser,
           loading: false,
         });
 
