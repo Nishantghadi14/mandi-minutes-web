@@ -48,6 +48,20 @@ export default function CheckoutPage() {
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState(null);
 
+  // Auto-sync selected address when user profile loads
+  useEffect(() => {
+    if (!selectedAddress) {
+      if (user?.addresses?.length) {
+        setSelectedAddress(user.addresses.find(a => a.isDefault) || user.addresses[0]);
+        setShowAddressForm(false);
+      } else {
+        const defaultAddr = { id: 'addr-default', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true };
+        setSelectedAddress(defaultAddr);
+        setShowAddressForm(false);
+      }
+    }
+  }, [user, selectedAddress]);
+
   if (!items.length) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -68,12 +82,13 @@ export default function CheckoutPage() {
     }
 
     setAddressErrors({});
-    const addr = { ...check.sanitized, id: `addr-${Date.now()}`, isDefault: !user?.addresses?.length };
-    const updated = [...(user?.addresses || []), addr];
+    const addr = { ...check.sanitized, id: `addr-${Date.now()}`, isDefault: true };
+    const updated = [addr, ...(user?.addresses || [])];
     updateUser({ addresses: updated });
     setSelectedAddress(addr);
     setShowAddressForm(false);
-    addToast('Address saved to profile!', 'success');
+    setStep(2); // Auto advance to payment step
+    addToast('Address confirmed! Proceed to payment 🎉', 'success');
   };
 
   const handlePlaceOrder = async () => {

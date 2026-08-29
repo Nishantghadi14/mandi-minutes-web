@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, Gift } from 'lucide-react';
 import { RecaptchaVerifier } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { useToast } from './Toast';
 import { validateIndianPhone, validateEmail, sanitizeText } from '../../utils/validators';
 
 export default function AuthModal() {
   const { authModal, closeAuthModal, login, register, sendPhoneOtp, confirmPhoneOtp } = useAuth();
+  const { items } = useCart();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [tab, setTab] = useState('email');
   const [mode, setMode] = useState(authModal.mode || 'login');
@@ -87,6 +91,9 @@ export default function AuthModal() {
         addToast('Account created successfully! Welcome 🎉', 'success');
       }
       closeAuthModal();
+      if (items && items.length > 0) {
+        navigate('/checkout');
+      }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');
     } finally {
@@ -157,6 +164,9 @@ export default function AuthModal() {
       await confirmPhoneOtp(confirmationResult, form.otp);
       addToast('Phone number verified! Welcome to Mandi Minutes 🎉', 'success');
       closeAuthModal();
+      if (items && items.length > 0) {
+        navigate('/checkout');
+      }
     } catch (err) {
       setError(err.message || 'Invalid OTP code. Please try again.');
     } finally {

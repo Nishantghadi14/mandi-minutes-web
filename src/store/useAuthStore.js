@@ -217,7 +217,9 @@ export const useAuthStore = create((set, get) => ({
         phone: phone,
         role: 'customer',
         storeId: null,
-        addresses: [],
+        addresses: [
+          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+        ],
         wishlist: [],
         referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(phone)}`,
@@ -262,7 +264,9 @@ export const useAuthStore = create((set, get) => ({
         phone: phone || '',
         role: 'customer',
         storeId: null,
-        addresses: [],
+        addresses: [
+          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+        ],
         wishlist: [],
         referralCode: myReferralCode,
         ...(sanitizedReferral && sanitizedReferral !== myReferralCode ? { referredBy: sanitizedReferral } : {}),
