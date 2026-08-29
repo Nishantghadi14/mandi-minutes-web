@@ -85,19 +85,33 @@ export const useAuthStore = create((set, get) => ({
       }
     }
 
+    const isAdminEmail = (email) => {
+      if (!email) return false;
+      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com,admin@mandi.in')
+        .toLowerCase()
+        .split(',')
+        .map(e => e.trim());
+      return configuredAdmins.includes(email.toLowerCase()) || email.toLowerCase().startsWith('admin@');
+    };
+
+    const resolvedRole = userData?.role === 'admin' || isAdminEmail(firebaseUser.email) 
+      ? 'admin' 
+      : (userData?.role || 'customer');
+
     const profileUser = {
       id: firebaseUser.uid,
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       phone: firebaseUser.phoneNumber,
       displayName: firebaseUser.displayName,
-      role: userData.role,
+      role: resolvedRole,
       storeId: userData?.storeId || null,
       addresses: userData?.addresses || [],
       wishlist: userData?.wishlist || [],
       avatar: userData?.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
       name: userData?.name || firebaseUser.displayName || 'Customer',
       ...userData,
+      role: resolvedRole,
     };
 
     if (operationId !== authOperationId) {return null;}
