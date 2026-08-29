@@ -3,6 +3,7 @@ import { doc, setDoc, getDocs, collection, query, limit } from 'firebase/firesto
 import { initialStores } from '../data/initialStores';
 import { initialProducts } from '../data/initialProducts';
 import { initialCategories } from '../data/initialCategories';
+import { sampleOrders } from '../data/sampleOrders';
 
 const defaultBanners = [
   { id: 'b1', title: '🎉 Flat 20% off on first order!', subtitle: 'Use code NEWUSER at checkout', color: 'from-green-900 to-mandi-dark', active: true },
@@ -48,11 +49,16 @@ export async function seedVirarDatabase(force = false) {
       await setDoc(doc(db, 'categories', cat.id), cat, { merge: true });
     }
 
+    // 5. Seed sample orders
+    for (const order of sampleOrders) {
+      await setDoc(doc(db, 'orders', order.id), order, { merge: true });
+    }
+
     console.log('✅ Firestore database seeded successfully with production initial data.');
     return { 
       success: true, 
       mode: 'firebase', 
-      message: `Seeded ${initialStores.length} stores, ${initialProducts.length} products, ${defaultBanners.length} banners into Firestore!` 
+      message: `Seeded ${initialStores.length} stores, ${initialProducts.length} products, ${sampleOrders.length} orders into Firestore!` 
     };
   } catch (err) {
     console.error('Database seeding failed:', err);
