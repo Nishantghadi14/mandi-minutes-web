@@ -7,7 +7,7 @@ import { useState } from 'react';
 import LazyImage from './LazyImage';
 
 export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, updateQuantity, removeItem, subtotal, discount, deliveryCharge, total, itemCount, coupon, applyCoupon, removeCoupon } = useCart();
+  const { items, isOpen, setIsOpen, updateQuantity, clearCart, subtotal, discount, deliveryCharge, total, itemCount, coupon, applyCoupon, removeCoupon } = useCart();
   const { user, openAuthModal } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -45,7 +45,18 @@ export default function CartDrawer() {
             <h2 className="font-bold text-mandi-text text-lg">My Cart</h2>
             {itemCount > 0 && <span className="badge-green">{itemCount}</span>}
           </div>
-          <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-mandi-surface transition-colors text-mandi-muted hover:text-mandi-text"><X size={20} /></button>
+          <div className="flex items-center gap-2">
+            {items.length > 0 && (
+              <button 
+                onClick={clearCart} 
+                className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950 hover:bg-opacity-30 transition-colors"
+                title="Clear all items"
+              >
+                Clear
+              </button>
+            )}
+            <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-mandi-surface transition-colors text-mandi-muted hover:text-mandi-text"><X size={20} /></button>
+          </div>
         </div>
 
         {/* Content */}

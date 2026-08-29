@@ -10,9 +10,19 @@ import {
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured, requestNotificationPermission } from '../config/firebase';
 
+const getInitialUser = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const localUser = localStorage.getItem('mandi_local_user');
+    return localUser ? JSON.parse(localUser) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useAuthStore = create((set, get) => ({
-  user: null,
-  loading: true, // Start in loading state until onAuthStateChanged fires
+  user: getInitialUser(),
+  loading: false, // Immediate loading resolution
   authModal: { open: false, mode: 'login' },
   unsubscribeAuth: null,
 
@@ -26,16 +36,8 @@ export const useAuthStore = create((set, get) => ({
 
     if (!isFirebaseConfigured || !auth) {
       console.info('ℹ️ Running in local development mode — auth session maintained locally.');
-      const localUser = localStorage.getItem('mandi_local_user');
-      if (localUser) {
-        try {
-          set({ user: JSON.parse(localUser), loading: false });
-        } catch {
-          set({ user: null, loading: false });
-        }
-      } else {
-        set({ user: null, loading: false });
-      }
+      const localUser = getInitialUser();
+      set({ user: localUser, loading: false });
       return () => {};
     }
 
@@ -128,9 +130,7 @@ export const useAuthStore = create((set, get) => ({
 
   // Real Email & Password Login
   login: async (email, password) => {
-    set({ loading: true });
     if (!isFirebaseConfigured || !auth) {
-      await new Promise(r => setTimeout(r, 300));
       const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
       const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       const role = import.meta.env.PROD
@@ -205,8 +205,6 @@ export const useAuthStore = create((set, get) => ({
 
   confirmPhoneOtp: async (confirmationResult, otp) => {
     if (!isFirebaseConfigured || !auth) {
-      set({ loading: true });
-      await new Promise(r => setTimeout(r, 300));
       const phone = confirmationResult?.phone || '9820098200';
       const uid = 'local-phone-' + phone.slice(-6);
       const localUser = {
@@ -250,9 +248,7 @@ export const useAuthStore = create((set, get) => ({
 
   // Real Email & Password Registration
   register: async (name, email, phone, password, referralCode = '') => {
-    set({ loading: true });
     if (!isFirebaseConfigured || !auth) {
-      await new Promise(r => setTimeout(r, 300));
       const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
       const myReferralCode = `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`;
       const sanitizedReferral = referralCode.trim().toUpperCase();

@@ -17,9 +17,11 @@ const firebaseConfig = {
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
   firebaseConfig.projectId &&
+  firebaseConfig.apiKey.length > 25 &&
   !firebaseConfig.apiKey.includes('YourFirebaseApiKeyHere') &&
   !firebaseConfig.apiKey.includes('...') &&
-  !firebaseConfig.projectId.includes('your-project')
+  !firebaseConfig.projectId.includes('your-project') &&
+  !firebaseConfig.authDomain?.includes('your-project')
 );
 
 let app = null;
