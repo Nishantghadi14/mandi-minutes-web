@@ -86,19 +86,25 @@ export default function Navbar() {
             </button>
 
             {/* User */}
-            {user ? (
+            {loading ? (
+              <div className="w-20 h-9 rounded-xl bg-mandi-surface border border-mandi-border animate-pulse" />
+            ) : user ? (
               <div className="relative">
                 <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-3 py-2 rounded-xl hover:border-mandi-green transition-colors">
-                  <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black">{user.name[0]}</div>
-                  <span className="hidden sm:block text-mandi-text text-sm font-medium max-w-[80px] truncate">{user.name.split(' ')[0]}</span>
+                  <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black">
+                    {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="hidden sm:block text-mandi-text text-sm font-medium max-w-[90px] truncate">
+                    {(user.name || user.displayName || user.email || 'User').split(' ')[0]}
+                  </span>
                   <ChevronDown size={12} className="text-mandi-muted" />
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-mandi-card border border-mandi-border rounded-xl shadow-card-hover z-50">
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-mandi-card border border-mandi-border rounded-xl shadow-card-hover z-50">
                     <div className="p-3 border-b border-mandi-border">
-                      <p className="text-mandi-text font-semibold text-sm">{user.name}</p>
-                      <p className="text-mandi-muted text-xs">{user.email}</p>
-                      <span className="tag mt-1 inline-block capitalize">{user.role}</span>
+                      <p className="text-mandi-text font-semibold text-sm truncate">{user.name || user.displayName || 'Customer'}</p>
+                      <p className="text-mandi-muted text-xs truncate">{user.email || user.phone || ''}</p>
+                      <span className="tag mt-1 inline-block capitalize">{user.role || 'customer'}</span>
                     </div>
                     <div className="py-1">
                       {roleLink && (
@@ -135,7 +141,7 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <button onClick={() => openAuthModal('login')} className="btn-primary py-2 px-4 text-sm">
+              <button onClick={() => openAuthModal('login')} className="btn-primary py-2 px-4 text-sm font-semibold">
                 Login
               </button>
             )}

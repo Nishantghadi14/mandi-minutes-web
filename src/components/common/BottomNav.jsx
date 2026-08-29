@@ -44,8 +44,12 @@ export default function BottomNav() {
               <button key={item.label} onClick={() => !user && openAuthModal('login')} className={`bottom-nav-item ${active ? 'text-mandi-green' : 'text-mandi-muted'}`}>
                 {user ? (
                   <Link to={user.role === 'vendor' ? '/vendor' : user.role === 'admin' ? '/admin' : '/orders'} className="flex flex-col items-center gap-1">
-                    <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black">{user.name[0]}</div>
-                    <span className="text-xs text-mandi-muted">{user.name.split(' ')[0]}</span>
+                    <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black">
+                      {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs text-mandi-muted">
+                      {(user.name || user.displayName || user.email || 'User').split(' ')[0]}
+                    </span>
                   </Link>
                 ) : (
                   <><Icon size={22} /><span className="text-xs">Login</span></>

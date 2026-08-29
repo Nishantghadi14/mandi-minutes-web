@@ -178,7 +178,7 @@ export default function AuthModal() {
         {/* Security badge */}
         <div className="flex items-center gap-2 bg-mandi-surface border border-mandi-border rounded-xl px-3 py-2 mb-4 text-xs text-mandi-muted">
           <ShieldCheck size={14} className="text-mandi-green flex-shrink-0" />
-          <span>Secured by Firebase Authentication (Zero-Trust RBAC)</span>
+          <span>{isFirebaseConfigured ? 'Secured by Firebase Authentication (Zero-Trust RBAC)' : '⚡ Instant Local Demo Mode (No Setup Required)'}</span>
         </div>
 
         {/* Tabs */}
