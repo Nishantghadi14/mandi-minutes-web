@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Smartphone, Check, AlertCircle, CreditCard, QrCode, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Smartphone, Check, AlertCircle, QrCode, ArrowRight, Copy, CheckCheck, Wallet } from 'lucide-react';
 import QRCode from 'qrcode';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../../config/firebase';
 import { useToast } from './Toast';
-import { loadRazorpayScript } from '../../services/orderService';
 
 export default function UPIPaymentModal({ 
   isOpen, 
@@ -16,36 +15,46 @@ export default function UPIPaymentModal({
   store,
   upiId: propUpiId,
   orderId,
-  customerName,
-  customerEmail,
-  customerPhone,
+  customerName: _customerName,
+  customerEmail: _customerEmail,
+  customerPhone: _customerPhone,
   onSwitchToCod 
 }) {
   const { addToast } = useToast();
   const [status, setStatus] = useState('pending'); // pending | verifying | success | failed
-  const [loadingGateway, setLoadingGateway] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
-  const [paymentTab, setPaymentTab] = useState('gateway'); // 'gateway' | 'qr'
+  const [copied, setCopied] = useState(false);
+  const [utrNumber, setUtrNumber] = useState('');
 
-  const effectiveUpiId = propUpiId || store?.upiId || 'mandiminutes@upi';
-  const upiPayUrl = `upi://pay?pa=${effectiveUpiId}&pn=${encodeURIComponent(storeName || store?.name || 'Mandi Minutes')}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Order ${orderId}`)}`;
+  // Primary Merchant UPI Handle (0% Fee Direct Bank-to-Bank Transfer)
+  const effectiveUpiId = import.meta.env.VITE_MERCHANT_UPI_ID || propUpiId || store?.upiId || 'mahalaxmi.kirana@okicici';
+  const merchantName = storeName || store?.name || 'Mandi Minutes';
+  
+  // Standard NPCI UPI URI Specification
+  const upiPayUrl = `upi://pay?pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent(merchantName)}&am=${Number(amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${orderId}`)}`;
 
-  // Generate dynamic QR code
+  // Generate dynamic high-res QR code
   useEffect(() => {
     if (isOpen && amount > 0) {
       QRCode.toDataURL(upiPayUrl, {
-        width: 240,
-        margin: 1,
+        width: 280,
+        margin: 1.5,
         color: { dark: '#000000', light: '#FFFFFF' }
-      }).then(url => setQrDataUrl(url)).catch(() => {});
+      }).then(url => setQrDataUrl(url)).catch(err => {
+        console.warn('QR code generation failed:', err);
+      });
     }
   }, [isOpen, amount, upiPayUrl]);
 
   useEffect(() => { 
-    if (isOpen) setStatus('pending'); 
+    if (isOpen) {
+      setStatus('pending');
+      setUtrNumber('');
+      setCopied(false);
+    }
   }, [isOpen]);
 
-  // Real-time Firestore listener for payment confirmation
+  // Real-time Firestore listener for live order payment confirmation
   useEffect(() => {
     if (!isOpen || !orderId || !db || !isFirebaseConfigured) return;
 
@@ -62,103 +71,56 @@ export default function UPIPaymentModal({
     return () => unsubscribe();
   }, [isOpen, orderId, addToast]);
 
-  const markOrderPaid = useCallback(async (paymentId, method = 'razorpay') => {
+  const handleCopyUpi = () => {
+    navigator.clipboard.writeText(effectiveUpiId);
+    setCopied(true);
+    addToast(`Copied UPI ID: ${effectiveUpiId}`, 'info');
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const markOrderPaid = useCallback(async (referenceId) => {
     if (db && isFirebaseConfigured && orderId) {
       try {
         await updateDoc(doc(db, 'orders', orderId), {
           paymentStatus: 'paid',
           status: 'placed',
           paymentDetails: {
-            gateway: method,
-            paymentId: paymentId || `pay_${Date.now()}`,
+            gateway: 'upi_direct',
+            upiId: effectiveUpiId,
+            utr: referenceId || null,
             paidAt: new Date().toISOString(),
           },
           statusHistory: [
-            { status: 'placed', time: new Date().toISOString(), note: `Payment received via ${method}` }
+            { status: 'placed', time: new Date().toISOString(), note: `Direct UPI payment confirmed (${referenceId ? `UTR: ${referenceId}` : 'Instant transfer'})` }
           ]
         });
       } catch (err) {
-        console.warn('Firestore payment status update notice:', err.message);
+        console.warn('Firestore payment update notice:', err.message);
       }
     }
     setStatus('success');
-  }, [orderId]);
+  }, [orderId, effectiveUpiId]);
 
-  // Launch Razorpay Checkout
-  const handleLaunchGateway = async () => {
-    setLoadingGateway(true);
-    const scriptLoaded = await loadRazorpayScript();
-    setLoadingGateway(false);
-
-    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_51MockGatewayKey';
-
-    if (!scriptLoaded || !window.Razorpay) {
-      // If Razorpay script failed to load, seamlessly switch to direct UPI QR code
-      setPaymentTab('qr');
-      addToast('Opening instant UPI QR scanner...', 'info');
-      return;
-    }
-
-    try {
-      const options = {
-        key: razorpayKey,
-        amount: Math.round(amount * 100), // amount in paise
-        currency: 'INR',
-        name: 'Mandi Minutes',
-        description: `Order #${orderId} - ${storeName || store?.name || 'Store'}`,
-        image: '/favicon.svg',
-        handler: function (response) {
-          setStatus('verifying');
-          addToast('Payment received! Confirming your order...', 'info');
-          markOrderPaid(response.razorpay_payment_id || `rzp_${Date.now()}`, 'razorpay');
-        },
-        prefill: {
-          name: customerName || '',
-          email: customerEmail || '',
-          contact: customerPhone || '',
-        },
-        theme: {
-          color: '#00C851',
-        },
-        modal: {
-          ondismiss: function () {
-            // User closed Razorpay popup without paying
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        setStatus('failed');
-        addToast(`Payment failed: ${response.error?.description || 'Transaction cancelled'}`, 'error');
-      });
-      rzp.open();
-    } catch (err) {
-      console.warn('Razorpay open notice:', err);
-      setPaymentTab('qr');
-    }
-  };
-
-  const handleManualUpiConfirm = async () => {
+  const handleConfirmPayment = async () => {
     setStatus('verifying');
-    await markOrderPaid(`upi_${Date.now()}`, 'upi_direct');
-    addToast('Payment confirmed! Your order is placed 🎉', 'success');
+    await markOrderPaid(utrNumber.trim());
+    addToast('Payment confirmed! Your order is being prepared 🎉', 'success');
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md animate-fade-in overflow-hidden">
+      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md animate-fade-in overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-mandi-border">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-mandi-border flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-mandi-green-muted rounded-xl flex items-center justify-center">
-              <Smartphone size={18} className="text-mandi-green" />
+            <div className="w-10 h-10 bg-mandi-green-muted rounded-xl flex items-center justify-center">
+              <QrCode size={20} className="text-mandi-green" />
             </div>
             <div>
-              <h2 className="text-mandi-text font-bold">UPI & Online Payment</h2>
-              <p className="text-mandi-muted text-xs">{storeName || store?.name || 'Mandi Minutes'}</p>
+              <h2 className="text-mandi-text font-bold text-base">Direct UPI Payment</h2>
+              <p className="text-mandi-muted text-xs">0% Fees • Instant Bank Transfer</p>
             </div>
           </div>
           <button onClick={onClose} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1">
@@ -166,83 +128,82 @@ export default function UPIPaymentModal({
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1">
           {/* Amount badge */}
-          <div className="text-center mb-4">
-            <p className="text-mandi-muted text-xs uppercase tracking-wider">Amount to pay</p>
-            <p className="text-4xl font-black text-mandi-green">₹{amount}</p>
-            <p className="text-mandi-subtle text-xs mt-1">Order Ref: #{orderId}</p>
+          <div className="text-center mb-4 bg-mandi-surface border border-mandi-border rounded-2xl py-3 px-4">
+            <p className="text-mandi-muted text-xs uppercase tracking-wider font-semibold">Total Payable</p>
+            <p className="text-3xl sm:text-4xl font-black text-mandi-green">₹{amount}</p>
+            <p className="text-mandi-subtle text-[11px] mt-0.5">Order Ref: #{orderId}</p>
           </div>
 
           {/* PENDING STATE */}
           {status === 'pending' && (
             <div className="space-y-4">
-              {/* Payment Mode Selector Tabs */}
-              <div className="flex bg-mandi-surface rounded-xl p-1 border border-mandi-border">
+              {/* QR Code Card */}
+              <div className="bg-white p-3.5 rounded-2xl text-center shadow-md max-w-[240px] mx-auto">
+                {qrDataUrl ? (
+                  <img 
+                    src={qrDataUrl} 
+                    alt={`UPI QR code for ₹${amount}`} 
+                    className="w-48 h-48 mx-auto"
+                  />
+                ) : (
+                  <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
+                    Generating QR code...
+                  </div>
+                )}
+                <p className="text-[11px] font-bold text-gray-700 mt-1">Scan with any UPI App</p>
+                <div className="flex items-center justify-center gap-2 mt-1 opacity-80">
+                  <span className="text-[10px] font-semibold text-gray-600">GPay • PhonePe • Paytm • BHIM</span>
+                </div>
+              </div>
+
+              {/* UPI ID Copy Box */}
+              <div className="flex items-center justify-between bg-mandi-surface border border-mandi-border rounded-xl px-3.5 py-2.5">
+                <div className="min-w-0 pr-2">
+                  <p className="text-mandi-muted text-[10px] uppercase font-semibold">Merchant UPI ID</p>
+                  <p className="text-mandi-text font-mono font-bold text-xs truncate">{effectiveUpiId}</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setPaymentTab('gateway')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${paymentTab === 'gateway' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
+                  onClick={handleCopyUpi}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-mandi-card border border-mandi-border hover:border-mandi-green text-mandi-green transition-colors flex-shrink-0"
                 >
-                  <CreditCard size={14} />
-                  Razorpay (UPI / Cards)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentTab('qr')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${paymentTab === 'qr' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
-                >
-                  <QrCode size={14} />
-                  Scan QR / UPI App
+                  {copied ? <CheckCheck size={14} /> : <Copy size={14} />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
 
-              {paymentTab === 'gateway' ? (
-                <div className="space-y-3">
-                  <button
-                    onClick={handleLaunchGateway}
-                    disabled={loadingGateway}
-                    className="btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95"
-                  >
-                    <CreditCard size={18} />
-                    {loadingGateway ? 'Opening Razorpay...' : 'Pay with Razorpay'}
-                  </button>
+              {/* Action 1: Mobile Deep Link */}
+              <a
+                href={upiPayUrl}
+                className="btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95"
+              >
+                <Smartphone size={16} />
+                <span>Pay via UPI App (GPay / PhonePe)</span>
+              </a>
 
-                  <div className="flex items-center justify-center gap-2 text-xs text-mandi-subtle">
-                    <ShieldCheck size={14} className="text-mandi-green" />
-                    <span>Supports GPay, PhonePe, Paytm, Cards & NetBanking</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4 text-center">
-                  {qrDataUrl && (
-                    <div className="bg-white p-3 rounded-2xl inline-block shadow-md mx-auto">
-                      <img src={qrDataUrl} alt="UPI QR Code" className="w-44 h-44 mx-auto" />
-                    </div>
-                  )}
+              {/* Action 2: UTR Reference Input + Confirm Button */}
+              <div className="space-y-2 pt-2 border-t border-mandi-border">
+                <input
+                  type="text"
+                  value={utrNumber}
+                  onChange={(e) => setUtrNumber(e.target.value.replace(/[^\w]/g, '').slice(0, 16))}
+                  placeholder="Optional: Enter 12-digit UTR / Ref No."
+                  className="input-field py-2 text-xs w-full text-center"
+                />
 
-                  <div className="space-y-2">
-                    <a
-                      href={upiPayUrl}
-                      className="btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
-                    >
-                      <Smartphone size={16} />
-                      Open UPI App (GPay / PhonePe)
-                    </a>
-                    
-                    <button
-                      type="button"
-                      onClick={handleManualUpiConfirm}
-                      className="btn-outline w-full py-2.5 text-xs text-mandi-text font-semibold flex items-center justify-center gap-1.5"
-                    >
-                      <Check size={14} className="text-mandi-green" />
-                      I have completed payment
-                    </button>
-                  </div>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={handleConfirmPayment}
+                  className="btn-outline w-full py-2.5 text-xs text-mandi-green font-bold border-mandi-green flex items-center justify-center gap-1.5 hover:bg-mandi-green hover:text-black transition-colors"
+                >
+                  <Check size={15} />
+                  <span>I Have Completed Payment</span>
+                </button>
+              </div>
 
-              {/* Cash on Delivery fallback */}
+              {/* Action 3: Switch to Cash on Delivery */}
               <div className="pt-2 border-t border-mandi-border">
                 <button
                   type="button"
@@ -250,9 +211,10 @@ export default function UPIPaymentModal({
                     onClose();
                     onSwitchToCod?.();
                   }}
-                  className="w-full py-2 text-xs text-mandi-muted hover:text-mandi-text transition-colors flex items-center justify-center gap-1"
+                  className="w-full py-2 text-xs text-mandi-muted hover:text-mandi-text transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <span>Prefer to pay cash?</span>
+                  <Wallet size={14} className="text-mandi-subtle" />
+                  <span>Change mind?</span>
                   <span className="text-mandi-green font-semibold">Switch to Cash on Delivery</span>
                 </button>
               </div>
@@ -261,24 +223,30 @@ export default function UPIPaymentModal({
 
           {/* VERIFYING STATE */}
           {status === 'verifying' && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 border-4 border-mandi-green border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <h3 className="text-mandi-text font-bold text-lg mb-2">Confirming Payment…</h3>
-              <p className="text-mandi-muted text-xs mb-4">
-                Updating your order status. Please do not refresh.
+            <div className="text-center py-8 space-y-3">
+              <div className="w-16 h-16 border-4 border-mandi-green border-t-transparent rounded-full animate-spin mx-auto" />
+              <h3 className="text-mandi-text font-bold text-lg">Confirming Payment…</h3>
+              <p className="text-mandi-muted text-xs">
+                Recording your payment and dispatching order to the store.
               </p>
             </div>
           )}
 
           {/* SUCCESS STATE */}
           {status === 'success' && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-mandi-green rounded-full mx-auto mb-4 flex items-center justify-center">
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 bg-mandi-green rounded-full mx-auto flex items-center justify-center shadow-lg shadow-mandi-green/20">
                 <Check size={36} className="text-black" strokeWidth={3} />
               </div>
-              <h3 className="text-mandi-text font-black text-2xl mb-2">Payment Confirmed!</h3>
-              <p className="text-mandi-muted text-sm mb-6">₹{amount} paid securely to {storeName || store?.name || 'Store'}</p>
-              <button onClick={onSuccess} className="btn-primary w-full py-3.5 text-base font-bold flex items-center justify-center gap-2">
+              <div>
+                <h3 className="text-mandi-text font-black text-2xl">Payment Confirmed!</h3>
+                <p className="text-mandi-muted text-sm mt-1">₹{amount} paid securely to {merchantName}</p>
+                <p className="text-mandi-subtle text-xs mt-0.5">Order ID: {orderId}</p>
+              </div>
+              <button 
+                onClick={onSuccess} 
+                className="btn-primary w-full py-3.5 text-base font-bold flex items-center justify-center gap-2 shadow-lg"
+              >
                 <span>Track My Order</span>
                 <ArrowRight size={18} />
               </button>
@@ -287,15 +255,17 @@ export default function UPIPaymentModal({
 
           {/* FAILED STATE */}
           {status === 'failed' && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-red-900 bg-opacity-30 border border-red-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 bg-red-900 bg-opacity-30 border border-red-500 rounded-full mx-auto flex items-center justify-center">
                 <AlertCircle size={36} className="text-red-400" />
               </div>
-              <h3 className="text-mandi-text font-bold text-xl mb-2">Payment Incomplete</h3>
-              <p className="text-mandi-muted text-sm mb-6">The transaction was cancelled or could not be verified.</p>
+              <div>
+                <h3 className="text-mandi-text font-bold text-xl">Payment Incomplete</h3>
+                <p className="text-mandi-muted text-xs text-mandi-muted mt-1">Could not verify the transaction.</p>
+              </div>
               <div className="flex gap-2">
-                <button onClick={() => setStatus('pending')} className="btn-primary flex-1 py-2.5 text-sm">Retry Payment</button>
-                <button onClick={onClose} className="btn-ghost flex-1 py-2.5 text-sm">Cancel</button>
+                <button onClick={() => setStatus('pending')} className="btn-primary flex-1 py-2.5 text-xs font-bold">Retry Payment</button>
+                <button onClick={onClose} className="btn-ghost flex-1 py-2.5 text-xs">Cancel</button>
               </div>
             </div>
           )}
