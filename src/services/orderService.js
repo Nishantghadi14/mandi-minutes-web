@@ -1,5 +1,5 @@
-import { doc, getDoc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
-import { db, auth } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions, isFirebaseConfigured, auth } from '../config/firebase';
 import { validateAddress } from '../utils/validators';
 
 const SERVER_COUPONS = {
@@ -9,10 +9,9 @@ const SERVER_COUPONS = {
   'REF50': { discount: 50, type: 'flat', minOrder: 199 },
 };
 
-// Fraud Prevention Limits
-const MAX_COD_AMOUNT = 2500; // Cap Cash on Delivery at ₹2500 to protect kirana stores
-const MAX_ORDERS_PER_HOUR = 5; // Rate limit customer orders
-const MIN_ORDER_AMOUNT = 49; // Minimum order value
+// Fraud Prevention Limits for local fallback
+const MAX_COD_AMOUNT = 2500;
+const MIN_ORDER_AMOUNT = 49;
 
 /**
  * Load Razorpay Checkout Script dynamically
@@ -45,8 +44,9 @@ export function generateIdempotencyKey(customerId, storeId, items) {
 }
 
 /**
- * Validates and places an order against Firestore product catalog with idempotency & fraud guardrails.
- * Recalculates prices and totals directly from Firestore documents.
+ * Places an order securely via the server-side createOrder Cloud Function.
+ * The Cloud Function recalculates product prices from Firestore, enforces fraud rate-limits,
+ * and creates Razorpay orders server-side.
  */
 export async function createSecureOrder({
   items,
@@ -57,11 +57,6 @@ export async function createSecureOrder({
   couponCode = null,
   paymentMethod = 'Cash on Delivery',
 }) {
-  const currentUser = auth?.currentUser;
-  if (!currentUser) {
-    throw new Error('Authentication required to place an order.');
-  }
-
   if (!items || items.length === 0) {
     throw new Error('Your cart is empty.');
   }
@@ -72,101 +67,54 @@ export async function createSecureOrder({
     throw new Error(firstErr || 'Invalid delivery address');
   }
 
-  const idempotencyKey = generateIdempotencyKey(currentUser.uid, storeId, items);
+  // Normalize cart items to { productId, quantity }
+  const normalizedItems = items.map(item => ({
+    productId: item.productId || item.id,
+    quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
+  }));
 
-  // 1. Check Idempotency: Avoid double-charging or creating duplicate orders on double-tap
-  if (db) {
-    try {
-      const existingQuery = query(
-        collection(db, 'orders'),
-        where('customerId', '==', currentUser.uid),
-        where('idempotencyKey', '==', idempotencyKey),
-        limit(1)
-      );
-      const existingDocs = await getDocs(existingQuery);
-      if (!existingDocs.empty) {
-        const existingOrder = existingDocs.docs[0].data();
-        console.info('⚡ Idempotent checkout: returning existing active order:', existingOrder.id);
-        return existingOrder;
-      }
-    } catch (err) {
-      console.warn('Idempotency check query failed, proceeding with verified creation:', err);
-    }
-  }
-
-  // 2. Fraud Guardrail: Rate Limiting (Check recent orders in past 1 hour)
-  if (db) {
-    try {
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const recentOrdersQuery = query(
-        collection(db, 'orders'),
-        where('customerId', '==', currentUser.uid),
-        where('placedAt', '>=', oneHourAgo),
-        limit(MAX_ORDERS_PER_HOUR + 1)
-      );
-      const recentSnap = await getDocs(recentOrdersQuery);
-      if (recentSnap.size >= MAX_ORDERS_PER_HOUR) {
-        throw new Error(`Order rate limit reached (${MAX_ORDERS_PER_HOUR} orders/hour). Please wait before placing another order.`);
-      }
-    } catch (rateErr) {
-      if (rateErr.message?.includes('rate limit')) throw rateErr;
-      console.warn('Rate limit check skipped (non-blocking):', rateErr);
-    }
-  }
-
-  // 3. Fetch store from Firestore
-  let storeName = 'Local Kirana Store';
-  if (db) {
-    const storeDoc = await getDoc(doc(db, 'stores', storeId));
-    if (storeDoc.exists()) {
-      storeName = storeDoc.data().name || storeName;
-    }
-  }
-
-  // 4. Query Firestore product catalog to verify authentic prices
-  let computedSubtotal = 0;
-  const verifiedItems = [];
-
-  for (const item of items) {
-    let genuinePrice = Number(item.price) || 0;
-    let genuineName = item.name;
-    let genuineUnit = item.unit || 'unit';
-    let genuineImage = item.image || '';
-
-    if (db && item.id) {
-      try {
-        const prodDoc = await getDoc(doc(db, 'products', item.id));
-        if (prodDoc.exists()) {
-          const pdata = prodDoc.data();
-          genuinePrice = Number(pdata.price);
-          genuineName = pdata.name;
-          genuineUnit = pdata.unit || genuineUnit;
-          genuineImage = pdata.image || genuineImage;
-        }
-      } catch (err) {
-        console.warn('Could not read product directly from Firestore, using verified cache:', err);
-      }
+  // ── 1. Production / Real Firebase Cloud Function Execution ─────────────────
+  if (isFirebaseConfigured && functions) {
+    const currentUser = auth?.currentUser;
+    if (!currentUser) {
+      throw new Error('Authentication required to place an order.');
     }
 
-    const quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
-    computedSubtotal += genuinePrice * quantity;
+    const idempotencyKey = generateIdempotencyKey(currentUser.uid, storeId, items);
+    const createOrderFn = httpsCallable(functions, 'createOrder');
 
-    verifiedItems.push({
-      productId: item.id,
-      name: genuineName,
-      price: genuinePrice,
-      quantity,
-      unit: genuineUnit,
-      image: genuineImage,
+    const result = await createOrderFn({
+      items: normalizedItems,
+      storeId,
+      address: addrValidation.sanitized,
+      deliveryType,
+      scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
+      couponCode,
+      paymentMethod,
+      idempotencyKey,
     });
+
+    const { order, razorpayOrder } = result.data || {};
+    if (!order) {
+      throw new Error('Order creation failed on server.');
+    }
+
+    return {
+      ...order,
+      razorpayOrder,
+    };
   }
 
-  // 5. Fraud Guardrail: Minimum Order Amount
+  // ── 2. Local Dev Fallback (When Firebase is not configured) ─────────────────
+  const localUser = JSON.parse(localStorage.getItem('mandi_local_user') || 'null');
+  const customerId = localUser?.id || auth?.currentUser?.uid || 'local-guest';
+  const idempotencyKey = generateIdempotencyKey(customerId, storeId, items);
+
+  let computedSubtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0);
   if (computedSubtotal < MIN_ORDER_AMOUNT) {
     throw new Error(`Minimum order amount is ₹${MIN_ORDER_AMOUNT}.`);
   }
 
-  // 6. Compute discount
   let computedDiscount = 0;
   if (couponCode && SERVER_COUPONS[couponCode.toUpperCase()]) {
     const coupon = SERVER_COUPONS[couponCode.toUpperCase()];
@@ -180,12 +128,10 @@ export async function createSecureOrder({
     }
   }
 
-  // 7. Compute delivery charge
   const deliveryCharge = computedSubtotal > 199 ? 0 : 20;
   const computedTotal = Math.max(0, computedSubtotal - computedDiscount + deliveryCharge);
-
-  // 8. Fraud Guardrail: High-Value COD Threshold
   const isCod = paymentMethod === 'Cash on Delivery';
+
   if (isCod && computedTotal > MAX_COD_AMOUNT) {
     throw new Error(`Cash on Delivery is limited to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please pay via UPI / Online Gateway.`);
   }
@@ -193,13 +139,20 @@ export async function createSecureOrder({
   const orderId = `ord-${Date.now()}`;
   const placedAt = new Date().toISOString();
 
-  const orderPayload = {
+  const fallbackOrder = {
     id: orderId,
     idempotencyKey,
-    customerId: currentUser.uid,
+    customerId,
     storeId,
-    storeName,
-    items: verifiedItems,
+    storeName: 'Mahalaxmi Kirana',
+    items: items.map(i => ({
+      productId: i.productId || i.id,
+      name: i.name,
+      price: Number(i.price) || 0,
+      quantity: i.quantity || 1,
+      unit: i.unit || 'unit',
+      image: i.image || '',
+    })),
     subtotal: computedSubtotal,
     discount: computedDiscount,
     deliveryCharge,
@@ -209,17 +162,13 @@ export async function createSecureOrder({
     paymentStatus: isCod ? 'cod_pending' : 'pending',
     status: 'placed',
     statusHistory: [
-      { status: 'placed', time: placedAt, note: 'Order placed with verified catalog pricing' },
+      { status: 'placed', time: placedAt, note: 'Order placed in local development mode' },
     ],
     deliveryType,
     scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
     placedAt,
+    razorpayOrder: null,
   };
 
-  // 9. Persist order to Firestore
-  if (db) {
-    await setDoc(doc(db, 'orders', orderId), orderPayload);
-  }
-
-  return orderPayload;
+  return fallbackOrder;
 }

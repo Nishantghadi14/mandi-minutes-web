@@ -39,7 +39,23 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'Valid delivery address is required.');
   }
 
-  // 2. Check Idempotency: Prevent duplicate orders
+  // 2. Fraud Guardrail: Rate limit (MAX_ORDERS_PER_HOUR = 5)
+  const MAX_ORDERS_PER_HOUR = 5;
+  const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+  const recentOrders = await db
+    .collection('orders')
+    .where('customerId', '==', customerId)
+    .where('placedAt', '>=', oneHourAgo)
+    .get();
+
+  if (recentOrders.size >= MAX_ORDERS_PER_HOUR) {
+    throw new functions.https.HttpsError(
+      'resource-exhausted',
+      'Order rate limit exceeded. You can place at most 5 orders per hour.'
+    );
+  }
+
+  // 3. Check Idempotency: Prevent duplicate orders
   if (idempotencyKey) {
     const existingOrders = await db
       .collection('orders')
@@ -54,7 +70,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
     }
   }
 
-  // 3. Fetch store details from Firestore
+  // 4. Fetch store details from Firestore
   const storeDoc = await db.collection('stores').doc(storeId).get();
   if (!storeDoc.exists || storeDoc.data().status !== 'approved') {
     throw new functions.https.HttpsError('not-found', 'Selected store is unavailable or not approved.');
@@ -90,17 +106,35 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
     });
   }
 
-  // 5. Server-side discount computation
+  // 5. Fraud Guardrail: Minimum order amount (₹49)
+  const MIN_ORDER_AMOUNT = 49;
+  if (computedSubtotal < MIN_ORDER_AMOUNT) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `Minimum order amount is ₹${MIN_ORDER_AMOUNT}.`
+    );
+  }
+
+  // 6. Server-side discount computation
   const computedDiscount = applyCoupon(computedSubtotal, couponCode, SERVER_COUPONS);
 
-  // 6. Server-side delivery charge computation
+  // 7. Server-side delivery charge computation
   const deliveryCharge = calculateDeliveryCharge(computedSubtotal);
   const computedTotal = Math.max(0, computedSubtotal - computedDiscount + deliveryCharge);
 
-  // 7. Generate order ID and timestamps
+  // 8. Fraud Guardrail: Max Cash on Delivery amount (₹2500)
+  const isCod = paymentMethod === 'Cash on Delivery';
+  const MAX_COD_AMOUNT = 2500;
+  if (isCod && computedTotal > MAX_COD_AMOUNT) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `Cash on Delivery is capped at ₹${MAX_COD_AMOUNT}. Please use UPI or Online Payment for larger orders.`
+    );
+  }
+
+  // 9. Generate order ID and timestamps
   const orderId = `ord-${Date.now()}`;
   const placedAt = new Date().toISOString();
-  const isCod = paymentMethod === 'Cash on Delivery';
 
   let razorpayOrder = null;
 
@@ -207,6 +241,17 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
       const orderDoc = await orderRef.get();
 
       if (orderDoc.exists) {
+        const orderData = orderDoc.data();
+        const expectedAmountPaise = Math.round(Number(orderData.total || 0) * 100);
+
+        // Security check: Verify captured amount exactly matches server-computed order total
+        if (payment.amount !== expectedAmountPaise) {
+          console.error(
+            `❌ Razorpay payment amount mismatch for order ${orderId}: expected ${expectedAmountPaise} paise (₹${orderData.total}), but received ${payment.amount} paise (₹${payment.amount / 100}). Payment will NOT be marked paid.`
+          );
+          return res.status(400).send('Payment amount mismatch');
+        }
+
         const paidAt = new Date().toISOString();
         await orderRef.update({
           paymentStatus: 'paid',

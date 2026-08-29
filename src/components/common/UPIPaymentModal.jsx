@@ -30,6 +30,7 @@ export default function UPIPaymentModal({
   store,
   upiId: propUpiId,
   orderId,
+  razorpayOrderId,
   customerName,
   customerEmail,
   customerPhone,
@@ -105,6 +106,7 @@ export default function UPIPaymentModal({
         name: 'Mandi Minutes Virar',
         description: `Order #${orderId} - ${storeName || store?.name || 'Store'}`,
         image: '/favicon.svg',
+        ...(razorpayOrderId ? { order_id: razorpayOrderId } : {}),
         handler: function (response) {
           setStatus('verifying');
           addToast('Payment received! Waiting for server signature verification...', 'info');

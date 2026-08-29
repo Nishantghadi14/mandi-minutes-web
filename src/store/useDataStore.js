@@ -70,8 +70,10 @@ export const useDataStore = create((set, get) => ({
       return () => {};
     }
 
-    // Auto seed check
-    seedVirarDatabase().catch(err => console.warn('Auto seed check:', err));
+    // Auto seed check: Only run when authenticated as admin to prevent unauthorized client writes
+    if (user?.role === 'admin') {
+      seedVirarDatabase().catch(err => console.warn('Auto seed check:', err));
+    }
 
     const unsubscribers = [];
 

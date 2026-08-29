@@ -384,6 +384,7 @@ export default function CheckoutPage() {
         onClose={() => setShowUpiModal(false)}
         amount={pendingOrder.total}
         orderId={pendingOrder.id}
+        razorpayOrderId={pendingOrder.razorpayOrder?.id || pendingOrder.razorpayOrderId}
         store={store}
         storeId={storeId || pendingOrder.storeId}
         storeName={store?.name}

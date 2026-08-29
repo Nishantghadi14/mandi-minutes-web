@@ -136,11 +136,8 @@ service cloud.firestore {
         || isRider()
       );
 
-      // Client creation rule: Must be current user, placed status, unpaid or COD pending
-      allow create: if isAuthenticated() 
-        && request.resource.data.customerId == request.auth.uid
-        && request.resource.data.status == 'placed'
-        && request.resource.data.paymentStatus in ['pending', 'cod_pending'];
+      // Order creation is restricted to Cloud Functions (Admin SDK) to guarantee server-side pricing & fraud enforcement
+      allow create: if isAdmin();
 
       // Client update rule: Only validated lifecycle transitions and rider GPS broadcasts allowed
       allow update: if isAdmin() || (

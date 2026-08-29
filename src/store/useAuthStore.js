@@ -133,7 +133,9 @@ export const useAuthStore = create((set, get) => ({
       await new Promise(r => setTimeout(r, 300));
       const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
       const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      const role = email.toLowerCase().includes('admin') ? 'admin' : (email.toLowerCase().includes('vendor') ? 'vendor' : 'customer');
+      const role = import.meta.env.PROD
+        ? 'customer'
+        : (email.toLowerCase().includes('admin') ? 'admin' : (email.toLowerCase().includes('vendor') ? 'vendor' : 'customer'));
       const localUser = {
         id: uid,
         uid: uid,

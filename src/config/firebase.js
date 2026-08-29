@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
@@ -24,6 +25,7 @@ export const isFirebaseConfigured = Boolean(
 let app = null;
 let db = null;
 let auth = null;
+let functions = null;
 let messaging = null;
 
 if (isFirebaseConfigured) {
@@ -31,6 +33,7 @@ if (isFirebaseConfigured) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
     db = getFirestore(app);
     auth = getAuth(app);
+    functions = getFunctions(app);
 
     // Initialize Firebase Cloud Messaging (browser only)
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -90,5 +93,5 @@ export async function requestNotificationPermission() {
   }
 }
 
-export { app, db, auth, messaging };
+export { app, db, auth, functions, messaging };
 
