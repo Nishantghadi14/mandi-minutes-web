@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from './Toast';
@@ -16,18 +16,29 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
   const { user, loading } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
+  const toastFiredRef = useRef(false);
 
   const roles = allowedRoles ? (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]) : null;
 
+  // Only toast once per mount cycle — never on a transient navigation race
   useEffect(() => {
-    if (!loading && !user) {
-      addToast('Please log in to access this page', 'error');
-    } else if (!loading && user && roles && !roles.includes(user.role)) {
-      addToast(`Access denied: requires ${roles.join(' or ')} permissions`, 'error');
-    }
-  }, [user, loading, roles, addToast]);
+    toastFiredRef.current = false;
+  }, [location.pathname]);
 
-  // Loading state: Show smooth skeleton while Firebase Auth verifies token
+  useEffect(() => {
+    if (!loading && !toastFiredRef.current) {
+      if (!user) {
+        toastFiredRef.current = true;
+        addToast('Please log in to access this page', 'error');
+      } else if (user && roles && !roles.includes(user.role)) {
+        toastFiredRef.current = true;
+        addToast(`Access denied: requires ${roles.join(' or ')} permissions`, 'error');
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user]);
+
+  // Loading state: show nothing (user just logged in — avoid flash)
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center animate-pulse">
