@@ -92,8 +92,7 @@ export default function AuthModal() {
       }
       closeAuthModal();
       if (items && items.length > 0) {
-        // Wait for Zustand→React Context propagation before ProtectedRoute renders
-        setTimeout(() => navigate('/checkout'), 150);
+        navigate('/checkout');
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');
@@ -166,7 +165,7 @@ export default function AuthModal() {
       addToast('Phone number verified! Welcome to Mandi Minutes 🎉', 'success');
       closeAuthModal();
       if (items && items.length > 0) {
-        setTimeout(() => navigate('/checkout'), 150);
+        navigate('/checkout');
       }
     } catch (err) {
       setError(err.message || 'Invalid OTP code. Please try again.');

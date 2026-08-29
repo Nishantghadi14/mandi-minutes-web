@@ -1,24 +1,36 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAuthStore } from '../../store/useAuthStore';
 import { Store } from 'lucide-react';
 
 /**
+ * Reads the saved local user directly from localStorage.
+ * Used as an instant fallback when Zustand hasn't propagated yet.
+ */
+function readLocalUser() {
+  try {
+    const raw = localStorage.getItem('mandi_local_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * ProtectedRoute guards routes based on authentication status and user roles.
- * Silently redirects unauthenticated users to home without toasting —
- * the AuthModal/CartDrawer handles login prompts at the point of action.
- *
- * @param {Object} props
- * @param {React.ReactNode} props.children
- * @param {string|string[]} [props.allowedRoles] - Single role or array of allowed roles: 'customer' | 'vendor' | 'admin' | 'rider'
- * @param {boolean} [props.requireStore] - If true, vendors must have a valid storeId assigned
+ * Uses both Zustand state AND a direct localStorage read as a fallback to
+ * prevent race conditions where navigation happens before Zustand re-renders.
  */
 export default function ProtectedRoute({ children, allowedRoles, requireStore = false }) {
-  const { user, loading } = useAuth();
+  const { user: zustandUser, loading } = useAuth();
   const location = useLocation();
 
-  const roles = allowedRoles ? (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]) : null;
+  // Use Zustand user if available; otherwise fall back to localStorage directly.
+  // This eliminates the race condition where navigate('/checkout') fires before
+  // the Zustand subscription has propagated to this component's render.
+  const user = zustandUser || readLocalUser();
 
-  // Show a brief skeleton while auth state is resolving
+  // If Zustand says loading, stay in loading state
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center animate-pulse">
@@ -29,17 +41,21 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
     );
   }
 
-  // Not authenticated → silently redirect to home, preserving intended destination
+  // Not authenticated → redirect to home, preserving intended destination
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Role check → silently redirect
+  const roles = allowedRoles
+    ? Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]
+    : null;
+
+  // Role check → redirect
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
-  // Vendor store check: Do not allow fallback to any store
+  // Vendor store check
   if (user.role === 'vendor' && (requireStore || location.pathname.startsWith('/vendor'))) {
     if (!user.storeId) {
       return (
@@ -48,7 +64,8 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
             <Store size={48} className="text-orange-400 mx-auto" />
             <h2 className="text-xl font-bold text-mandi-text">No Store Assigned</h2>
             <p className="text-mandi-muted text-sm max-w-md mx-auto">
-              Your vendor account is not linked to an active store yet. Please complete vendor onboarding or contact the platform administrator to bind your store ID.
+              Your vendor account is not linked to an active store yet. Please complete vendor
+              onboarding or contact the platform administrator to bind your store ID.
             </p>
             <div className="flex gap-3 justify-center pt-2">
               <a href="/vendor-onboarding" className="btn-primary text-sm py-2 px-4">
