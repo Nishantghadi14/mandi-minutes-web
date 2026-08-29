@@ -68,10 +68,10 @@ export default function App() {
             <DataProvider>
               <LocationProvider>
                 <CartProvider>
-                  <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
-                    <Navbar />
-                    <main className="flex-1">
-                      <ErrorBoundary>
+                  <ErrorBoundary>
+                    <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
+                      <Navbar />
+                      <main className="flex-1">
                         <Suspense fallback={<PageLoader />}>
                           <Routes>
                             <Route path="/" element={<HomePage />} />
@@ -91,14 +91,14 @@ export default function App() {
                             <Route path="/terms" element={<TermsPage />} />
                           </Routes>
                         </Suspense>
-                      </ErrorBoundary>
-                    </main>
-                    <Footer />
-                    <BottomNav />
-                    <CartDrawer />
-                    <LocationModal />
-                    <AuthModal />
-                  </div>
+                      </main>
+                      <Footer />
+                      <BottomNav />
+                      <CartDrawer />
+                      <LocationModal />
+                      <AuthModal />
+                    </div>
+                  </ErrorBoundary>
                 </CartProvider>
               </LocationProvider>
             </DataProvider>

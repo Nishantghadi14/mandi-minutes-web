@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const { itemCount, setIsOpen } = useCart();
-  const { user, logout, openAuthModal } = useAuth();
+  const { user, loading, logout, openAuthModal } = useAuth();
   const { location, setLocationModal } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
