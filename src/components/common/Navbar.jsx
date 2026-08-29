@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ShoppingCart, MapPin, Search, ChevronDown, User, LogOut, Package, Store, Shield, Zap, Heart } from 'lucide-react';
+import { ShoppingCart, MapPin, Search, ChevronDown, User, LogOut, Package, Store, Shield, Zap, Heart, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
+import ReferralModal from './ReferralModal';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
@@ -11,6 +12,7 @@ export default function Navbar() {
   const { location, setLocationModal } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleSearch = (e) => {
@@ -109,6 +111,13 @@ export default function Navbar() {
                             <Heart size={16} className="text-mandi-muted" />
                             <span className="text-mandi-text text-sm">Wishlist</span>
                           </Link>
+                          <button
+                            onClick={() => { setUserMenuOpen(false); setReferralModalOpen(true); }}
+                            className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-mandi-surface transition-colors text-left"
+                          >
+                            <Gift size={16} className="text-mandi-green" />
+                            <span className="text-mandi-text text-sm font-semibold">Refer & Earn ₹50</span>
+                          </button>
                         </>
                       )}
                       <button onClick={() => { logout(); setUserMenuOpen(false); navigate('/'); }} className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-mandi-surface transition-colors text-left">
@@ -136,6 +145,8 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      <ReferralModal isOpen={referralModalOpen} onClose={() => setReferralModalOpen(false)} />
     </header>
   );
 }

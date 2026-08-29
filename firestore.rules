@@ -43,10 +43,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       
-      // On signup, role must be 'customer' and storeId must be null
+      // On signup, role must be 'customer', storeId must be null, and cannot self-refer
       allow create: if isOwner(userId) 
         && request.resource.data.role == 'customer'
-        && (!('storeId' in request.resource.data) || request.resource.data.storeId == null);
+        && (!('storeId' in request.resource.data) || request.resource.data.storeId == null)
+        && (!('referredBy' in request.resource.data) || request.resource.data.referredBy != userId);
 
       // On profile update, role and storeId must match existing values unless Admin
       allow update: if isAdmin() || (

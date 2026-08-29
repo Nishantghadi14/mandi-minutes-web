@@ -46,6 +46,7 @@ export const useAuthStore = create((set, get) => ({
             userData = docSnap.data();
           } else {
             // Initialize new user profile document in Firestore
+            const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
             userData = {
               uid: firebaseUser.uid,
               id: firebaseUser.uid,
@@ -56,6 +57,7 @@ export const useAuthStore = create((set, get) => ({
               storeId: null,
               addresses: [],
               wishlist: [],
+              referralCode: genReferral,
               avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.displayName || firebaseUser.uid)}`,
               createdAt: new Date().toISOString(),
             };
@@ -185,7 +187,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   // Real Email & Password Registration
-  register: async (name, email, phone, password) => {
+  register: async (name, email, phone, password, referralCode = '') => {
     set({ loading: true });
     if (!auth) {
       set({ loading: false });
@@ -204,6 +206,9 @@ export const useAuthStore = create((set, get) => ({
       // Store initial user profile in Firestore
       if (db) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const myReferralCode = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
+        const sanitizedReferral = referralCode.trim().toUpperCase();
+
         const userData = {
           uid: firebaseUser.uid,
           id: firebaseUser.uid,
@@ -214,6 +219,8 @@ export const useAuthStore = create((set, get) => ({
           storeId: null,
           addresses: [],
           wishlist: [],
+          referralCode: myReferralCode,
+          ...(sanitizedReferral && sanitizedReferral !== myReferralCode ? { referredBy: sanitizedReferral } : {}),
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
           createdAt: new Date().toISOString(),
         };

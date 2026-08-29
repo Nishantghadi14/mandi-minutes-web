@@ -6,6 +6,7 @@ const SERVER_COUPONS = {
   'NEWUSER': { discount: 20, type: 'percent', maxDiscount: 100 },
   'MANDI10': { discount: 10, type: 'percent', maxDiscount: 50 },
   'FLAT50': { discount: 50, type: 'flat', minOrder: 299 },
+  'REF50': { discount: 50, type: 'flat', minOrder: 199 },
 };
 
 // Fraud Prevention Limits

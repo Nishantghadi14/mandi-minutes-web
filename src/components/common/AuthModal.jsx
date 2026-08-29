@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck } from 'lucide-react';
+import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, Gift } from 'lucide-react';
 import { RecaptchaVerifier } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -15,7 +15,7 @@ export default function AuthModal() {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', otp: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', referralCode: '', otp: '' });
   const [error, setError] = useState('');
   const recaptchaVerifierRef = useRef(null);
 
@@ -83,7 +83,7 @@ export default function AuthModal() {
         addToast('Welcome back to Mandi Minutes!', 'success');
       } else {
         const sanitizedName = sanitizeText(form.name, 60);
-        await register(sanitizedName, emailCheck.value, form.phone, form.password);
+        await register(sanitizedName, emailCheck.value, form.phone, form.password, form.referralCode);
         addToast('Account created successfully! Welcome 🎉', 'success');
       }
       closeAuthModal();
@@ -253,6 +253,19 @@ export default function AuthModal() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+
+            {mode === 'register' && (
+              <div className="relative">
+                <Gift size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-green" />
+                <input 
+                  type="text" 
+                  placeholder="Referral code (optional, get ₹50 off)" 
+                  value={form.referralCode} 
+                  onChange={e => upd('referralCode', e.target.value.toUpperCase())} 
+                  className="input-field pl-9 uppercase placeholder:normal-case text-xs" 
+                />
+              </div>
+            )}
 
             {error && <p className="text-red-400 text-xs bg-red-950 bg-opacity-30 border border-red-800 p-2.5 rounded-xl">{error}</p>}
 

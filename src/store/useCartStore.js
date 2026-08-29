@@ -68,7 +68,8 @@ export const useCartStore = create((set, get) => ({
     const coupons = {
       'MANDI10': { discount: 10, type: 'percent', label: '10% off' },
       'FLAT50': { discount: 50, type: 'flat', label: '₹50 off' },
-      'NEWUSER': { discount: 20, type: 'percent', label: '20% off for new users' }
+      'NEWUSER': { discount: 20, type: 'percent', label: '20% off for new users' },
+      'REF50': { discount: 50, type: 'flat', label: '₹50 off with referral code' },
     };
     const found = coupons[code.toUpperCase()];
     if (found) {

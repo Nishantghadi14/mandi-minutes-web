@@ -61,10 +61,19 @@ describe('Server-side Coupon Logic (SERVER_COUPONS)', () => {
     expect(applyCoupon(500, 'FLAT50')).toBe(50);
   });
 
+  it('correctly applies REF50 (₹50 referral discount with min order ₹199)', () => {
+    expect(applyCoupon(150, 'REF50')).toBe(0);
+    expect(applyCoupon(198, 'REF50')).toBe(0);
+    expect(applyCoupon(199, 'REF50')).toBe(50);
+    expect(applyCoupon(400, 'REF50')).toBe(50);
+    expect(applyCoupon(400, 'ref50')).toBe(50);
+  });
+
   it('handles case-insensitivity and invalid coupon codes', () => {
     expect(applyCoupon(500, 'newuser')).toBe(100);
     expect(applyCoupon(500, 'mandi10')).toBe(50);
     expect(applyCoupon(500, 'flat50')).toBe(50);
+    expect(applyCoupon(500, 'ref50')).toBe(50);
     expect(applyCoupon(500, 'INVALID_CODE')).toBe(0);
     expect(applyCoupon(500, null)).toBe(0);
     expect(applyCoupon(500, undefined)).toBe(0);
