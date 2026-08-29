@@ -9,8 +9,9 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured, requestNotificationPermission } from '../config/firebase';
+import { useCartStore } from './useCartStore';
 
-const getInitialUser = () => {
+const getInitialLocalUser = () => {
   if (typeof window === 'undefined') return null;
   try {
     const localUser = localStorage.getItem('mandi_local_user');
@@ -21,116 +22,126 @@ const getInitialUser = () => {
 };
 
 export const useAuthStore = create((set, get) => ({
-  user: getInitialUser(),
-  loading: false, // Immediate loading resolution
+  // When Firebase is configured, user is null initially until Firebase Auth verifies session.
+  // In local development fallback mode, read local user.
+  user: isFirebaseConfigured ? null : getInitialLocalUser(),
+  // In Firebase mode, loading starts as TRUE until onAuthStateChanged resolves.
+  loading: Boolean(isFirebaseConfigured),
   authModal: { open: false, mode: 'login' },
   unsubscribeAuth: null,
 
   openAuthModal: (mode = 'login') => set({ authModal: { open: true, mode } }),
   closeAuthModal: () => set({ authModal: { open: false, mode: 'login' } }),
 
-  // Initialize Firebase Auth listener
-  initAuth: () => {
-    // If listener already active, don't recreate
-    if (get().unsubscribeAuth) return get().unsubscribeAuth;
-
-    if (!isFirebaseConfigured || !auth) {
-      console.info('ℹ️ Running in local development mode — auth session maintained locally.');
-      const localUser = getInitialUser();
-      set({ user: localUser, loading: false });
-      return () => {};
+  // Helper to fetch or create user profile from Firestore and immediately sync Zustand state
+  syncUserProfile: async (firebaseUser) => {
+    if (!firebaseUser) {
+      set({ user: null, loading: false });
+      useCartStore.getState().switchUser(null);
+      return null;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        const localUser = getInitialUser();
-        set({ user: localUser, loading: false });
-        return;
-      }
-
+    let userData = null;
+    if (db) {
       try {
-        let userData = null;
-        if (db) {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const docSnap = await getDoc(userDocRef);
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const docSnap = await getDoc(userDocRef);
 
-          if (docSnap.exists()) {
-            userData = docSnap.data();
-          } else {
-            // Initialize new user profile document in Firestore
-            const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
-            userData = {
-              uid: firebaseUser.uid,
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'Mandi Customer',
-              email: firebaseUser.email || '',
-              phone: firebaseUser.phoneNumber || '',
-              role: 'customer', // Default role; cannot be self-elevated
-              storeId: null,
-              addresses: [],
-              wishlist: [],
-              referralCode: genReferral,
-              avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.displayName || firebaseUser.uid)}`,
-              createdAt: new Date().toISOString(),
-            };
-            await setDoc(userDocRef, userData, { merge: true });
-          }
-        }
-
-        const profileUser = {
-          id: firebaseUser.uid,
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          phone: firebaseUser.phoneNumber,
-          displayName: firebaseUser.displayName,
-          role: userData?.role || 'customer',
-          storeId: userData?.storeId || null,
-          addresses: userData?.addresses?.length ? userData.addresses : [
-            { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
-          ],
-          wishlist: userData?.wishlist || [],
-          avatar: userData?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
-          name: userData?.name || firebaseUser.displayName || 'Customer',
-          ...userData,
-        };
-        localStorage.setItem('mandi_local_user', JSON.stringify(profileUser));
-        set({
-          user: profileUser,
-          loading: false,
-        });
-
-        // Persist FCM token so Cloud Functions can send targeted push notifications
-        try {
-          const fcmToken = await requestNotificationPermission();
-          if (fcmToken && db) {
-            await updateDoc(doc(db, 'users', firebaseUser.uid), {
-              fcmTokens: arrayUnion(fcmToken),
-            });
-          }
-        } catch (fcmErr) {
-          // Non-fatal: user may have denied notification permission
-          console.info('FCM token not saved (permission denied or not supported):', fcmErr?.message);
-        }
-      } catch (err) {
-        console.error('Error fetching user profile from Firestore:', err);
-        set({
-          user: {
-            id: firebaseUser.uid,
+        if (docSnap.exists()) {
+          userData = docSnap.data();
+        } else {
+          // Initialize new user profile document in Firestore
+          const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
+          userData = {
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName || 'Customer',
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Mandi Customer',
+            email: firebaseUser.email || '',
+            phone: firebaseUser.phoneNumber || '',
             role: 'customer',
             storeId: null,
             addresses: [],
             wishlist: [],
-          },
-          loading: false,
+            referralCode: genReferral,
+            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.displayName || firebaseUser.uid)}`,
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(userDocRef, userData, { merge: true });
+        }
+      } catch (err) {
+        console.error('Error fetching user profile from Firestore:', err);
+      }
+    }
+
+    const profileUser = {
+      id: firebaseUser.uid,
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      phone: firebaseUser.phoneNumber,
+      displayName: firebaseUser.displayName,
+      role: userData?.role || 'customer',
+      storeId: userData?.storeId || null,
+      addresses: userData?.addresses || [],
+      wishlist: userData?.wishlist || [],
+      avatar: userData?.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
+      name: userData?.name || firebaseUser.displayName || 'Customer',
+      ...userData,
+    };
+
+    set({ user: profileUser, loading: false });
+    useCartStore.getState().switchUser(profileUser.id || profileUser.uid);
+
+    // Persist FCM token asynchronously
+    try {
+      const fcmToken = await requestNotificationPermission();
+      if (fcmToken && db) {
+        await updateDoc(doc(db, 'users', firebaseUser.uid), {
+          fcmTokens: arrayUnion(fcmToken),
         });
       }
+    } catch {
+      // Non-fatal
+    }
+
+    return profileUser;
+  },
+
+  // Initialize Firebase Auth listener
+  initAuth: () => {
+    // If listener already active, return the existing cleanup function
+    const existing = get().unsubscribeAuth;
+    if (existing) return existing;
+
+    if (!isFirebaseConfigured || !auth) {
+      console.info('ℹ️ Running in local development mode — auth session maintained locally.');
+      const localUser = getInitialLocalUser();
+      set({ user: localUser, loading: false });
+      if (localUser) {
+        useCartStore.getState().switchUser(localUser.id || localUser.uid);
+      }
+      return () => {};
+    }
+
+    // Set loading while determining initial Firebase auth state
+    set({ loading: true });
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        set({ user: null, loading: false });
+        useCartStore.getState().switchUser(null);
+        return;
+      }
+
+      await get().syncUserProfile(firebaseUser);
     });
 
-    set({ unsubscribeAuth: unsubscribe });
-    return unsubscribe;
+    const cleanup = () => {
+      unsubscribe();
+      set({ unsubscribeAuth: null });
+    };
+
+    set({ unsubscribeAuth: cleanup });
+    return cleanup;
   },
 
   // Real Email & Password Login
@@ -159,15 +170,15 @@ export const useAuthStore = create((set, get) => ({
       };
       localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
       set({ user: localUser, loading: false });
+      useCartStore.getState().switchUser(localUser.id);
       return localUser;
     }
 
+    set({ loading: true });
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      // Profile will be set by onAuthStateChanged listener
-      return firebaseUser;
+      const profileUser = await get().syncUserProfile(userCredential.user);
+      return profileUser;
     } catch (err) {
       set({ loading: false });
       let message = 'Failed to sign in. Please check your credentials.';
@@ -230,13 +241,15 @@ export const useAuthStore = create((set, get) => ({
       };
       localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
       set({ user: localUser, loading: false });
+      useCartStore.getState().switchUser(localUser.id);
       return localUser;
     }
 
     set({ loading: true });
     try {
       const result = await confirmationResult.confirm(otp);
-      return result.user;
+      const profileUser = await get().syncUserProfile(result.user);
+      return profileUser;
     } catch (err) {
       set({ loading: false });
       let message = 'Invalid or expired OTP code.';
@@ -276,9 +289,11 @@ export const useAuthStore = create((set, get) => ({
       };
       localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
       set({ user: localUser, loading: false });
+      useCartStore.getState().switchUser(localUser.id);
       return localUser;
     }
 
+    set({ loading: true });
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -300,7 +315,7 @@ export const useAuthStore = create((set, get) => ({
           name,
           email,
           phone: phone || '',
-          role: 'customer', // Always customer on registration; admin/vendor assigned via backend or locked admin process
+          role: 'customer',
           storeId: null,
           addresses: [],
           wishlist: [],
@@ -312,7 +327,8 @@ export const useAuthStore = create((set, get) => ({
         await setDoc(userDocRef, userData);
       }
 
-      return firebaseUser;
+      const profileUser = await get().syncUserProfile(firebaseUser);
+      return profileUser;
     } catch (err) {
       set({ loading: false });
       let message = 'Failed to create account.';
@@ -342,6 +358,7 @@ export const useAuthStore = create((set, get) => ({
       }
     }
     localStorage.removeItem('mandi_local_user');
+    useCartStore.getState().switchUser(null);
     set({ user: null, loading: false });
   },
 
@@ -357,7 +374,10 @@ export const useAuthStore = create((set, get) => ({
     set(state => ({
       user: state.user ? { ...state.user, ...safeUpdates } : null
     }));
-    localStorage.setItem('mandi_local_user', JSON.stringify(updated));
+
+    if (!isFirebaseConfigured) {
+      localStorage.setItem('mandi_local_user', JSON.stringify(updated));
+    }
 
     if (db && isFirebaseConfigured && currentUser.uid) {
       try {

@@ -1,10 +1,16 @@
 import { create } from 'zustand';
 
-const CART_KEY = 'mandi_cart';
+const GUEST_CART_KEY = 'mandi_cart_guest';
+const LEGACY_CART_KEY = 'mandi_cart';
 
-const getInitialItems = () => {
+const getCartKey = (userId) => {
+  return userId ? `mandi_cart_${userId}` : GUEST_CART_KEY;
+};
+
+const loadCartFromStorage = (key) => {
+  if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(CART_KEY);
+    const stored = localStorage.getItem(key);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     if (Array.isArray(parsed)) {
@@ -16,13 +22,74 @@ const getInitialItems = () => {
   }
 };
 
+const getInitialItems = () => {
+  if (typeof window === 'undefined') return [];
+  // Migrate legacy mandi_cart to mandi_cart_guest if needed
+  try {
+    const guestStored = localStorage.getItem(GUEST_CART_KEY);
+    if (!guestStored) {
+      const legacy = localStorage.getItem(LEGACY_CART_KEY);
+      if (legacy) {
+        localStorage.setItem(GUEST_CART_KEY, legacy);
+        localStorage.removeItem(LEGACY_CART_KEY);
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return loadCartFromStorage(GUEST_CART_KEY);
+};
+
 export const useCartStore = create((set, get) => ({
   items: getInitialItems(),
+  currentUserId: null,
   isOpen: false,
   coupon: null,
 
   setIsOpen: (isOpen) => set({ isOpen }),
   toggleCart: () => set(state => ({ isOpen: !state.isOpen })),
+
+  switchUser: (newUserId) => {
+    const prevUserId = get().currentUserId;
+    if (prevUserId === newUserId) return;
+
+    const currentItems = get().items;
+    const prevKey = getCartKey(prevUserId);
+    const newKey = getCartKey(newUserId);
+
+    // Save current items to previous user's key before switching if needed
+    if (currentItems.length > 0) {
+      try {
+        localStorage.setItem(prevKey, JSON.stringify(currentItems));
+      } catch {
+        // ignore
+      }
+    }
+
+    if (newUserId) {
+      // User is logging in
+      const userSavedItems = loadCartFromStorage(newKey);
+      if (userSavedItems.length > 0) {
+        // User already has their own saved cart
+        set({ currentUserId: newUserId, items: userSavedItems });
+      } else if (currentItems.length > 0 && prevUserId === null) {
+        // Guest cart migrates into the newly logged-in user's cart
+        try {
+          localStorage.setItem(newKey, JSON.stringify(currentItems));
+          localStorage.removeItem(GUEST_CART_KEY);
+        } catch {
+          // ignore
+        }
+        set({ currentUserId: newUserId, items: currentItems });
+      } else {
+        set({ currentUserId: newUserId, items: [] });
+      }
+    } else {
+      // User logged out -> switch to clean guest cart
+      const guestItems = loadCartFromStorage(GUEST_CART_KEY);
+      set({ currentUserId: null, items: guestItems, coupon: null });
+    }
+  },
 
   addItem: (product, quantity = 1) => {
     set(state => {
@@ -33,7 +100,11 @@ export const useCartStore = create((set, get) => ({
       } else {
         updated = [...state.items, { ...product, quantity }];
       }
-      localStorage.setItem(CART_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(getCartKey(state.currentUserId), JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
       return { items: updated };
     });
   },
@@ -41,7 +112,11 @@ export const useCartStore = create((set, get) => ({
   removeItem: (productId) => {
     set(state => {
       const updated = state.items.filter(i => i.id !== productId);
-      localStorage.setItem(CART_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(getCartKey(state.currentUserId), JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
       return { items: updated };
     });
   },
@@ -54,13 +129,22 @@ export const useCartStore = create((set, get) => ({
       } else {
         updated = state.items.map(i => i.id === productId ? { ...i, quantity } : i);
       }
-      localStorage.setItem(CART_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(getCartKey(state.currentUserId), JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
       return { items: updated };
     });
   },
 
   clearCart: () => {
-    localStorage.removeItem(CART_KEY);
+    const key = getCartKey(get().currentUserId);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
     set({ items: [], coupon: null });
   },
 

@@ -1,36 +1,21 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useAuthStore } from '../../store/useAuthStore';
 import { Store } from 'lucide-react';
 
 /**
- * Reads the saved local user directly from localStorage.
- * Used as an instant fallback when Zustand hasn't propagated yet.
- */
-function readLocalUser() {
-  try {
-    const raw = localStorage.getItem('mandi_local_user');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * ProtectedRoute guards routes based on authentication status and user roles.
- * Uses both Zustand state AND a direct localStorage read as a fallback to
- * prevent race conditions where navigation happens before Zustand re-renders.
+ * Firebase Auth via AuthContext is the single source of truth.
+ *
+ * @param {Object} props
+ * @param {React.ReactNode} props.children
+ * @param {string|string[]} [props.allowedRoles] - Single role or array of allowed roles: 'customer' | 'vendor' | 'admin' | 'rider'
+ * @param {boolean} [props.requireStore] - If true, vendors must have a valid storeId assigned
  */
 export default function ProtectedRoute({ children, allowedRoles, requireStore = false }) {
-  const { user: zustandUser, loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Use Zustand user if available; otherwise fall back to localStorage directly.
-  // This eliminates the race condition where navigate('/checkout') fires before
-  // the Zustand subscription has propagated to this component's render.
-  const user = zustandUser || readLocalUser();
-
-  // If Zustand says loading, stay in loading state
+  // Show loading skeleton while Firebase Auth determines initial session
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center animate-pulse">
@@ -41,7 +26,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
     );
   }
 
-  // Not authenticated → redirect to home, preserving intended destination
+  // Not authenticated -> redirect to home, preserving intended destination
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
@@ -50,7 +35,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
     ? Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]
     : null;
 
-  // Role check → redirect
+  // Role check -> redirect
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }

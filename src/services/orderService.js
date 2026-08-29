@@ -74,8 +74,15 @@ export async function createSecureOrder({
   }));
 
   // ── 1. Production / Real Firebase Cloud Function Execution ─────────────────
-  if (isFirebaseConfigured && functions && auth?.currentUser) {
-    const currentUser = auth.currentUser;
+  if (isFirebaseConfigured) {
+    if (!functions) {
+      throw new Error('Firebase Functions service is not initialized.');
+    }
+    const currentUser = auth?.currentUser;
+    if (!currentUser) {
+      throw new Error('Authentication required to place an order.');
+    }
+
     const idempotencyKey = generateIdempotencyKey(currentUser.uid, storeId, items);
     const createOrderFn = httpsCallable(functions, 'createOrder');
 

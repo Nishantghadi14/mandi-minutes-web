@@ -15,11 +15,10 @@ export default function CartDrawer() {
   const [couponLoading, setCouponLoading] = useState(false);
 
   const handleCheckout = () => {
-    // Check Zustand user OR localStorage fallback (same as ProtectedRoute)
-    const effectiveUser = user || (() => {
-      try { return JSON.parse(localStorage.getItem('mandi_local_user') || 'null'); } catch { return null; }
-    })();
-    if (!effectiveUser) { openAuthModal('login'); return; }
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
     setIsOpen(false);
     navigate('/checkout');
   };
