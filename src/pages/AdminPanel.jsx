@@ -7,25 +7,18 @@ import { isFirebaseConfigured } from '../config/firebase';
 import { 
   Shield, 
   Store, 
-  Package, 
   Megaphone, 
   HelpCircle, 
   Check, 
   X, 
   Plus, 
   Trash2, 
-  Edit3, 
-  ShoppingBag, 
-  TrendingUp, 
-  AlertCircle, 
-  Building2, 
   Database, 
-  BarChart3, 
   ShieldAlert, 
-  Zap, 
-  Activity 
+  Activity,
+  TrendingUp,
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from 'recharts';
 
 export default function AdminPanel() {
   const { stores, addStore, updateStore, deleteStore, products, deleteProduct, orders, updateOrderStatus, banners, addBanner, deleteBanner, tickets, resolveTicket } = useData();
@@ -51,24 +44,51 @@ export default function AdminPanel() {
   const [newBannerSub, setNewBannerSub] = useState('');
   const [replyText, setReplyText] = useState({});
 
-  // Summary stats
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  // ── Real KPI Aggregates ───────────────────────────────────────
+  const completedOrders = useMemo(() => orders.filter(o => o.status === 'delivered'), [orders]);
+  const totalGMV = useMemo(() => completedOrders.reduce((sum, o) => sum + (o.total || 0), 0), [completedOrders]);
+  const aov = completedOrders.length > 0 ? Math.round(totalGMV / completedOrders.length) : 0;
+  const activeStores = useMemo(() => stores.filter(s => s.status === 'approved'), [stores]);
   const pendingVendors = stores.filter(s => s.status === 'pending').length;
   const openTickets = tickets.filter(t => t.status === 'open').length;
 
-  // Platform Analytics Computed from Firestore
+  // ── 30-Day Order Chart ────────────────────────────────────────
+  const dailyOrderChart = useMemo(() => {
+    const map = {};
+    const now = new Date();
+    // Seed 30 days of labels even if no orders
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      map[label] = { date: label, orders: 0, gmv: 0 };
+    }
+    orders.forEach(o => {
+      const ts = o.placedAt ? new Date(o.placedAt) : null;
+      if (!ts) return;
+      const diffDays = Math.floor((now - ts) / (1000 * 60 * 60 * 24));
+      if (diffDays > 29 || diffDays < 0) return;
+      const label = ts.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      if (map[label]) {
+        map[label].orders += 1;
+        if (o.status === 'delivered') map[label].gmv += (o.total || 0);
+      }
+    });
+    return Object.values(map);
+  }, [orders]);
+
+  // ── Store Comparison Table ─────────────────────────────────────
   const vendorPerformance = useMemo(() => {
     const map = {};
     stores.forEach(s => {
-      map[s.id] = { id: s.id, name: s.name, ordersCount: 0, revenue: 0, delayedCount: 0 };
+      map[s.id] = { id: s.id, name: s.name, ordersCount: 0, gmv: 0, rating: s.rating || 0, delayedCount: 0 };
     });
 
     const now = Date.now();
     orders.forEach(o => {
       if (map[o.storeId]) {
         map[o.storeId].ordersCount += 1;
-        map[o.storeId].revenue += (o.total || 0);
-
+        if (o.status === 'delivered') map[o.storeId].gmv += (o.total || 0);
         if (['placed', 'accepted'].includes(o.status)) {
           const age = (now - new Date(o.placedAt || 0).getTime()) / (60 * 1000);
           if (age > 10) map[o.storeId].delayedCount += 1;
@@ -76,10 +96,10 @@ export default function AdminPanel() {
       }
     });
 
-    return Object.values(map);
+    return Object.values(map).sort((a, b) => b.gmv - a.gmv);
   }, [stores, orders]);
 
-  // High-Risk / Suspicious Orders Guardrail Monitor
+  // ── High-Risk Fraud Guardrail Monitor ─────────────────────────
   const highRiskOrders = useMemo(() => {
     return orders.filter(o => {
       const isHighCod = o.paymentMethod === 'Cash on Delivery' && o.total >= 1500;
@@ -167,23 +187,23 @@ export default function AdminPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="card p-4">
           <span className="text-mandi-muted text-xs font-medium">Platform GMV</span>
-          <p className="text-2xl font-black text-mandi-green mt-1">₹{totalRevenue}</p>
-          <span className="text-mandi-subtle text-[11px]">Across all kirana stores</span>
+          <p className="text-2xl font-black text-mandi-green mt-1">₹{totalGMV.toLocaleString('en-IN')}</p>
+          <span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered orders</span>
+        </div>
+        <div className="card p-4">
+          <span className="text-mandi-muted text-xs font-medium">Total Orders</span>
+          <p className="text-2xl font-black text-mandi-text mt-1">{orders.length}</p>
+          <span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered</span>
+        </div>
+        <div className="card p-4">
+          <span className="text-mandi-muted text-xs font-medium">Avg. Order Value</span>
+          <p className="text-2xl font-black text-blue-400 mt-1">₹{aov}</p>
+          <span className="text-mandi-subtle text-[11px]">AOV across {completedOrders.length} orders</span>
         </div>
         <div className="card p-4">
           <span className="text-mandi-muted text-xs font-medium">Active Stores</span>
-          <p className="text-2xl font-black text-mandi-text mt-1">{stores.length}</p>
+          <p className="text-2xl font-black text-yellow-400 mt-1">{activeStores.length}</p>
           <span className="text-mandi-subtle text-[11px]">{pendingVendors} pending review</span>
-        </div>
-        <div className="card p-4">
-          <span className="text-mandi-muted text-xs font-medium">Total Products</span>
-          <p className="text-2xl font-black text-blue-400 mt-1">{products.length}</p>
-          <span className="text-mandi-subtle text-[11px]">In Virar live catalog</span>
-        </div>
-        <div className="card p-4">
-          <span className="text-mandi-muted text-xs font-medium">Support Tickets</span>
-          <p className="text-2xl font-black text-yellow-400 mt-1">{openTickets}</p>
-          <span className="text-mandi-subtle text-[11px]">{tickets.length - openTickets} resolved</span>
         </div>
       </div>
 
@@ -210,14 +230,39 @@ export default function AdminPanel() {
       {/* TAB 0: Analytics & SLA Oversight */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
-          {/* Vendor SLA Breakdown Table */}
+
+          {/* 30-Day Daily Orders Chart */}
           <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={18} className="text-mandi-green" />
+              <h3 className="text-mandi-text font-bold text-base">Daily Orders — Last 30 Days</h3>
+            </div>
+            {orders.length === 0 ? (
+              <p className="text-mandi-muted text-xs py-8 text-center">No orders yet — place a test order to populate the chart.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={dailyOrderChart} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#6b7280' }} interval={4} />
+                  <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 11 }}
+                    labelStyle={{ color: '#d1d5db' }}
+                    formatter={(val, name) => [val, name === 'orders' ? 'Orders' : 'GMV (₹)']}
+                  />
+                  <Line type="monotone" dataKey="orders" stroke="#4ade80" strokeWidth={2} dot={false} name="orders" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Store Comparison Table */}
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity size={18} className="text-mandi-green" />
               <div>
-                <h3 className="text-mandi-text font-bold text-base flex items-center gap-2">
-                  <Activity size={18} className="text-mandi-green" /> Vendor SLA & Fulfillment Compliance
-                </h3>
-                <p className="text-mandi-muted text-xs mt-0.5">Real-time performance tracking across all partner kirana stores</p>
+                <h3 className="text-mandi-text font-bold text-base">Store Comparison — Orders, GMV & Rating</h3>
+                <p className="text-mandi-muted text-xs mt-0.5">Sorted by GMV (completed orders only). Delayed = in-progress order older than 10 min.</p>
               </div>
             </div>
 
@@ -226,9 +271,9 @@ export default function AdminPanel() {
                 <thead className="bg-mandi-surface text-mandi-muted uppercase border-b border-mandi-border">
                   <tr>
                     <th className="p-3">Store</th>
-                    <th className="p-3">Total Orders</th>
-                    <th className="p-3">Revenue (₹)</th>
-                    <th className="p-3">Delayed Orders</th>
+                    <th className="p-3">Orders Fulfilled</th>
+                    <th className="p-3">GMV (₹)</th>
+                    <th className="p-3">Rating</th>
                     <th className="p-3">SLA Status</th>
                   </tr>
                 </thead>
@@ -237,18 +282,19 @@ export default function AdminPanel() {
                     <tr key={v.id} className="hover:bg-mandi-surface transition-colors">
                       <td className="p-3 font-semibold text-mandi-text">{v.name}</td>
                       <td className="p-3 text-mandi-muted">{v.ordersCount}</td>
-                      <td className="p-3 text-mandi-green font-bold">₹{v.revenue}</td>
+                      <td className="p-3 text-mandi-green font-bold">₹{v.gmv.toLocaleString('en-IN')}</td>
                       <td className="p-3">
-                        <span className={`font-bold ${v.delayedCount > 0 ? 'text-red-400' : 'text-mandi-muted'}`}>
-                          {v.delayedCount}
+                        <span className="flex items-center gap-1">
+                          <span className="text-yellow-400">★</span>
+                          <span className="text-mandi-text font-medium">{v.rating > 0 ? v.rating.toFixed(1) : '—'}</span>
                         </span>
                       </td>
                       <td className="p-3">
                         {v.delayedCount === 0 ? (
-                          <span className="badge-green text-[10px]">Optimal (100%)</span>
+                          <span className="badge-green text-[10px]">On Track</span>
                         ) : (
                           <span className="bg-red-900 text-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                            ⚠️ SLA Delays
+                            ⚠️ {v.delayedCount} Delayed
                           </span>
                         )}
                       </td>
