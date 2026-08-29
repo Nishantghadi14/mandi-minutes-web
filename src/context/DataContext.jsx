@@ -6,12 +6,17 @@ export function DataProvider({ children }) {
   const user = useAuthStore(state => state.user);
   const initSubscriptions = useDataStore(state => state.initSubscriptions);
 
+  // Track uid + role as stable primitive keys so we re-subscribe when role resolves
+  const uid = user?.uid ?? null;
+  const role = user?.role ?? null;
+
   useEffect(() => {
     const unsubscribe = initSubscriptions(user);
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [user, initSubscriptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, role, initSubscriptions]);
 
   return <>{children}</>;
 }

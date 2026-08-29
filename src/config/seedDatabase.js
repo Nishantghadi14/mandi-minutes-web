@@ -25,7 +25,17 @@ export async function seedVirarDatabase(force = false) {
     const storesSnapshot = await getDocs(storesQuery);
 
     if (!storesSnapshot.empty && !force) {
-      console.log('Firestore already contains collections. Skipping automatic seed.');
+      // Stores exist — but still seed orders if missing
+      const ordersSnap = await getDocs(query(collection(db, 'orders'), limit(1)));
+      if (ordersSnap.empty) {
+        console.log('Seeding sample orders into empty orders collection...');
+        for (const order of sampleOrders) {
+          await setDoc(doc(db, 'orders', order.id), order, { merge: true });
+        }
+        console.log(`✅ Seeded ${sampleOrders.length} sample orders.`);
+        return { success: true, message: `Seeded ${sampleOrders.length} sample orders into Firestore!` };
+      }
+      console.log('Firestore already contains all collections. Skipping auto-seed.');
       return { success: true, message: 'Database already populated' };
     }
 
@@ -62,6 +72,22 @@ export async function seedVirarDatabase(force = false) {
     };
   } catch (err) {
     console.error('Database seeding failed:', err);
+    throw err;
+  }
+}
+
+// Force seed only orders — used by the Admin Panel "Re-Seed" button
+export async function seedSampleOrders() {
+  if (!isFirebaseConfigured || !db) {
+    return { success: false, message: 'Firebase not configured' };
+  }
+  try {
+    for (const order of sampleOrders) {
+      await setDoc(doc(db, 'orders', order.id), order, { merge: true });
+    }
+    return { success: true, message: `✅ Seeded ${sampleOrders.length} sample orders into Firestore!` };
+  } catch (err) {
+    console.error('seedSampleOrders failed:', err);
     throw err;
   }
 }

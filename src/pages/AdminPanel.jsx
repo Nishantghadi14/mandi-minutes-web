@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
-import { seedVirarDatabase } from '../config/seedDatabase';
+import { seedVirarDatabase, seedSampleOrders } from '../config/seedDatabase';
 import { isFirebaseConfigured } from '../config/firebase';
 import { 
   Shield, 
@@ -136,11 +136,23 @@ export default function AdminPanel() {
   const handleSeedVirar = async () => {
     setSeeding(true);
     try {
-      const res = await seedVirarDatabase();
+      const res = await seedVirarDatabase(true); // force=true always re-seeds
       addToast(res.message, 'success', 5000);
       window.location.reload();
     } catch (err) {
-      addToast('Failed to seed database', 'error');
+      addToast('Failed to seed database: ' + err.message, 'error');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedOrders = async () => {
+    setSeeding(true);
+    try {
+      const res = await seedSampleOrders();
+      addToast(res.message, 'success', 5000);
+    } catch (err) {
+      addToast('Failed to seed orders: ' + err.message, 'error');
     } finally {
       setSeeding(false);
     }
@@ -173,7 +185,10 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleSeedOrders} disabled={seeding} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-blue-500 text-blue-400 hover:bg-blue-950 transition-all">
+            <Database size={14} /> {seeding ? 'Seeding...' : 'Seed Sample Orders'}
+          </button>
           <button onClick={handleSeedVirar} disabled={seeding} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-green text-mandi-green hover:bg-mandi-green hover:text-black transition-all">
             <Database size={14} /> {seeding ? 'Seeding...' : 'Re-Seed Virar Catalog'}
           </button>
