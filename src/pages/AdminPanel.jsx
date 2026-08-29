@@ -388,14 +388,33 @@ export default function AdminPanel() {
       {/* TAB 2: Orders */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          {orders.length === 0 ? (
+          {/* Error / Diagnostic Alert */}
+          {errorStates?.orders && (
+            <div className="card p-4 bg-amber-950/40 border-amber-600/50 flex items-start gap-3">
+              <ShieldAlert className="text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+              <div className="text-xs space-y-1">
+                <p className="text-amber-200 font-bold">Cloud Sync Notice: {errorStates.orders}</p>
+                <p className="text-amber-300/80">
+                  Showing locally synced orders. To enable global real-time cloud sync, ensure Firestore security rules allow read on the orders collection.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {loadingStates?.orders && orders.length === 0 ? (
+            <div className="card p-12 text-center space-y-3">
+              <RefreshCw size={24} className="animate-spin text-mandi-green mx-auto" />
+              <h3 className="text-mandi-text font-bold text-base">Syncing Live Orders from Firestore...</h3>
+              <p className="text-mandi-muted text-xs">Connecting to real-time database listener.</p>
+            </div>
+          ) : orders.length === 0 ? (
             <div className="card p-12 text-center space-y-3">
               <div className="w-12 h-12 bg-mandi-surface rounded-full flex items-center justify-center mx-auto text-mandi-muted">
                 <Database size={24} />
               </div>
-              <h3 className="text-mandi-text font-bold text-base">No Orders in Database</h3>
+              <h3 className="text-mandi-text font-bold text-base">No Orders in Database Yet</h3>
               <p className="text-mandi-muted text-xs max-w-sm mx-auto">
-                Orders placed by customers through the checkout will automatically appear here in real-time.
+                Any real orders placed by customers at the store checkout will appear here instantly in real-time.
               </p>
             </div>
           ) : (

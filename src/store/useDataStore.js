@@ -23,10 +23,19 @@ const defaultBanners = [
   { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', color: 'from-blue-900 to-mandi-dark', active: true },
 ];
 
+const getInitialOrders = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+  } catch {
+    return [];
+  }
+};
+
 export const useDataStore = create((set, get) => ({
   stores: initialStores,
   products: initialProducts,
-  orders: [],
+  orders: getInitialOrders(),
   banners: defaultBanners,
   categories: initialCategories,
   tickets: [],
@@ -184,10 +193,20 @@ export const useDataStore = create((set, get) => ({
           (snapshot) => {
             const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             list.sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
+            try {
+              localStorage.setItem('mandi_synced_orders', JSON.stringify(list));
+            } catch {}
             set({ orders: list });
             markSuccess('orders');
           }, 
-          (err) => markError('orders', err)
+          (err) => {
+            console.error('Firestore orders subscription error:', err);
+            try {
+              const cached = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+              if (cached.length > 0) set({ orders: cached });
+            } catch {}
+            markError('orders', err);
+          }
         );
 
         unsubscribers.push(ordersUnsub);

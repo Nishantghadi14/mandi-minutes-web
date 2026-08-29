@@ -167,5 +167,11 @@ export async function createSecureOrder({
     }
   }
 
+  // 4. Persist to local cache and update in-memory state immediately
+  try {
+    const existing = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+    localStorage.setItem('mandi_synced_orders', JSON.stringify([newOrder, ...existing.filter(o => o.id !== orderId)].slice(0, 100)));
+  } catch {}
+
   return newOrder;
 }
