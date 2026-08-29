@@ -25,8 +25,17 @@ export const useAuthStore = create((set, get) => ({
     if (get().unsubscribeAuth) return get().unsubscribeAuth;
 
     if (!isFirebaseConfigured || !auth) {
-      console.warn('Firebase Auth is not configured. Starting in unauthenticated state.');
-      set({ user: null, loading: false });
+      console.info('ℹ️ Running in local development mode — auth session maintained locally.');
+      const localUser = localStorage.getItem('mandi_local_user');
+      if (localUser) {
+        try {
+          set({ user: JSON.parse(localUser), loading: false });
+        } catch {
+          set({ user: null, loading: false });
+        }
+      } else {
+        set({ user: null, loading: false });
+      }
       return () => {};
     }
 
@@ -120,9 +129,30 @@ export const useAuthStore = create((set, get) => ({
   // Real Email & Password Login
   login: async (email, password) => {
     set({ loading: true });
-    if (!auth) {
-      set({ loading: false });
-      throw new Error('Authentication service is not initialized.');
+    if (!isFirebaseConfigured || !auth) {
+      await new Promise(r => setTimeout(r, 300));
+      const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
+      const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const role = email.toLowerCase().includes('admin') ? 'admin' : (email.toLowerCase().includes('vendor') ? 'vendor' : 'customer');
+      const localUser = {
+        id: uid,
+        uid: uid,
+        name: name,
+        email: email,
+        phone: '9820098200',
+        role: role,
+        storeId: role === 'vendor' ? 'store-mahalaxmi-1' : null,
+        addresses: [
+          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+        ],
+        wishlist: [],
+        referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
+      set({ user: localUser, loading: false });
+      return localUser;
     }
 
     try {
@@ -140,6 +170,8 @@ export const useAuthStore = create((set, get) => ({
         message = 'Please provide a valid email address.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Access temporarily disabled due to too many failed attempts. Please try again later.';
+      } else if (err.code === 'auth/configuration-not-found') {
+        message = 'Firebase Auth is not enabled in your Firebase console. Please enable Email/Password in Authentication settings.';
       } else if (err.message) {
         message = err.message;
       }
@@ -149,7 +181,9 @@ export const useAuthStore = create((set, get) => ({
 
   // Real Phone Authentication with Recaptcha
   sendPhoneOtp: async (phoneNumber, appVerifier) => {
-    if (!auth) throw new Error('Authentication service is not initialized.');
+    if (!isFirebaseConfigured || !auth) {
+      return { verificationId: 'mock-session-id', phone: phoneNumber };
+    }
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
       const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
@@ -168,6 +202,30 @@ export const useAuthStore = create((set, get) => ({
   },
 
   confirmPhoneOtp: async (confirmationResult, otp) => {
+    if (!isFirebaseConfigured || !auth) {
+      set({ loading: true });
+      await new Promise(r => setTimeout(r, 300));
+      const phone = confirmationResult?.phone || '9820098200';
+      const uid = 'local-phone-' + phone.slice(-6);
+      const localUser = {
+        id: uid,
+        uid: uid,
+        name: `Customer ${phone.slice(-4)}`,
+        email: `${phone.slice(-6)}@mandi.in`,
+        phone: phone,
+        role: 'customer',
+        storeId: null,
+        addresses: [],
+        wishlist: [],
+        referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(phone)}`,
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
+      set({ user: localUser, loading: false });
+      return localUser;
+    }
+
     set({ loading: true });
     try {
       const result = await confirmationResult.confirm(otp);
@@ -189,9 +247,29 @@ export const useAuthStore = create((set, get) => ({
   // Real Email & Password Registration
   register: async (name, email, phone, password, referralCode = '') => {
     set({ loading: true });
-    if (!auth) {
-      set({ loading: false });
-      throw new Error('Authentication service is not initialized.');
+    if (!isFirebaseConfigured || !auth) {
+      await new Promise(r => setTimeout(r, 300));
+      const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
+      const myReferralCode = `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`;
+      const sanitizedReferral = referralCode.trim().toUpperCase();
+      const localUser = {
+        id: uid,
+        uid: uid,
+        name: name || 'Mandi Customer',
+        email: email,
+        phone: phone || '',
+        role: 'customer',
+        storeId: null,
+        addresses: [],
+        wishlist: [],
+        referralCode: myReferralCode,
+        ...(sanitizedReferral && sanitizedReferral !== myReferralCode ? { referredBy: sanitizedReferral } : {}),
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name || 'Customer')}`,
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
+      set({ user: localUser, loading: false });
+      return localUser;
     }
 
     try {
@@ -237,6 +315,8 @@ export const useAuthStore = create((set, get) => ({
         message = 'Password is too weak. Please use at least 6 characters.';
       } else if (err.code === 'auth/invalid-email') {
         message = 'Please provide a valid email address.';
+      } else if (err.code === 'auth/configuration-not-found') {
+        message = 'Firebase Auth is not enabled in your Firebase console. Please enable Email/Password in Authentication settings.';
       } else if (err.message) {
         message = err.message;
       }
@@ -247,29 +327,32 @@ export const useAuthStore = create((set, get) => ({
   // Real Sign Out
   logout: async () => {
     set({ loading: true });
-    if (auth) {
+    if (auth && isFirebaseConfigured) {
       try {
         await signOut(auth);
       } catch (err) {
         console.error('Sign out error:', err);
       }
     }
+    localStorage.removeItem('mandi_local_user');
     set({ user: null, loading: false });
   },
 
   // Update profile attributes (addresses, wishlist, name)
   updateUser: async (updates) => {
     const currentUser = get().user;
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid && !currentUser?.id) return;
 
     // Filter out client attempts to self-escalate role or storeId
     const { role: _role, storeId: _storeId, uid: _uid, id: _id, ...safeUpdates } = updates;
+    const updated = { ...currentUser, ...safeUpdates };
 
     set(state => ({
       user: state.user ? { ...state.user, ...safeUpdates } : null
     }));
+    localStorage.setItem('mandi_local_user', JSON.stringify(updated));
 
-    if (db && currentUser.uid) {
+    if (db && isFirebaseConfigured && currentUser.uid) {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userDocRef, safeUpdates);

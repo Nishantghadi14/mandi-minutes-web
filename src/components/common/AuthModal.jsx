@@ -95,7 +95,7 @@ export default function AuthModal() {
   };
 
   const setupRecaptcha = () => {
-    if (!auth) throw new Error('Firebase Auth is not available.');
+    if (!isFirebaseConfigured || !auth) return null;
     if (!recaptchaVerifierRef.current) {
       recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
