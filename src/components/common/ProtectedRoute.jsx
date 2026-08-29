@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useToast } from './Toast';
 import { Store } from 'lucide-react';
 
 /**
  * ProtectedRoute guards routes based on authentication status and user roles.
+ * Silently redirects unauthenticated users to home without toasting —
+ * the AuthModal/CartDrawer handles login prompts at the point of action.
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children
@@ -14,31 +14,11 @@ import { Store } from 'lucide-react';
  */
 export default function ProtectedRoute({ children, allowedRoles, requireStore = false }) {
   const { user, loading } = useAuth();
-  const { addToast } = useToast();
   const location = useLocation();
-  const toastFiredRef = useRef(false);
 
   const roles = allowedRoles ? (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]) : null;
 
-  // Only toast once per mount cycle — never on a transient navigation race
-  useEffect(() => {
-    toastFiredRef.current = false;
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!loading && !toastFiredRef.current) {
-      if (!user) {
-        toastFiredRef.current = true;
-        addToast('Please log in to access this page', 'error');
-      } else if (user && roles && !roles.includes(user.role)) {
-        toastFiredRef.current = true;
-        addToast(`Access denied: requires ${roles.join(' or ')} permissions`, 'error');
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user]);
-
-  // Loading state: show nothing (user just logged in — avoid flash)
+  // Show a brief skeleton while auth state is resolving
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center animate-pulse">
@@ -49,12 +29,12 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
     );
   }
 
-  // Not authenticated -> redirect to home
+  // Not authenticated → silently redirect to home, preserving intended destination
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Role check
+  // Role check → silently redirect
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
