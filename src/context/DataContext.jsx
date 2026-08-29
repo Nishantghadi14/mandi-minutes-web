@@ -46,6 +46,7 @@ export const useData = () => {
   const addTicket = useDataStore(state => state.addTicket);
   const resolveTicket = useDataStore(state => state.resolveTicket);
   const addStoreReview = useDataStore(state => state.addStoreReview);
+  const submitVendorApplication = useDataStore(state => state.submitVendorApplication);
 
   return {
     stores,
@@ -75,5 +76,6 @@ export const useData = () => {
     addTicket,
     resolveTicket,
     addStoreReview,
+    submitVendorApplication,
   };
 };

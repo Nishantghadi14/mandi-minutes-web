@@ -133,7 +133,7 @@ export default function CheckoutPage() {
             : 'Order placed successfully! Pay on delivery 🎉', 
           'success'
         );
-        navigate(`/order-status/${verifiedOrder.id}`, { state: { order: verifiedOrder, autoProgress: !isScheduled } });
+        navigate(`/order-status/${verifiedOrder.id}`, { state: { order: verifiedOrder } });
       }
     } catch (err) {
       console.error('Order creation error:', err);
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
     clearCart();
     notifyOrderPlaced(pendingOrder);
     addToast('Payment verified! Your order is being prepared 🎉', 'success');
-    navigate(`/order-status/${pendingOrder.id}`, { state: { order: pendingOrder, autoProgress: true } });
+    navigate(`/order-status/${pendingOrder.id}`, { state: { order: pendingOrder } });
   };
 
   const stepLabels = ['Delivery Address', 'Payment & Schedule', 'Confirm Order'];
@@ -406,8 +406,14 @@ export default function CheckoutPage() {
         upiId={store?.upiId}
         customerName={user?.name}
         customerEmail={user?.email}
-        customerPhone={user?.phone}
         onSuccess={handleUpiSuccess}
+        onSwitchToCod={async () => {
+          setShowUpiModal(false);
+          clearCart();
+          notifyOrderPlaced(pendingOrder);
+          addToast('Switched to Cash on Delivery! Pay upon delivery 🎉', 'success');
+          navigate(`/order-status/${pendingOrder.id}`, { state: { order: { ...pendingOrder, paymentMethod: 'Cash on Delivery', paymentStatus: 'cod_pending' } } });
+        }}
       />
     )}
     </>

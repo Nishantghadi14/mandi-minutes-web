@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import {
+  getAuth, setPersistence, browserLocalPersistence,} from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
@@ -35,6 +36,9 @@ if (isFirebaseConfigured) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
     db = getFirestore(app);
     auth = getAuth(app);
+  setPersistence(auth, browserLocalPersistence)
+  .then(() => {console.log('✅ Firebase Auth persistence: LOCAL');})
+  .catch((err) => {console.error('❌ Failed to enable Firebase Auth persistence:', err);});
     functions = getFunctions(app);
 
     // Initialize Firebase Cloud Messaging (browser only)

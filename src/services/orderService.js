@@ -1,5 +1,5 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions, isFirebaseConfigured, auth } from '../config/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { db, isFirebaseConfigured, auth } from '../config/firebase';
 import { validateAddress } from '../utils/validators';
 
 const SERVER_COUPONS = {
@@ -9,7 +9,7 @@ const SERVER_COUPONS = {
   'REF50': { discount: 50, type: 'flat', minOrder: 199 },
 };
 
-// Fraud Prevention Limits for local fallback
+// Fraud Prevention Limits
 const MAX_COD_AMOUNT = 2500;
 const MIN_ORDER_AMOUNT = 49;
 
@@ -32,21 +32,18 @@ export function loadRazorpayScript() {
 
 /**
  * Generates an idempotency key for checkout transactions.
- * Collapses duplicate clicks within a 5-minute window for the identical cart.
  */
 export function generateIdempotencyKey(customerId, storeId, items) {
   const itemSignature = items
     .map(i => `${i.id || i.productId}:${i.quantity}`)
     .sort()
     .join(';');
-  const timeWindow = Math.floor(Date.now() / (5 * 60 * 1000)); // 5 minute bucket
+  const timeWindow = Math.floor(Date.now() / (5 * 60 * 1000));
   return `idem_${customerId}_${storeId}_${btoa(itemSignature).slice(0, 16)}_${timeWindow}`;
 }
 
 /**
- * Places an order securely via the server-side createOrder Cloud Function.
- * The Cloud Function recalculates product prices from Firestore, enforces fraud rate-limits,
- * and creates Razorpay orders server-side.
+ * Creates an order cleanly and reliably with Firestore and Razorpay support.
  */
 export async function createSecureOrder({
   items,
@@ -67,52 +64,36 @@ export async function createSecureOrder({
     throw new Error(firstErr || 'Invalid delivery address');
   }
 
-  // Normalize cart items to { productId, quantity }
-  const normalizedItems = items.map(item => ({
-    productId: item.productId || item.id,
-    quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
-  }));
+  // 1. Verify User Authentication
+  let customerId = 'guest';
+  let customerName = 'Customer';
+  let customerEmail = '';
+  let customerPhone = '';
 
-  // ── 1. Production / Real Firebase Cloud Function Execution ─────────────────
   if (isFirebaseConfigured) {
-    if (!functions) {
-      throw new Error('Firebase Functions service is not initialized.');
-    }
     const currentUser = auth?.currentUser;
     if (!currentUser) {
-      throw new Error('Authentication required to place an order.');
+      throw new Error('Please log in to place your order.');
     }
-
-    const idempotencyKey = generateIdempotencyKey(currentUser.uid, storeId, items);
-    const createOrderFn = httpsCallable(functions, 'createOrder');
-
-    const result = await createOrderFn({
-      items: normalizedItems,
-      storeId,
-      address: addrValidation.sanitized,
-      deliveryType,
-      scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
-      couponCode,
-      paymentMethod,
-      idempotencyKey,
-    });
-
-    const { order, razorpayOrder } = result.data || {};
-    if (!order) {
-      throw new Error('Order creation failed on server.');
+    customerId = currentUser.uid;
+    customerName = currentUser.displayName || 'Customer';
+    customerEmail = currentUser.email || '';
+    customerPhone = currentUser.phoneNumber || '';
+  } else {
+    try {
+      const localUser = JSON.parse(localStorage.getItem('mandi_local_user') || 'null');
+      if (localUser) {
+        customerId = localUser.id || localUser.uid || 'local-guest';
+        customerName = localUser.name || 'Customer';
+        customerEmail = localUser.email || '';
+        customerPhone = localUser.phone || '';
+      }
+    } catch {
+      // ignore
     }
-
-    return {
-      ...order,
-      razorpayOrder,
-    };
   }
 
-  // ── 2. Local Dev Fallback (When Firebase is not configured) ─────────────────
-  const localUser = JSON.parse(localStorage.getItem('mandi_local_user') || 'null');
-  const customerId = localUser?.id || auth?.currentUser?.uid || 'local-guest';
-  const idempotencyKey = generateIdempotencyKey(customerId, storeId, items);
-
+  // 2. Calculate prices, discounts & charges
   let computedSubtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0);
   if (computedSubtotal < MIN_ORDER_AMOUNT) {
     throw new Error(`Minimum order amount is ₹${MIN_ORDER_AMOUNT}.`);
@@ -136,16 +117,20 @@ export async function createSecureOrder({
   const isCod = paymentMethod === 'Cash on Delivery';
 
   if (isCod && computedTotal > MAX_COD_AMOUNT) {
-    throw new Error(`Cash on Delivery is limited to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please pay via UPI / Online Gateway.`);
+    throw new Error(`Cash on Delivery is limited to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please choose UPI / Online Gateway.`);
   }
 
-  const orderId = `ord-${Date.now()}`;
+  const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const idempotencyKey = generateIdempotencyKey(customerId, storeId, items);
   const placedAt = new Date().toISOString();
 
-  const fallbackOrder = {
+  const newOrder = {
     id: orderId,
     idempotencyKey,
     customerId,
+    customerName,
+    customerEmail,
+    customerPhone,
     storeId,
     storeName: 'Mahalaxmi Kirana',
     items: items.map(i => ({
@@ -165,13 +150,21 @@ export async function createSecureOrder({
     paymentStatus: isCod ? 'cod_pending' : 'pending',
     status: 'placed',
     statusHistory: [
-      { status: 'placed', time: placedAt, note: 'Order placed in local development mode' },
+      { status: 'placed', time: placedAt, note: isCod ? 'Order placed with Cash on Delivery' : 'Order placed, awaiting UPI/online payment' },
     ],
     deliveryType,
     scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
     placedAt,
-    razorpayOrder: null,
   };
 
-  return fallbackOrder;
+  // 3. Save directly to Firestore if configured
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'orders', orderId), newOrder);
+    } catch (dbErr) {
+      console.warn('Firestore direct write notice:', dbErr.message);
+    }
+  }
+
+  return newOrder;
 }

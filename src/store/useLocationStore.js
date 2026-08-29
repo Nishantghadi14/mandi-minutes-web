@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 
 const LOC_KEY = 'mandi_location';
 
@@ -77,12 +77,10 @@ export const useLocationStore = create((set, get) => ({
 
         // Throttle write to Firestore: at most once every 6 seconds
         const currentOrderId = get().activeBroadcastOrderId;
-        if (currentOrderId && db && (now - lastBroadcastAt >= 6000)) {
+        if (currentOrderId && functions && (now - lastBroadcastAt >= 6000)) {
           lastBroadcastAt = now;
           try {
-            await updateDoc(doc(db, 'orders', currentOrderId), {
-              riderLocation: pos,
-            });
+            await httpsCallable(functions, 'updateRiderLocation')({ orderId: currentOrderId, location: pos });
           } catch (err) {
             console.debug('Rider live coordinate sync:', err?.message);
           }
@@ -130,12 +128,18 @@ export const useLocationStore = create((set, get) => ({
             closest = p;
           }
         }
-        return closest.pincode;
+        // Coordinates are only a service-area hint, never postal-code proof.
+        // Do not silently convert a location outside the mapped coverage into a supported pincode.
+        return minDist <= 0.03 ? closest.pincode : null;
       };
 
       const onSuccess = (position) => {
         const { latitude, longitude } = position.coords;
         const matchedPincode = calculateNearestPincode(latitude, longitude);
+        if (!matchedPincode) {
+          reject(new Error('Your GPS location is outside our mapped service area. Please enter your pincode manually.'));
+          return;
+        }
         get().setLocationByPincode(matchedPincode);
         resolve(matchedPincode);
       };
@@ -145,13 +149,10 @@ export const useLocationStore = create((set, get) => ({
         navigator.geolocation.getCurrentPosition(
           onSuccess,
           () => {
-            // If completely denied or unavailable, set default Virar West and resolve
-            const defaultPin = '401305';
-            get().setLocationByPincode(defaultPin);
             if (error.code === 1) {
-              reject(new Error('Location permission denied. Defaulted to Virar West.'));
+              reject(new Error('Location permission denied. Please enter your pincode manually.'));
             } else {
-              reject(new Error('Could not get precise GPS. Defaulted to Virar West.'));
+              reject(new Error('Could not get precise GPS. Please enter your pincode manually.'));
             }
           },
           { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }

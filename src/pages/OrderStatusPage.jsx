@@ -1,9 +1,8 @@
-import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import OrderTracker from '../components/tracking/OrderTracker';
 import RiderTrackerMap from '../components/common/RiderTrackerMap';
-import { VIRAR_RIDERS } from '../data/virarCoordinates';
 import { generateWhatsAppOrderMessage, generateCustomerShareMessage } from '../utils/whatsappFormatter';
 import { CheckCircle2, ArrowLeft, Store, MapPin, Package, Phone, Bike, ShieldCheck, MessageCircle, Share2, RefreshCw, WifiOff } from 'lucide-react';
 
@@ -15,10 +14,9 @@ export default function OrderStatusPage() {
   const { addToast } = useToast();
 
   const orderFromState = loc.state?.order;
-  const autoProgress = loc.state?.autoProgress || false;
-  
-  // Find order from state or live Firestore collection
-  const order = orderFromState || orders.find(o => String(o.id).toLowerCase() === String(orderId).toLowerCase());
+  // Firestore-backed store data always wins; navigation state only fills the first render.
+  const liveOrder = orders.find(o => String(o.id).toLowerCase() === String(orderId).toLowerCase());
+  const order = liveOrder || orderFromState;
 
   const isLoading = Boolean(loadingStates?.orders);
   const hasError = Boolean(errorStates?.orders);
@@ -50,7 +48,7 @@ export default function OrderStatusPage() {
   }
 
   const store = stores.find(s => s.id === order.storeId);
-  const rider = VIRAR_RIDERS[0]; // Rahul Patil
+  const rider = order.rider || null;
 
   const { waUrl: storeWaUrl } = generateWhatsAppOrderMessage(order, store);
   const { waUrl: shareWaUrl } = generateCustomerShareMessage(order);
@@ -79,9 +77,6 @@ export default function OrderStatusPage() {
             <p className="text-mandi-muted text-xs">Placed on {new Date(order.placedAt || Date.now()).toLocaleString('en-IN')}</p>
           </div>
         </div>
-        <Link to="/rider" className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5">
-          <Bike size={14} /> Rider Portal
-        </Link>
       </div>
 
       {/* Confirmation Banner */}
@@ -138,15 +133,15 @@ export default function OrderStatusPage() {
         </h3>
         <RiderTrackerMap 
           orderId={order.id}
-          storeId={order.storeId || 'store-mahalaxmi-1'} 
-          customerPincode={order.address?.pincode || '401305'} 
-          orderStatus={order.status || 'out_for_delivery'} 
+          storeId={order.storeId} 
+          customerPincode={order.address?.pincode} 
+          orderStatus={order.status || 'placed'} 
           liveRiderLocation={order.riderLocation || null}
         />
       </div>
 
-      {/* Assigned Virar Rider Details */}
-      <div className="card p-4 mb-6 flex items-center justify-between">
+      {/* Assigned rider details are shown only when a real assignment exists. */}
+      {rider && <div className="card p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img src={rider.avatar} alt={rider.name} className="w-12 h-12 rounded-full border-2 border-mandi-green object-cover" />
           <div>
@@ -160,11 +155,11 @@ export default function OrderStatusPage() {
         <a href={`tel:${rider.phone}`} className="btn-primary py-2 px-3 text-xs flex items-center gap-1.5">
           <Phone size={14} /> Call Rider
         </a>
-      </div>
+      </div>}
 
       {/* Live Order Tracker Timeline */}
       <div className="mb-6">
-        <OrderTracker order={order} autoProgress={autoProgress} />
+        <OrderTracker order={order} />
       </div>
 
       {/* Order Details */}

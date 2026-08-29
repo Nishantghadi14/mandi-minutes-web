@@ -15,14 +15,10 @@ function ReviewModal({ order, onClose, onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    await onSubmit({
-      storeId: order.storeId,
-      orderId: order.id,
-      rating,
-      comment,
-    });
-    setSubmitting(false);
-    onClose();
+    try {
+      await onSubmit({ storeId: order.storeId, orderId: order.id, rating, comment });
+      onClose();
+    } finally { setSubmitting(false); }
   };
 
   return (

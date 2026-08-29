@@ -5,7 +5,9 @@ import {
   signOut, 
   updateProfile, 
   onAuthStateChanged,
-  signInWithPhoneNumber
+  signInWithPhoneNumber,
+  setPersistence,
+  browserLocalPersistence,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured, requestNotificationPermission } from '../config/firebase';
@@ -21,6 +23,8 @@ const getInitialLocalUser = () => {
   }
 };
 
+let authOperationId = 0;
+
 export const useAuthStore = create((set, get) => ({
   // When Firebase is configured, user is null initially until Firebase Auth verifies session.
   // In local development fallback mode, read local user.
@@ -35,11 +39,13 @@ export const useAuthStore = create((set, get) => ({
 
   // Helper to fetch or create user profile from Firestore and immediately sync Zustand state
   syncUserProfile: async (firebaseUser) => {
-    if (!firebaseUser) {
-      set({ user: null, loading: false });
-      useCartStore.getState().switchUser(null);
-      return null;
-    }
+  const operationId = ++authOperationId;
+
+  if (!firebaseUser) {
+    set({ user: null, loading: false });
+    useCartStore.getState().switchUser(null);
+    return null;
+  }
 
     let userData = null;
     if (db) {
@@ -70,6 +76,12 @@ export const useAuthStore = create((set, get) => ({
         }
       } catch (err) {
         console.error('Error fetching user profile from Firestore:', err);
+        // A Firebase identity without a readable profile is not a customer profile.
+        // Keep the session unresolved so guards never grant customer access by default.
+        if (operationId === authOperationId) {
+          set({ user: null, loading: false });
+        }
+        throw new Error('Your account profile could not be loaded. Please try again or contact support.');
       }
     }
 
@@ -79,7 +91,7 @@ export const useAuthStore = create((set, get) => ({
       email: firebaseUser.email,
       phone: firebaseUser.phoneNumber,
       displayName: firebaseUser.displayName,
-      role: userData?.role || 'customer',
+      role: userData.role,
       storeId: userData?.storeId || null,
       addresses: userData?.addresses || [],
       wishlist: userData?.wishlist || [],
@@ -88,10 +100,14 @@ export const useAuthStore = create((set, get) => ({
       ...userData,
     };
 
-    set({ user: profileUser, loading: false });
-    useCartStore.getState().switchUser(profileUser.id || profileUser.uid);
+    if (operationId !== authOperationId) {return null;}
+  set({user: profileUser,loading: false,});
 
-    // Persist FCM token asynchronously
+  useCartStore
+  .getState()
+  .switchUser(profileUser.id || profileUser.uid);
+
+    // Notification setup is optional and deliberately runs only after auth/profile sync.
     try {
       const fcmToken = await requestNotificationPermission();
       if (fcmToken && db) {
@@ -99,8 +115,8 @@ export const useAuthStore = create((set, get) => ({
           fcmTokens: arrayUnion(fcmToken),
         });
       }
-    } catch {
-      // Non-fatal
+    } catch (err) {
+      console.warn('Notification registration was skipped:', err?.message);
     }
 
     return profileUser;
@@ -125,15 +141,27 @@ export const useAuthStore = create((set, get) => ({
     // Set loading while determining initial Firebase auth state
     set({ loading: true });
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        set({ user: null, loading: false });
-        useCartStore.getState().switchUser(null);
-        return;
-      }
+    const unsubscribe = onAuthStateChanged(
+  auth,
+  async (firebaseUser) => {
+    if (!firebaseUser) {
+      authOperationId++;
 
-      await get().syncUserProfile(firebaseUser);
-    });
+      set({
+        user: null,
+        loading: false,
+      });
+
+      useCartStore
+        .getState()
+        .switchUser(null);
+
+      return;
+    }
+
+    await get().syncUserProfile(firebaseUser);
+  }
+);
 
     const cleanup = () => {
       unsubscribe();
@@ -175,8 +203,14 @@ export const useAuthStore = create((set, get) => ({
     }
 
     set({ loading: true });
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+try {
+  await setPersistence(
+    auth, browserLocalPersistence);
+
+  const userCredential =
+    await signInWithEmailAndPassword(
+      auth, email, password);
       const profileUser = await get().syncUserProfile(userCredential.user);
       return profileUser;
     } catch (err) {
@@ -369,22 +403,22 @@ export const useAuthStore = create((set, get) => ({
 
     // Filter out client attempts to self-escalate role or storeId
     const { role: _role, storeId: _storeId, uid: _uid, id: _id, ...safeUpdates } = updates;
-    const updated = { ...currentUser, ...safeUpdates };
-
-    set(state => ({
-      user: state.user ? { ...state.user, ...safeUpdates } : null
-    }));
-
     if (!isFirebaseConfigured) {
+      const updated = { ...currentUser, ...safeUpdates };
       localStorage.setItem('mandi_local_user', JSON.stringify(updated));
+      set({ user: updated });
+      return updated;
     }
 
     if (db && isFirebaseConfigured && currentUser.uid) {
       try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userDocRef, safeUpdates);
+        set(state => ({ user: state.user ? { ...state.user, ...safeUpdates } : null }));
+        return { ...currentUser, ...safeUpdates };
       } catch (err) {
         console.error('Failed to sync user updates to Firestore:', err);
+        throw new Error('Could not save your profile changes. Please try again.');
       }
     }
   },

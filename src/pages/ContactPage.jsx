@@ -21,13 +21,17 @@ export default function ContactPage() {
   const [message, setMessage] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) { openAuthModal('login'); return; }
     if (!subject || !message) { addToast('Please fill all fields', 'error'); return; }
-    addTicket({ customerId: user.id, subject, message });
-    setSubject(''); setMessage('');
-    addToast('Support ticket created! We will get back to you soon.', 'success');
+    try {
+      await addTicket({ customerId: user.id, subject, message });
+      setSubject(''); setMessage('');
+      addToast('Support ticket created! We will get back to you soon.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Could not create ticket. Please try again.', 'error');
+    }
   };
 
   return (

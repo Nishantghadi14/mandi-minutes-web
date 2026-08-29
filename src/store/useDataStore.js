@@ -9,9 +9,9 @@ import {
   query, 
   where, 
   orderBy, 
-  arrayUnion 
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '../config/firebase';
+import { db, functions, isFirebaseConfigured } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { initialStores } from '../data/initialStores';
 import { initialProducts } from '../data/initialProducts';
 import { initialCategories } from '../data/initialCategories';
@@ -97,7 +97,7 @@ export const useDataStore = create((set, get) => ({
       // 1. Live Stores listener
       set(state => ({ loadingStates: { ...state.loadingStates, stores: true } }));
       const storesUnsub = onSnapshot(
-        collection(db, 'stores'), 
+        query(collection(db, 'stores'), where('status', '==', 'approved')), 
         (snapshot) => {
           if (!snapshot.empty) {
             const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -169,8 +169,10 @@ export const useDataStore = create((set, get) => ({
       if (user?.uid) {
         set(state => ({ loadingStates: { ...state.loadingStates, orders: true } }));
         let ordersQuery;
-        if (user.role === 'admin' || user.role === 'rider') {
+        if (user.role === 'admin') {
           ordersQuery = query(collection(db, 'orders'), orderBy('placedAt', 'desc'));
+        } else if (user.role === 'rider') {
+          ordersQuery = query(collection(db, 'orders'), where('riderId', '==', user.uid));
         } else if (user.role === 'vendor' && user.storeId) {
           ordersQuery = query(collection(db, 'orders'), where('storeId', '==', user.storeId));
         } else {
@@ -204,7 +206,7 @@ export const useDataStore = create((set, get) => ({
     };
   },
 
-  retryFetch: (key) => {
+  retryFetch: (_key) => {
     // Allows UI components to trigger a reconnect / retry
     const user = get().user;
     get().initSubscriptions(user);
@@ -226,7 +228,7 @@ export const useDataStore = create((set, get) => ({
     return get().orders.filter(o => o.storeId === storeId).sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
   },
 
-  // Add Order directly to Firestore
+  // Orders are created by the checkout Cloud Function only.
   addOrder: async (order) => {
     const orderId = order.id || `ord-${Date.now()}`;
     const placedAt = order.placedAt || new Date().toISOString();
@@ -241,19 +243,8 @@ export const useDataStore = create((set, get) => ({
       ],
     };
 
-    set(state => ({
-      orders: [newOrder, ...state.orders.filter(o => o.id !== orderId)]
-    }));
-
-    if (db) {
-      try {
-        await setDoc(doc(db, 'orders', orderId), newOrder);
-      } catch (err) {
-        console.error('Error saving order to Firestore:', err);
-        throw err;
-      }
-    }
-
+    if (isFirebaseConfigured) throw new Error('Orders must be placed through secure checkout.');
+    set(state => ({ orders: [newOrder, ...state.orders.filter(o => o.id !== orderId)] }));
     return newOrder;
   },
 
@@ -265,27 +256,11 @@ export const useDataStore = create((set, get) => ({
       note: note || `Order status updated to ${status.replace(/_/g, ' ')}` 
     };
 
-    set(state => ({
-      orders: state.orders.map(o => {
-        if (o.id !== orderId) return o;
-        return {
-          ...o,
-          status,
-          statusHistory: [...(o.statusHistory || []), historyEntry]
-        };
-      })
-    }));
-
-    if (db) {
-      try {
-        await updateDoc(doc(db, 'orders', orderId), {
-          status,
-          statusHistory: arrayUnion(historyEntry)
-        });
-      } catch (err) {
-        console.error('Error updating order status in Firestore:', err);
-      }
+    if (isFirebaseConfigured) {
+      const result = await httpsCallable(functions, 'transitionOrderStatus')({ orderId, status, note });
+      return result.data.order;
     }
+    set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status, statusHistory: [...(o.statusHistory || []), historyEntry] } : o) }));
   },
 
   // Products CRUD
@@ -293,44 +268,40 @@ export const useDataStore = create((set, get) => ({
     const id = product.id || `p-${Date.now()}`;
     const newProduct = { ...product, id, createdAt: new Date().toISOString() };
 
-    set(state => ({ products: [...state.products, newProduct] }));
-
     if (db) {
       try {
         await setDoc(doc(db, 'products', id), newProduct);
       } catch (err) {
         console.error('Error adding product to Firestore:', err);
+        throw new Error('Could not add product. Please try again.');
       }
     }
+    set(state => ({ products: [...state.products, newProduct] }));
     return newProduct;
   },
 
   updateProduct: async (productId, updates) => {
-    set(state => ({
-      products: state.products.map(p => p.id === productId ? { ...p, ...updates } : p)
-    }));
-
     if (db) {
       try {
         await updateDoc(doc(db, 'products', productId), updates);
       } catch (err) {
         console.error('Error updating product in Firestore:', err);
+        throw new Error('Could not update product. Please try again.');
       }
     }
+    set(state => ({ products: state.products.map(p => p.id === productId ? { ...p, ...updates } : p) }));
   },
 
   deleteProduct: async (productId) => {
-    set(state => ({
-      products: state.products.filter(p => p.id !== productId)
-    }));
-
     if (db) {
       try {
         await deleteDoc(doc(db, 'products', productId));
       } catch (err) {
         console.error('Error deleting product from Firestore:', err);
+        throw new Error('Could not delete product. Please try again.');
       }
     }
+    set(state => ({ products: state.products.filter(p => p.id !== productId) }));
   },
 
   // Stores CRUD
@@ -349,16 +320,22 @@ export const useDataStore = create((set, get) => ({
       ...storeData,
     };
 
-    set(state => ({ stores: [...state.stores, newStore] }));
-
     if (db) {
       try {
         await setDoc(doc(db, 'stores', id), newStore);
       } catch (err) {
         console.error('Error adding store to Firestore:', err);
+        throw new Error('Could not create store. Please try again.');
       }
     }
+    set(state => ({ stores: [...state.stores, newStore] }));
     return newStore;
+  },
+
+  submitVendorApplication: async (application) => {
+    if (!isFirebaseConfigured || !functions) throw new Error('Vendor applications require the secure Firebase backend.');
+    const result = await httpsCallable(functions, 'submitVendorApplication')({ application });
+    return result.data.application;
   },
 
   updateStore: async (storeId, updates) => {
@@ -445,15 +422,15 @@ export const useDataStore = create((set, get) => ({
       reply: '' 
     };
 
-    set(state => ({ tickets: [...state.tickets, newTicket] }));
-
     if (db) {
       try {
         await setDoc(doc(db, 'tickets', id), newTicket);
       } catch (err) {
         console.error('Error adding ticket to Firestore:', err);
+        throw new Error('Could not create support ticket. Please try again.');
       }
     }
+    set(state => ({ tickets: [...state.tickets, newTicket] }));
     return newTicket;
   },
 
@@ -487,47 +464,11 @@ export const useDataStore = create((set, get) => ({
       createdAt,
     };
 
-    // 1. Update local state
-    set(state => ({
-      orders: state.orders.map(o => o.id === orderId ? { ...o, isReviewed: true, review: reviewPayload } : o),
-      stores: state.stores.map(s => {
-        if (s.id !== storeId) return s;
-        const currentCount = Number(s.totalRatings) || 0;
-        const currentAvg = Number(s.rating) || 4.5;
-        const newCount = currentCount + 1;
-        const newAvg = Number(((currentAvg * currentCount + Number(rating)) / newCount).toFixed(1));
-        return { ...s, rating: newAvg, totalRatings: newCount };
-      })
-    }));
-
-    // 2. Persist to Firestore
-    if (db) {
-      try {
-        await setDoc(doc(db, 'stores', storeId, 'reviews', reviewId), reviewPayload);
-        await updateDoc(doc(db, 'orders', orderId), {
-          isReviewed: true,
-          reviewRating: Number(rating),
-        });
-
-        const storeRef = doc(db, 'stores', storeId);
-        const storeSnap = await getDoc(storeRef);
-        if (storeSnap.exists()) {
-          const storeData = storeSnap.data();
-          const currentCount = Number(storeData.totalRatings) || 0;
-          const currentAvg = Number(storeData.rating) || 4.5;
-          const newCount = currentCount + 1;
-          const newAvg = Number(((currentAvg * currentCount + Number(rating)) / newCount).toFixed(1));
-
-          await updateDoc(storeRef, {
-            rating: newAvg,
-            totalRatings: newCount,
-          });
-        }
-      } catch (err) {
-        console.error('Error adding store review to Firestore:', err);
-      }
+    if (isFirebaseConfigured) {
+      const result = await httpsCallable(functions, 'submitStoreReview')({ storeId, orderId, rating, comment });
+      return result.data.review;
     }
-
+    set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, isReviewed: true, review: reviewPayload } : o) }));
     return reviewPayload;
   },
 }));

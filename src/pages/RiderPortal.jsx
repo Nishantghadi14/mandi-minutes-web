@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
-import { VIRAR_RIDERS } from '../data/virarCoordinates';
+import { useAuth } from '../context/AuthContext';
 import { Phone, Package, MapPin, ShieldCheck, Bike, ArrowRight, Radio } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 
 export default function RiderPortal() {
   const { orders, updateOrderStatus } = useData();
   const { addToast } = useToast();
-  const activeRider = VIRAR_RIDERS[0]; // Rahul Patil
+  const { user } = useAuth();
+  const activeRider = { name: user?.name || user?.displayName || 'Rider', avatar: user?.avatar, vehicle: user?.vehicle || 'Delivery rider', rating: user?.rating || '—', trips: user?.trips || 0, phone: user?.phone || '' };
 
   const [isOnDuty, setIsOnDuty] = useState(true);
   const riderGpsStatus = useLocationStore(state => state.riderGpsStatus);
   const startRiderTracking = useLocationStore(state => state.startRiderTracking);
   const stopRiderTracking = useLocationStore(state => state.stopRiderTracking);
   
-  const activeOrders = orders.filter(o => ['placed', 'accepted', 'preparing', 'out_for_delivery'].includes(o.status));
+  const activeOrders = orders.filter(o => o.riderId === user?.uid && ['preparing', 'out_for_delivery'].includes(o.status));
   const completedOrders = orders.filter(o => o.status === 'delivered');
 
   const firstOutForDelivery = activeOrders.find(o => o.status === 'out_for_delivery') || activeOrders[0];
@@ -29,15 +30,10 @@ export default function RiderPortal() {
     return stopRiderTracking;
   }, [isOnDuty, firstOutForDelivery?.id, startRiderTracking, stopRiderTracking]);
 
-  const handleNextStatus = (orderId, currentStatus) => {
-    let nextStatus = 'accepted';
-    if (currentStatus === 'placed') nextStatus = 'accepted';
-    else if (currentStatus === 'accepted') nextStatus = 'preparing';
-    else if (currentStatus === 'preparing') nextStatus = 'out_for_delivery';
-    else if (currentStatus === 'out_for_delivery') nextStatus = 'delivered';
-
-    updateOrderStatus(orderId, nextStatus);
-    addToast(`Order ${orderId} updated to ${nextStatus.replace(/_/g, ' ')}!`, 'success');
+  const handleNextStatus = async (orderId, currentStatus) => {
+    const nextStatus = currentStatus === 'preparing' ? 'out_for_delivery' : 'delivered';
+    try { await updateOrderStatus(orderId, nextStatus); addToast(`Order ${orderId} updated to ${nextStatus.replace(/_/g, ' ')}!`, 'success'); }
+    catch (err) { addToast(err.message || 'Could not update delivery status.', 'error'); }
   };
 
   return (
@@ -45,7 +41,7 @@ export default function RiderPortal() {
       {/* Rider Header */}
       <div className="card p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <img src={activeRider.avatar} alt={activeRider.name} className="w-14 h-14 rounded-full border-2 border-mandi-green object-cover" />
+          {activeRider.avatar ? <img src={activeRider.avatar} alt={activeRider.name} className="w-14 h-14 rounded-full border-2 border-mandi-green object-cover" /> : <div className="w-14 h-14 rounded-full border-2 border-mandi-green bg-mandi-surface" />}
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-mandi-text font-black text-xl">{activeRider.name}</h1>
@@ -118,15 +114,13 @@ export default function RiderPortal() {
                   <p className="text-mandi-muted text-xs mt-0.5">Store: <strong>{order.storeName}</strong></p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href={`tel:9820098200`} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
+                  <a href={`tel:${order.customerPhone || ''}`} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1">
                     <Phone size={12} /> Call Customer
                   </a>
                   <button
                     onClick={() => handleNextStatus(order.id, order.status)}
                     className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1"
                   >
-                    {order.status === 'placed' && 'Accept Pickup'}
-                    {order.status === 'accepted' && 'Start Packing'}
                     {order.status === 'preparing' && 'Out for Delivery'}
                     {order.status === 'out_for_delivery' && 'Confirm Delivery'}
                     <ArrowRight size={12} />

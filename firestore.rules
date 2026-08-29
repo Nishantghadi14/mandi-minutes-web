@@ -1,209 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function user() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function admin() { return signedIn() && user().role == 'admin'; }
+    function vendorFor(storeId) { return signedIn() && user().role == 'vendor' && user().storeId == storeId; }
+    function riderFor(order) { return signedIn() && user().role == 'rider' && order.riderId == request.auth.uid; }
 
-    // Helper functions for zero-trust role verification
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
-    }
-
-    function isAdmin() {
-      return hasRole('admin');
-    }
-
-    function isVendor() {
-      return hasRole('vendor');
-    }
-
-    function isRider() {
-      return hasRole('rider');
-    }
-
-    function isStoreVendor(storeId) {
-      return isVendor() && getUserData().storeId == storeId;
-    }
-
-    // -------------------------------------------------------------
-    // USERS COLLECTION
-    // Trust boundary: Self-read/write for profile, but role and storeId
-    // can NEVER be escalated or changed by the client.
-    // -------------------------------------------------------------
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      
-      // On signup, role must be 'customer', storeId must be null, and cannot self-refer
-      allow create: if isOwner(userId) 
-        && request.resource.data.role == 'customer'
-        && (!('storeId' in request.resource.data) || request.resource.data.storeId == null)
-        && (!('referredBy' in request.resource.data) || request.resource.data.referredBy != userId);
-
-      // On profile update, role and storeId must match existing values unless Admin
-      allow update: if isAdmin() || (
-        isOwner(userId) 
+    match /users/{uid} {
+      allow read: if own(uid) || admin();
+      allow create: if own(uid) && request.resource.data.role == 'customer' && (!('storeId' in request.resource.data) || request.resource.data.storeId == null) && request.resource.data.uid == uid;
+      allow update: if admin() || (own(uid)
         && request.resource.data.role == resource.data.role
-        && (!('storeId' in request.resource.data) || request.resource.data.storeId == resource.data.storeId)
-      );
-
-      allow delete: if isAdmin();
+        && request.resource.data.storeId == resource.data.storeId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email', 'phone', 'addresses', 'wishlist', 'avatar', 'fcmTokens', 'updatedAt']));
+      allow delete: if admin();
     }
 
-    // -------------------------------------------------------------
-    // STORES COLLECTION
-    // Trust boundary: Public read for approved stores. Write restricted
-    // to platform Admin or assigned store Vendor (without changing status or modifying other stores).
-    // -------------------------------------------------------------
     match /stores/{storeId} {
-      allow read: if resource.data.status == 'approved' 
-        || isAdmin() 
-        || isStoreVendor(storeId);
-
-      // Onboarding submissions must have status 'pending' and valid upiId string if provided
-      allow create: if isAdmin() 
-        || (isAuthenticated() 
-            && request.resource.data.status == 'pending'
-            && (!('upiId' in request.resource.data) || request.resource.data.upiId is string));
-
-      // Vendors can only update their own store (including their upiId) and cannot change status or alter other stores
-      allow update: if isAdmin() || (
-        isStoreVendor(storeId) 
-        && request.resource.data.status == resource.data.status // Cannot self-approve
-        && (!('upiId' in request.resource.data) || request.resource.data.upiId is string)
-      );
-
-      // Reviews subcollection
-      match /reviews/{reviewId} {
-        allow read: if true;
-        allow create: if isAuthenticated()
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.rating is number
-          && request.resource.data.rating >= 1
-          && request.resource.data.rating <= 5
-          && request.resource.data.orderId is string;
-        allow update, delete: if isAdmin();
-      }
-
-      allow delete: if isAdmin();
+      allow read: if resource.data.status == 'approved' || admin() || vendorFor(storeId);
+      allow create, delete: if admin();
+      allow update: if admin() || (vendorFor(storeId)
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'city', 'pincodes', 'deliveryTime', 'minOrder', 'deliveryCharge', 'image', 'description', 'upiId', 'updatedAt']));
+      match /reviews/{reviewId} { allow read: if true; allow write: if false; }
     }
 
-    // -------------------------------------------------------------
-    // PRODUCTS CATALOG
-    // Trust boundary: Public read. Writes restricted to Admin or the
-    // Vendor assigned to the specific storeId of the product.
-    // -------------------------------------------------------------
+    match /vendorApplications/{applicationId} {
+      allow read: if own(resource.data.applicantId) || admin();
+      allow write: if false;
+    }
+
     match /products/{productId} {
       allow read: if true;
-
-      allow create: if isAdmin() || (
-        isVendor() 
-        && isStoreVendor(request.resource.data.storeId)
-      );
-
-      allow update: if isAdmin() || (
-        isVendor() 
-        && isStoreVendor(resource.data.storeId)
-        && isStoreVendor(request.resource.data.storeId)
-      );
-
-      allow delete: if isAdmin() || (
-        isVendor() 
-        && isStoreVendor(resource.data.storeId)
-      );
+      allow create: if admin() || vendorFor(request.resource.data.storeId);
+      allow update: if admin() || (vendorFor(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId);
+      allow delete: if admin() || vendorFor(resource.data.storeId);
     }
 
-    // -------------------------------------------------------------
-    // ORDERS COLLECTION
-    // Trust boundary: Customers can only read and create their own orders.
-    // Vendors can only read/update their store's orders.
-    // Neither client can set paymentStatus to 'paid' or arbitrary status.
-    // -------------------------------------------------------------
     match /orders/{orderId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.customerId 
-        || isStoreVendor(resource.data.storeId) 
-        || isAdmin() 
-        || isRider()
-      );
-
-      // Order creation is restricted to Cloud Functions (Admin SDK) to guarantee server-side pricing & fraud enforcement
-      allow create: if isAdmin();
-
-      // Client update rule: Only validated lifecycle transitions and rider GPS broadcasts allowed
-      allow update: if isAdmin() || (
-        // Vendor lifecycle progression: placed -> accepted -> preparing -> out_for_delivery
-        isStoreVendor(resource.data.storeId) 
-        && request.resource.data.customerId == resource.data.customerId
-        && request.resource.data.total == resource.data.total
-        && request.resource.data.paymentStatus == resource.data.paymentStatus // Vendor cannot mark 'paid'
-        && (
-          (resource.data.status == 'placed' && request.resource.data.status == 'accepted') ||
-          (resource.data.status == 'accepted' && request.resource.data.status == 'preparing') ||
-          (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery')
-        )
-      ) || (
-        // Rider lifecycle progression or live GPS broadcast (lat/lng/updatedAt)
-        isRider()
-        && request.resource.data.customerId == resource.data.customerId
-        && request.resource.data.total == resource.data.total
-        && request.resource.data.paymentStatus == resource.data.paymentStatus
-        && (
-          (resource.data.status == 'preparing' && request.resource.data.status == 'out_for_delivery') ||
-          (resource.data.status == 'out_for_delivery' && request.resource.data.status == 'delivered') ||
-          (resource.data.status == 'out_for_delivery' && request.resource.data.status == resource.data.status)
-        )
-      ) || (
-        // Customer cancellation only before store accepts
-        isOwner(resource.data.customerId)
-        && resource.data.status == 'placed'
-        && request.resource.data.status == 'cancelled'
-      );
-
-      allow delete: if isAdmin();
+      allow read: if signedIn() && (own(resource.data.customerId) || admin() || vendorFor(resource.data.storeId) || riderFor(resource.data));
+      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
+      allow update: if signedIn() && (own(resource.data.customerId) || admin() || vendorFor(resource.data.storeId) || riderFor(resource.data));
+      allow delete: if admin();
     }
 
-    // -------------------------------------------------------------
-    // BANNERS & CATEGORIES
-    // Trust boundary: Public read, Admin-only write.
-    // -------------------------------------------------------------
-    match /banners/{bannerId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // -------------------------------------------------------------
-    // SUPPORT TICKETS
-    // Trust boundary: User creates and reads own tickets; Admin manages all.
-    // -------------------------------------------------------------
     match /tickets/{ticketId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.customerId || isAdmin()
-      );
-
-      allow create: if isAuthenticated() 
-        && request.resource.data.customerId == request.auth.uid
-        && request.resource.data.status == 'open';
-
-      allow update: if isAdmin() || (
-        isAuthenticated() && request.auth.uid == resource.data.customerId
-      );
-
-      allow delete: if isAdmin();
+      allow read: if own(resource.data.customerId) || admin();
+      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid && request.resource.data.status == 'open' && request.resource.data.diff({}).affectedKeys().hasOnly(['id', 'customerId', 'subject', 'message', 'status', 'createdAt', 'reply']);
+      allow update: if admin() || (own(resource.data.customerId)
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.reply == resource.data.reply
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subject', 'message', 'updatedAt']));
+      allow delete: if admin();
     }
+
+    match /banners/{id} { allow read: if true; allow write: if admin(); }
+    match /categories/{id} { allow read: if true; allow write: if admin(); }
+    match /paymentEvents/{id} { allow read, write: if false; }
   }
 }

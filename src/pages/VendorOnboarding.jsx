@@ -3,10 +3,12 @@ import { Store, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanitizeText } from '../utils/validators';
 
 export default function VendorOnboarding() {
-  const { addStore } = useData();
+  const { submitVendorApplication } = useData();
+  const { user, openAuthModal } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -87,6 +89,10 @@ export default function VendorOnboarding() {
 
     setSubmitting(true);
     try {
+      if (!user) {
+        openAuthModal('login');
+        throw new Error('Please sign in before submitting a vendor application.');
+      }
       const newStore = {
         name: storeName,
         ownerName: ownerName,
@@ -109,7 +115,7 @@ export default function VendorOnboarding() {
         categories: ['cat-1', 'cat-2', 'cat-3', 'cat-4'],
       };
 
-      await addStore(newStore);
+      await submitVendorApplication(newStore);
       setSubmitted(true);
       addToast('Onboarding form submitted to Firestore! Admin will review within 24 hours.', 'success');
     } catch (err) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { CheckCircle, Clock, ChefHat, Bike, Home } from 'lucide-react';
 import { useNotifications } from '../../utils/useNotifications';
 
@@ -12,37 +12,21 @@ const STEPS = [
 
 const STATUS_IDX = { placed: 0, accepted: 1, preparing: 2, out_for_delivery: 3, delivered: 4 };
 
-export default function OrderTracker({ order = {}, autoProgress = false }) {
+export default function OrderTracker({ order = {} }) {
   const statusKey = order?.status || 'placed';
-  const [currentIdx, setCurrentIdx] = useState(STATUS_IDX[statusKey] ?? 0);
-  const prevStatusRef = useState(statusKey);
+  const currentIdx = STATUS_IDX[statusKey] ?? 0;
+  const prevStatusRef = useRef(statusKey);
   const { notifyStatusUpdate } = useNotifications();
 
   // Update tracker step when real Firestore status changes
   useEffect(() => {
-    const newIdx = STATUS_IDX[order?.status] ?? 0;
-    const prevStatus = prevStatusRef[0];
+    const prevStatus = prevStatusRef.current;
     // Fire browser notification when status genuinely advances (not on initial render)
     if (order?.status && order.status !== prevStatus && prevStatus !== order?.status) {
       notifyStatusUpdate(order.status, order?.id);
     }
-    // Update prevStatus ref using the setter
-    prevStatusRef[1](order?.status || 'placed');
-    setCurrentIdx(newIdx);
-  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!autoProgress || currentIdx >= 4) return;
-    const timer = setTimeout(() => {
-      setCurrentIdx(prev => {
-        const next = Math.min(prev + 1, 4);
-        const nextStatusKey = STEPS[next]?.key;
-        if (nextStatusKey) notifyStatusUpdate(nextStatusKey, order?.id);
-        return next;
-      });
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [autoProgress, currentIdx, notifyStatusUpdate, order?.id]);
+    prevStatusRef.current = order?.status || 'placed';
+  }, [order?.status, order?.id, notifyStatusUpdate]);
 
   const historyList = Array.isArray(order?.statusHistory) ? order.statusHistory : [];
 

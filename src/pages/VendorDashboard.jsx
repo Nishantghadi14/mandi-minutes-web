@@ -172,21 +172,23 @@ export default function VendorDashboard() {
     return ordersWithSla.filter(o => o.status === orderFilter);
   }, [ordersWithSla, slaBreachedOrders, orderFilter]);
 
-  const handleSaveProduct = (prodData) => {
+  const handleSaveProduct = async (prodData) => {
+    try {
     if (editingProduct) {
-      updateProduct(editingProduct.id, prodData);
+      await updateProduct(editingProduct.id, prodData);
       addToast('Product updated!', 'success');
     } else {
-      addProduct({ ...prodData, storeId: store.id });
+      await addProduct({ ...prodData, storeId: store.id });
       addToast('Product added to catalog!', 'success');
     }
     setShowProductModal(false);
     setEditingProduct(null);
+    } catch (err) { addToast(err.message || 'Could not save product.', 'error'); }
   };
 
-  const handleStatusChange = (orderId, newStatus) => {
-    updateOrderStatus(orderId, newStatus);
-    addToast(`Order status updated to ${newStatus.replace(/_/g, ' ')}`, 'success');
+  const handleStatusChange = async (orderId, newStatus) => {
+    try { await updateOrderStatus(orderId, newStatus); addToast(`Order status updated to ${newStatus.replace(/_/g, ' ')}`, 'success'); }
+    catch (err) { addToast(err.message || 'Could not update order status.', 'error'); }
   };
 
   if (!store) {
