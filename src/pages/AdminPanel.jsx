@@ -37,6 +37,7 @@ export default function AdminPanel() {
     resolveTicket,
     retryFetch,
     loadingStates,
+    errorStates,
   } = useData();
   const { addToast } = useToast();
 
