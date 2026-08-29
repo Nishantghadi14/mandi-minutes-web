@@ -369,23 +369,103 @@ export default function AdminPanel() {
       {/* TAB 2: Orders */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          {orders.map(order => (
-            <div key={order.id} className="card p-5 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-mandi-border">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
-                    <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
+          {orders.length === 0 ? (
+            <div className="card p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-mandi-surface rounded-full flex items-center justify-center mx-auto text-mandi-muted">
+                <Database size={24} />
+              </div>
+              <h3 className="text-mandi-text font-bold text-base">No Orders in Database</h3>
+              <p className="text-mandi-muted text-xs max-w-sm mx-auto">
+                Orders placed by customers through the checkout will automatically appear here in real-time.
+              </p>
+            </div>
+          ) : (
+            orders.map(order => (
+              <div key={order.id} className="card p-5 space-y-4 border border-mandi-border hover:border-mandi-green/40 transition-colors">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-mandi-border">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-mandi-text font-black text-base">#{order.id.toUpperCase()}</span>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                        order.status === 'delivered' ? 'bg-mandi-green-muted text-mandi-green' :
+                        order.status === 'cancelled' ? 'bg-red-950 text-red-400' :
+                        order.status === 'out_for_delivery' ? 'bg-blue-950 text-blue-400' :
+                        'bg-yellow-950 text-yellow-300'
+                      }`}>
+                        {order.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-mandi-muted text-xs">
+                      Store: <strong className="text-mandi-text">{order.storeName || 'Local Store'}</strong> • {new Date(order.placedAt || Date.now()).toLocaleString('en-IN')}
+                    </p>
                   </div>
-                  <p className="text-mandi-muted text-xs mt-0.5">Store: <strong>{order.storeName}</strong> • {new Date(order.placedAt).toLocaleString('en-IN')}</p>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-mandi-green font-black text-xl">₹{order.total}</p>
+                      <p className="text-mandi-subtle text-[11px]">
+                        {order.paymentMethod} • <span className={order.paymentStatus === 'paid' ? 'text-mandi-green font-semibold' : 'text-yellow-400'}>{order.paymentStatus?.toUpperCase()}</span>
+                      </p>
+                    </div>
+
+                    {/* Quick Status Transition Dropdown */}
+                    <select
+                      value={order.status}
+                      onChange={(e) => {
+                        updateOrderStatus(order.id, e.target.value);
+                        addToast(`Order #${order.id.slice(-6)} marked as ${e.target.value}!`, 'info');
+                      }}
+                      className="bg-mandi-surface border border-mandi-border rounded-xl text-xs font-semibold px-3 py-2 text-mandi-text hover:border-mandi-green transition-colors cursor-pointer"
+                    >
+                      <option value="placed">Placed</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="preparing">Preparing</option>
+                      <option value="out_for_delivery">Out for Delivery</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-mandi-green font-black text-base">₹{order.total}</span>
-                  <span className="text-mandi-muted text-xs">({order.paymentMethod})</span>
+
+                {/* Body Details: Customer & Items */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {/* Customer & Delivery Address */}
+                  <div className="bg-mandi-surface p-3.5 rounded-xl space-y-1.5 border border-mandi-border/60">
+                    <p className="text-mandi-muted font-semibold uppercase text-[10px] tracking-wider">Customer & Delivery</p>
+                    <p className="text-mandi-text font-bold text-sm">{order.customerName || 'Customer'}</p>
+                    {order.customerPhone && <p className="text-mandi-muted">Phone: {order.customerPhone}</p>}
+                    {order.customerEmail && <p className="text-mandi-subtle">{order.customerEmail}</p>}
+                    <p className="text-mandi-text mt-1">
+                      {order.address?.line1}, {order.address?.city} - {order.address?.pincode}
+                    </p>
+                    {order.paymentDetails?.utr && (
+                      <p className="text-mandi-green font-mono text-[11px] mt-1">
+                        UTR / Ref: {order.paymentDetails.utr}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Order Items */}
+                  <div className="bg-mandi-surface p-3.5 rounded-xl space-y-1.5 border border-mandi-border/60">
+                    <p className="text-mandi-muted font-semibold uppercase text-[10px] tracking-wider">Ordered Items ({order.items?.length || 0})</p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-none divide-y divide-mandi-border/40">
+                      {order.items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-xs">
+                          <span className="text-mandi-text">{item.name} × {item.quantity} {item.unit}</span>
+                          <span className="text-mandi-muted font-semibold">₹{(Number(item.price) || 0) * (item.quantity || 1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-2 border-t border-mandi-border flex justify-between font-bold text-xs text-mandi-text">
+                      <span>Total Paid ({order.paymentMethod})</span>
+                      <span className="text-mandi-green">₹{order.total}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
