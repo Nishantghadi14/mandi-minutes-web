@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
+import './i18n.js'; // Initialize i18next with en/hi/mr translations
 
 // Register Service Worker for PWA / offline support
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -9,7 +10,7 @@ import LazyImage from '../components/common/LazyImage';
 import UPIPaymentModal from '../components/common/UPIPaymentModal';
 import { createSecureOrder } from '../services/orderService';
 import { validateAddress } from '../utils/validators';
-import { MapPin, Plus, Zap, Clock, CreditCard, Smartphone, Wallet, ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Plus, Zap, Clock, Smartphone, Wallet, ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
   { id: 'upi', label: 'UPI / Online Gateway', icon: Smartphone, desc: 'Instant UPI, GPay, PhonePe, Cards' },
@@ -26,6 +27,7 @@ const SCHEDULED_WINDOWS = [
 ];
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const { items, subtotal, discount, deliveryCharge, total, clearCart, storeId, coupon } = useCart();
   const { user, updateUser } = useAuth();
   const { stores } = useData();
@@ -301,7 +303,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="flex gap-2">
-                <button onClick={() => setStep(1)} className="btn-ghost text-sm py-2 flex-1">Back</button>
+                <button onClick={() => setStep(1)} className="btn-ghost text-sm py-2 flex-1">{t('common.back', 'Back')}</button>
                 <button 
                   onClick={handlePlaceOrder} 
                   disabled={placing} 
@@ -313,7 +315,7 @@ export default function CheckoutPage() {
                       <span>Verifying...</span>
                     </>
                   ) : (
-                    selectedPayment === 'upi' ? 'Pay Online' : 'Place COD Order'
+                    selectedPayment === 'upi' ? t('checkout.online', 'Pay Online') : t('checkout.placeOrder', 'Place Order')
                   )}
                 </button>
               </div>
@@ -323,7 +325,7 @@ export default function CheckoutPage() {
 
         {/* Order Summary */}
         <div className="card p-5 h-fit space-y-4">
-          <h2 className="text-mandi-text font-bold text-base">Order Summary</h2>
+          <h2 className="text-mandi-text font-bold text-base">{t('checkout.summary', 'Order Summary')}</h2>
           {store && (
             <p className="text-mandi-muted text-xs">From <strong className="text-mandi-text">{store.name}</strong></p>
           )}
@@ -345,21 +347,21 @@ export default function CheckoutPage() {
 
           <div className="border-t border-mandi-border pt-3 space-y-1.5 text-xs">
             <div className="flex justify-between text-mandi-muted">
-              <span>Item Total</span>
+              <span>{t('checkout.subtotal', 'Subtotal')}</span>
               <span>₹{subtotal}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-mandi-green">
-                <span>Discount ({coupon?.code})</span>
+                <span>{t('checkout.discount', 'Discount')} ({coupon?.code})</span>
                 <span>-₹{discount}</span>
               </div>
             )}
             <div className="flex justify-between text-mandi-muted">
-              <span>Delivery Fee</span>
-              <span>{deliveryCharge === 0 ? <span className="text-mandi-green">FREE</span> : `₹${deliveryCharge}`}</span>
+              <span>{t('checkout.deliveryCharge', 'Delivery Charge')}</span>
+              <span>{deliveryCharge === 0 ? <span className="text-mandi-green">{t('checkout.free', 'FREE')}</span> : `₹${deliveryCharge}`}</span>
             </div>
             <div className="border-t border-mandi-border pt-2 flex justify-between text-mandi-text font-bold text-sm">
-              <span>To Pay</span>
+              <span>{t('checkout.total', 'Total')}</span>
               <span>₹{total}</span>
             </div>
           </div>
@@ -367,7 +369,7 @@ export default function CheckoutPage() {
           <div className="bg-mandi-surface rounded-xl p-3 text-[11px] text-mandi-muted space-y-1">
             <div className="flex items-center gap-1 text-mandi-green font-semibold">
               <Zap size={12} />
-              <span>10-20 Min Express Guarantee</span>
+              <span>{t('common.express', '10-15 min delivery')}</span>
             </div>
             <p>Direct from store. No price markup.</p>
           </div>

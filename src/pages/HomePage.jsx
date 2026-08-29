@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from '../context/LocationContext';
 import { useData } from '../context/DataContext';
 import StoreCard from '../components/common/StoreCard';
-import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff, AlertTriangle } from 'lucide-react';
+import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function PromoBanner({ banners }) {
@@ -42,6 +43,7 @@ function PromoBanner({ banners }) {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { location, setLocationModal } = useLocation();
   const { getStoresByPincode, categories, banners, loadingStates, errorStates, retryFetch } = useData();
   const [stores, setStores] = useState([]);
@@ -143,13 +145,13 @@ export default function HomePage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="section-title mb-0">Shop by Category</h2>
-          <Link to="/search" className="flex items-center gap-1 text-mandi-green text-sm font-medium hover:underline">View all <ChevronRight size={16} /></Link>
+          <Link to="/search" className="flex items-center gap-1 text-mandi-green text-sm font-medium hover:underline">{t('common.viewAll')} <ChevronRight size={16} /></Link>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {categories.map(cat => (
             <Link key={cat.id} to={`/search?category=${cat.id}`} className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-mandi-border hover:border-mandi-green transition-all duration-200 group" style={{ background: cat.color }}>
               <span className="text-2xl group-hover:scale-110 transition-transform">{cat.icon}</span>
-              <span className="text-mandi-text text-xs font-medium text-center leading-tight">{cat.name}</span>
+              <span className="text-mandi-text text-xs font-medium text-center leading-tight">{t(`categories.${cat.id}`, cat.name)}</span>
             </Link>
           ))}
         </div>

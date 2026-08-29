@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import ReferralModal from './ReferralModal';
+import LanguageSwitcher from './LanguageSwitcher';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
@@ -71,6 +72,11 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            {/* Language switcher – desktop only */}
+            <div className="hidden sm:flex">
+              <LanguageSwitcher />
+            </div>
+
             {/* Cart button */}
             <button onClick={() => setIsOpen(true)} className="relative p-2.5 bg-mandi-green rounded-xl hover:bg-mandi-green-dark transition-colors">
               <ShoppingCart size={18} className="text-black" />
@@ -136,13 +142,14 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile location bar */}
-        <div className="flex sm:hidden items-center gap-2 px-4 pb-2">
+        {/* Mobile location + language bar */}
+        <div className="flex sm:hidden items-center justify-between px-4 pb-2">
           <button onClick={() => setLocationModal(true)} className="flex items-center gap-1.5 text-sm">
             <MapPin size={13} className="text-mandi-green" />
             <span className="text-mandi-muted">{location ? location.area : 'Set Location'}</span>
             <ChevronDown size={12} className="text-mandi-muted" />
           </button>
+          <LanguageSwitcher />
         </div>
       </div>
 

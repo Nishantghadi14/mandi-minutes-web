@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import StoreCard from '../components/common/StoreCard';
@@ -8,6 +9,7 @@ import { searchProducts, searchStores, useDebounce } from '../utils/searchProduc
 import { Search, SlidersHorizontal, Package, Store as StoreIcon, X } from 'lucide-react';
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, stores, categories } = useData();
 
@@ -60,7 +62,7 @@ export default function SearchPage() {
             type="text"
             value={query}
             onChange={e => { setQuery(e.target.value); setSearchParams({ q: e.target.value, category: selectedCat }); }}
-            placeholder="Search groceries, fruits, snacks, stores..."
+            placeholder={t('common.search')}
             className="input-field pl-11 pr-10 py-3 text-base w-full shadow-card"
           />
           {query && (
