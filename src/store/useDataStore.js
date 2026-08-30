@@ -9,6 +9,7 @@ import {
   query, 
   where, 
   orderBy, 
+  arrayUnion,
 } from 'firebase/firestore';
 import { db, functions, isFirebaseConfigured } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -16,6 +17,7 @@ import { initialStores } from '../data/initialStores';
 import { initialProducts } from '../data/initialProducts';
 import { initialCategories } from '../data/initialCategories';
 import { seedVirarDatabase } from '../config/seedDatabase';
+import { useAuthStore } from './useAuthStore';
 
 const defaultBanners = [
   { id: 'b1', title: '🎉 Flat 20% off on first order!', subtitle: 'Use code NEWUSER at checkout', color: 'from-green-900 to-mandi-dark', active: true },
@@ -23,19 +25,10 @@ const defaultBanners = [
   { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', color: 'from-blue-900 to-mandi-dark', active: true },
 ];
 
-const getInitialOrders = () => {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
-  } catch {
-    return [];
-  }
-};
-
 export const useDataStore = create((set, get) => ({
   stores: initialStores,
   products: initialProducts,
-  orders: getInitialOrders(),
+  orders: [],
   banners: defaultBanners,
   categories: initialCategories,
   tickets: [],
@@ -71,7 +64,7 @@ export const useDataStore = create((set, get) => ({
   },
 
   // Setup Real-time Firestore Listeners with Error Recovery
-  initSubscriptions: (user) => {
+  initSubscriptions: (userParam) => {
     if (!isFirebaseConfigured || !db) {
       set({ 
         loadingStates: { stores: false, products: false, orders: false, banners: false, tickets: false } 
@@ -79,9 +72,12 @@ export const useDataStore = create((set, get) => ({
       return () => {};
     }
 
+    // Always resolve user from parameter or current useAuthStore state
+    const user = userParam !== undefined ? userParam : useAuthStore.getState().user;
+
     // Auto seed check: Only run when authenticated as admin to prevent unauthorized client writes
     if (user?.role === 'admin') {
-      seedVirarDatabase().catch(err => console.warn('Auto seed check:', err));
+      seedVirarDatabase().catch(err => console.warn('[Database Seed] Auto seed check:', err));
     }
 
     const unsubscribers = [];
@@ -95,7 +91,7 @@ export const useDataStore = create((set, get) => ({
     };
 
     const markError = (key, err) => {
-      console.error(`Firestore ${key} subscription error:`, err);
+      console.error(`[Firestore ${key} Listener] Error:`, err);
       set(state => ({
         loadingStates: { ...state.loadingStates, [key]: false },
         errorStates: { ...state.errorStates, [key]: err.message || `Failed to load ${key}` },
@@ -179,32 +175,30 @@ export const useDataStore = create((set, get) => ({
         set(state => ({ loadingStates: { ...state.loadingStates, orders: true } }));
         let ordersQuery;
         if (user.role === 'admin') {
+          console.log('[Firestore Orders Listener] Initializing admin all-orders query for:', user.email);
           ordersQuery = collection(db, 'orders');
         } else if (user.role === 'rider') {
+          console.log('[Firestore Orders Listener] Initializing rider orders query for:', user.uid);
           ordersQuery = query(collection(db, 'orders'), where('riderId', '==', user.uid));
         } else if (user.role === 'vendor' && user.storeId) {
+          console.log('[Firestore Orders Listener] Initializing vendor orders query for store:', user.storeId);
           ordersQuery = query(collection(db, 'orders'), where('storeId', '==', user.storeId));
         } else {
+          console.log('[Firestore Orders Listener] Initializing customer orders query for:', user.uid);
           ordersQuery = query(collection(db, 'orders'), where('customerId', '==', user.uid));
         }
 
         const ordersUnsub = onSnapshot(
           ordersQuery, 
           (snapshot) => {
+            console.log(`[Firestore Orders Listener] Live update received (${snapshot.docs.length} orders)`);
             const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             list.sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
-            try {
-              localStorage.setItem('mandi_synced_orders', JSON.stringify(list));
-            } catch {}
             set({ orders: list });
             markSuccess('orders');
           }, 
           (err) => {
-            console.error('Firestore orders subscription error:', err);
-            try {
-              const cached = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
-              if (cached.length > 0) set({ orders: cached });
-            } catch {}
+            console.error('[Firestore Orders Listener] Subscription error:', err);
             markError('orders', err);
           }
         );
@@ -215,7 +209,7 @@ export const useDataStore = create((set, get) => ({
         set({ orders: [], loadingStates: { ...get().loadingStates, orders: false } });
       }
     } catch (err) {
-      console.error('Subscription setup failed:', err);
+      console.error('[Subscription Setup] Failed to register listeners:', err);
     }
 
     return () => {
@@ -226,9 +220,10 @@ export const useDataStore = create((set, get) => ({
   },
 
   retryFetch: (_key) => {
-    // Allows UI components to trigger a reconnect / retry
-    const user = get().user;
-    get().initSubscriptions(user);
+    // Allows UI components to trigger a reconnect / retry with authenticated user
+    const user = useAuthStore.getState().user;
+    console.log('[useDataStore] retryFetch called with user:', user?.email, user?.role);
+    return get().initSubscriptions(user);
   },
 
   getStoresByPincode: (pincode) => {
@@ -264,8 +259,10 @@ export const useDataStore = create((set, get) => ({
     if (db && isFirebaseConfigured) {
       try {
         await setDoc(doc(db, 'orders', orderId), newOrder);
+        console.log('[Order Creation] Direct setDoc succeeded:', orderId);
       } catch (err) {
-        console.warn('Direct order write:', err.message);
+        console.error('[Order Creation] Direct setDoc failed:', err);
+        throw err;
       }
     }
     set(state => ({ orders: [newOrder, ...state.orders.filter(o => o.id !== orderId)] }));
@@ -280,6 +277,17 @@ export const useDataStore = create((set, get) => ({
       note: note || `Order status updated to ${status.replace(/_/g, ' ')}` 
     };
 
+    if (isFirebaseConfigured && functions) {
+      try {
+        console.log('[Order Status Update] Calling transitionOrderStatus Cloud Function...');
+        const result = await httpsCallable(functions, 'transitionOrderStatus')({ orderId, status, note });
+        console.log('[Order Status Update] Transition via Cloud Function succeeded:', result.data);
+        return result.data.order;
+      } catch (fnErr) {
+        console.warn('[Order Status Update] Cloud function unavailable, falling back to direct Firestore update:', fnErr.message);
+      }
+    }
+
     if (db && isFirebaseConfigured) {
       try {
         await updateDoc(doc(db, 'orders', orderId), {
@@ -287,10 +295,13 @@ export const useDataStore = create((set, get) => ({
           statusHistory: arrayUnion(historyEntry),
           updatedAt: new Date().toISOString()
         });
+        console.log('[Order Status Update] Status updated in Firestore:', orderId, '->', status);
       } catch (err) {
-        console.warn('Firestore updateOrderStatus notice:', err.message);
+        console.error('[Order Status Update] Failed to update Firestore:', err);
+        throw new Error(`Failed to update order status: ${err.message}`);
       }
     }
+
     set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status, statusHistory: [...(o.statusHistory || []), historyEntry] } : o) }));
   },
 
