@@ -72,18 +72,12 @@ export default function AdminPanel() {
   };
 
   // ── Real KPI Aggregates ───────────────────────────────────────
-  const safeOrders = useMemo(() => Array.isArray(orders) ? orders : [], [orders]);
-  const safeStores = useMemo(() => Array.isArray(stores) ? stores : [], [stores]);
-  const safeProducts = useMemo(() => Array.isArray(products) ? products : [], [products]);
-  const safeBanners = useMemo(() => Array.isArray(banners) ? banners : [], [banners]);
-  const safeTickets = useMemo(() => Array.isArray(tickets) ? tickets : [], [tickets]);
-
-  const completedOrders = useMemo(() => safeOrders.filter(o => o?.status === 'delivered'), [safeOrders]);
-  const totalGMV = useMemo(() => completedOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0), [completedOrders]);
+  const completedOrders = useMemo(() => orders.filter(o => o.status === 'delivered'), [orders]);
+  const totalGMV = useMemo(() => completedOrders.reduce((sum, o) => sum + (o.total || 0), 0), [completedOrders]);
   const aov = completedOrders.length > 0 ? Math.round(totalGMV / completedOrders.length) : 0;
-  const activeStores = useMemo(() => safeStores.filter(s => s?.status === 'approved'), [safeStores]);
-  const pendingVendors = safeStores.filter(s => s?.status === 'pending').length;
-  const openTickets = safeTickets.filter(t => t?.status === 'open').length;
+  const activeStores = useMemo(() => stores.filter(s => s.status === 'approved'), [stores]);
+  const pendingVendors = stores.filter(s => s.status === 'pending').length;
+  const openTickets = tickets.filter(t => t.status === 'open').length;
 
   // ── 30-Day Order Chart ────────────────────────────────────────
   const dailyOrderChart = useMemo(() => {
@@ -96,35 +90,32 @@ export default function AdminPanel() {
       const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       map[label] = { date: label, orders: 0, gmv: 0 };
     }
-    safeOrders.forEach(o => {
-      if (!o) return;
+    orders.forEach(o => {
       const ts = o.placedAt ? new Date(o.placedAt) : null;
-      if (!ts || isNaN(ts.getTime())) return;
+      if (!ts) return;
       const diffDays = Math.floor((now - ts) / (1000 * 60 * 60 * 24));
       if (diffDays > 29 || diffDays < 0) return;
       const label = ts.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       if (map[label]) {
         map[label].orders += 1;
-        if (o.status === 'delivered') map[label].gmv += (Number(o.total) || 0);
+        if (o.status === 'delivered') map[label].gmv += (o.total || 0);
       }
     });
     return Object.values(map);
-  }, [safeOrders]);
+  }, [orders]);
 
   // ── Store Comparison Table ─────────────────────────────────────
   const vendorPerformance = useMemo(() => {
     const map = {};
-    safeStores.forEach(s => {
-      if (!s || !s.id) return;
-      map[s.id] = { id: s.id, name: s.name || 'Store', ordersCount: 0, gmv: 0, rating: Number(s.rating) || 0, delayedCount: 0 };
+    stores.forEach(s => {
+      map[s.id] = { id: s.id, name: s.name, ordersCount: 0, gmv: 0, rating: s.rating || 0, delayedCount: 0 };
     });
 
     const now = Date.now();
-    safeOrders.forEach(o => {
-      if (!o || !o.storeId) return;
+    orders.forEach(o => {
       if (map[o.storeId]) {
         map[o.storeId].ordersCount += 1;
-        if (o.status === 'delivered') map[o.storeId].gmv += (Number(o.total) || 0);
+        if (o.status === 'delivered') map[o.storeId].gmv += (o.total || 0);
         if (['placed', 'accepted'].includes(o.status)) {
           const age = (now - new Date(o.placedAt || 0).getTime()) / (60 * 1000);
           if (age > 10) map[o.storeId].delayedCount += 1;
@@ -133,17 +124,16 @@ export default function AdminPanel() {
     });
 
     return Object.values(map).sort((a, b) => b.gmv - a.gmv);
-  }, [safeStores, safeOrders]);
+  }, [stores, orders]);
 
   // ── High-Risk Fraud Guardrail Monitor ─────────────────────────
   const highRiskOrders = useMemo(() => {
-    return safeOrders.filter(o => {
-      if (!o) return false;
-      const isHighCod = o.paymentMethod === 'Cash on Delivery' && (Number(o.total) || 0) >= 1500;
+    return orders.filter(o => {
+      const isHighCod = o.paymentMethod === 'Cash on Delivery' && o.total >= 1500;
       const isManyItems = (o.items || []).length >= 10;
       return isHighCod || isManyItems;
     });
-  }, [safeOrders]);
+  }, [orders]);
 
   const handleCreateStore = (e) => {
     e.preventDefault();
@@ -240,12 +230,12 @@ export default function AdminPanel() {
       {/* Navigation Tabs */}
       <div className="flex border-b border-mandi-border mb-6 overflow-x-auto scrollbar-none">
         {[
-          { id: 'orders', label: `Live Orders (${safeOrders.length})` },
           { id: 'analytics', label: 'Analytics & SLA Oversight' },
-          { id: 'stores', label: `Stores (${safeStores.length})` },
-          { id: 'products', label: `Products (${safeProducts.length})` },
-          { id: 'banners', label: `Banners (${safeBanners.length})` },
-          { id: 'tickets', label: `Tickets (${safeTickets.length})` },
+          { id: 'stores', label: `Stores (${stores.length})` },
+          { id: 'orders', label: `Orders (${orders.length})` },
+          { id: 'products', label: `Products (${products.length})` },
+          { id: 'banners', label: `Banners (${banners.length})` },
+          { id: 'tickets', label: `Tickets (${tickets.length})` },
         ].map(t => (
           <button 
             key={t.id} 
@@ -367,7 +357,7 @@ export default function AdminPanel() {
       {/* TAB 1: Stores */}
       {activeTab === 'stores' && (
         <div className="space-y-4">
-          {safeStores.map(s => (
+          {stores.map(s => (
             <div key={s.id} className="card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <LazyImage src={s.image} alt={s.name} className="w-16 h-16 rounded-xl object-cover" containerClass="w-16 h-16 rounded-xl flex-shrink-0" width={100} quality={60} />
@@ -412,13 +402,13 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {loadingStates?.orders && safeOrders.length === 0 ? (
+          {loadingStates?.orders && orders.length === 0 ? (
             <div className="card p-12 text-center space-y-3">
               <RefreshCw size={24} className="animate-spin text-mandi-green mx-auto" />
               <h3 className="text-mandi-text font-bold text-base">Syncing Live Orders from Firestore...</h3>
               <p className="text-mandi-muted text-xs">Connecting to real-time database listener.</p>
             </div>
-          ) : safeOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="card p-12 text-center space-y-3">
               <div className="w-12 h-12 bg-mandi-surface rounded-full flex items-center justify-center mx-auto text-mandi-muted">
                 <Database size={24} />
@@ -429,20 +419,20 @@ export default function AdminPanel() {
               </p>
             </div>
           ) : (
-            safeOrders.map(order => (
+            orders.map(order => (
               <div key={order.id} className="card p-5 space-y-4 border border-mandi-border hover:border-mandi-green/40 transition-colors">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-mandi-border">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-mandi-text font-black text-base">#{(order.id || 'ORDER').toUpperCase()}</span>
+                      <span className="text-mandi-text font-black text-base">#{order.id.toUpperCase()}</span>
                       <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${
                         order.status === 'delivered' ? 'bg-mandi-green-muted text-mandi-green' :
                         order.status === 'cancelled' ? 'bg-red-950 text-red-400' :
                         order.status === 'out_for_delivery' ? 'bg-blue-950 text-blue-400' :
                         'bg-yellow-950 text-yellow-300'
                       }`}>
-                        {(order.status || 'placed').replace(/_/g, ' ')}
+                        {order.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <p className="text-mandi-muted text-xs">
@@ -452,18 +442,18 @@ export default function AdminPanel() {
 
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-mandi-green font-black text-xl">₹{order.total || 0}</p>
+                      <p className="text-mandi-green font-black text-xl">₹{order.total}</p>
                       <p className="text-mandi-subtle text-[11px]">
-                        {order.paymentMethod || 'UPI / COD'} • <span className={order.paymentStatus === 'paid' ? 'text-mandi-green font-semibold' : 'text-yellow-400'}>{order.paymentStatus?.toUpperCase() || 'PENDING'}</span>
+                        {order.paymentMethod} • <span className={order.paymentStatus === 'paid' ? 'text-mandi-green font-semibold' : 'text-yellow-400'}>{order.paymentStatus?.toUpperCase()}</span>
                       </p>
                     </div>
 
                     {/* Quick Status Transition Dropdown */}
                     <select
-                      value={order.status || 'placed'}
+                      value={order.status}
                       onChange={(e) => {
                         updateOrderStatus(order.id, e.target.value);
-                        addToast(`Order #${(order.id || '').slice(-6)} marked as ${e.target.value}!`, 'info');
+                        addToast(`Order #${order.id.slice(-6)} marked as ${e.target.value}!`, 'info');
                       }}
                       className="bg-mandi-surface border border-mandi-border rounded-xl text-xs font-semibold px-3 py-2 text-mandi-text hover:border-mandi-green transition-colors cursor-pointer"
                     >
@@ -486,7 +476,7 @@ export default function AdminPanel() {
                     {order.customerPhone && <p className="text-mandi-muted">Phone: {order.customerPhone}</p>}
                     {order.customerEmail && <p className="text-mandi-subtle">{order.customerEmail}</p>}
                     <p className="text-mandi-text mt-1">
-                      {order.address?.line1 || 'Address not specified'}{order.address?.city ? `, ${order.address.city}` : ''}{order.address?.pincode ? ` - ${order.address.pincode}` : ''}
+                      {order.address?.line1}, {order.address?.city} - {order.address?.pincode}
                     </p>
                     {order.paymentDetails?.utr && (
                       <p className="text-mandi-green font-mono text-[11px] mt-1">
@@ -499,7 +489,7 @@ export default function AdminPanel() {
                   <div className="bg-mandi-surface p-3.5 rounded-xl space-y-1.5 border border-mandi-border/60">
                     <p className="text-mandi-muted font-semibold uppercase text-[10px] tracking-wider">Ordered Items ({order.items?.length || 0})</p>
                     <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-none divide-y divide-mandi-border/40">
-                      {(order.items || []).map((item, idx) => (
+                      {order.items?.map((item, idx) => (
                         <div key={idx} className="flex justify-between py-1 text-xs">
                           <span className="text-mandi-text">{item.name} × {item.quantity} {item.unit}</span>
                           <span className="text-mandi-muted font-semibold">₹{(Number(item.price) || 0) * (item.quantity || 1)}</span>
@@ -507,8 +497,8 @@ export default function AdminPanel() {
                       ))}
                     </div>
                     <div className="pt-2 border-t border-mandi-border flex justify-between font-bold text-xs text-mandi-text">
-                      <span>Total Paid ({order.paymentMethod || 'UPI / COD'})</span>
-                      <span className="text-mandi-green">₹{order.total || 0}</span>
+                      <span>Total Paid ({order.paymentMethod})</span>
+                      <span className="text-mandi-green">₹{order.total}</span>
                     </div>
                   </div>
                 </div>
@@ -532,7 +522,7 @@ export default function AdminPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-mandi-border">
-              {safeProducts.map(p => (
+              {products.map(p => (
                 <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
                   <td className="p-3 flex items-center gap-3">
                     <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" containerClass="w-10 h-10 rounded-lg flex-shrink-0" width={100} quality={50} />
@@ -569,7 +559,7 @@ export default function AdminPanel() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {safeBanners.map(b => (
+            {banners.map(b => (
               <div key={b.id} className="card p-4 flex items-center justify-between">
                 <div>
                   <p className="text-mandi-text font-bold text-sm">{b.title}</p>
@@ -585,7 +575,7 @@ export default function AdminPanel() {
       {/* TAB 5: Tickets */}
       {activeTab === 'tickets' && (
         <div className="space-y-4">
-          {safeTickets.map(t => (
+          {tickets.map(t => (
             <div key={t.id} className="card p-5">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">

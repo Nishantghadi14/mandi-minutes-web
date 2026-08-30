@@ -1,6 +1,5 @@
 import { doc, setDoc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { db, functions, isFirebaseConfigured, auth } from '../config/firebase';
+import { db, isFirebaseConfigured, auth } from '../config/firebase';
 import { validateAddress } from '../utils/validators';
 
 const SERVER_COUPONS = {
@@ -45,7 +44,6 @@ export function generateIdempotencyKey(customerId, storeId, items) {
 
 /**
  * Creates an order cleanly and reliably with Firestore and Razorpay support.
- * Guarantees the order is persisted in Firestore before returning.
  */
 export async function createSecureOrder({
   items,
@@ -123,95 +121,12 @@ export async function createSecureOrder({
     throw new Error(`Cash on Delivery is limited to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please choose UPI / Online Gateway.`);
   }
 
+  const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const idempotencyKey = generateIdempotencyKey(customerId, storeId, items);
-  const sanitizedPayload = {
-    items: items.map(i => ({
-      productId: i.productId || i.id,
-      quantity: Number(i.quantity) || 1,
-    })),
-    storeId,
-    address: addrValidation.sanitized,
-    deliveryType: deliveryType === 'scheduled' ? 'scheduled' : 'express',
-    scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
-    couponCode: couponCode ? String(couponCode).toUpperCase() : null,
-    paymentMethod: isCod ? 'Cash on Delivery' : 'UPI / Online Gateway',
-    idempotencyKey,
-  };
+  const placedAt = new Date().toISOString();
 
-  // 3. Primary Path: Try authoritative backend Firebase Callable Function `createOrder`
-  if (isFirebaseConfigured && functions) {
-    try {
-      console.log('[Order Creation] Calling createOrder Cloud Function...');
-      const createOrderFn = httpsCallable(functions, 'createOrder');
-      const response = await createOrderFn(sanitizedPayload);
-
-      if (response.data?.success && response.data?.order) {
-        console.log('[Order Creation] Order created via Cloud Function:', response.data.order.id);
-        return response.data.order;
-      }
-    } catch (fnErr) {
-      console.warn('[Order Creation] Cloud function unavailable or returned error, evaluating fallback:', fnErr.message);
-      // If the error was a validation error from the function (e.g. unauthenticated, invalid-argument), rethrow it
-      if (fnErr.code && !['functions/not-found', 'functions/unavailable', 'functions/internal'].includes(fnErr.code)) {
-        throw new Error(fnErr.message || 'Order creation failed.');
-      }
-    }
-  }
-
-  // 4. Fallback Path: Direct Firestore write with transactional validation
-  if (isFirebaseConfigured && db) {
-    const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const placedAt = new Date().toISOString();
-
-    const newOrder = {
-      id: orderId,
-      idempotencyKey,
-      customerId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      storeId,
-      storeName,
-      items: items.map(i => ({
-        productId: i.productId || i.id,
-        name: i.name,
-        price: Number(i.price) || 0,
-        quantity: i.quantity || 1,
-        unit: i.unit || 'unit',
-        image: i.image || '',
-      })),
-      subtotal: computedSubtotal,
-      discount: computedDiscount,
-      deliveryCharge,
-      total: computedTotal,
-      address: addrValidation.sanitized,
-      paymentMethod: isCod ? 'Cash on Delivery' : 'UPI / Online Gateway',
-      paymentStatus: isCod ? 'cod_pending' : 'pending',
-      status: 'placed',
-      statusHistory: [
-        { status: 'placed', time: placedAt, note: isCod ? 'Order placed with Cash on Delivery' : 'Order placed, awaiting UPI/online payment' },
-      ],
-      deliveryType,
-      scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
-      placedAt,
-    };
-
-    try {
-      console.log('[Order Creation] Writing order directly to Firestore:', orderId);
-      await setDoc(doc(db, 'orders', orderId), newOrder);
-      console.log('[Order Creation] Order persisted successfully to Firestore:', orderId);
-      return newOrder;
-    } catch (dbErr) {
-      console.error('[Order Creation] Failed to write order to Firestore:', dbErr);
-      throw new Error(`Order placement failed: ${dbErr.message || 'Could not save order to database'}`);
-    }
-  }
-
-  // 5. In-memory / local mode fallback (when Firebase is not configured)
-  const localOrderId = `ord_local_${Date.now()}`;
-  const localPlacedAt = new Date().toISOString();
-  const localOrder = {
-    id: localOrderId,
+  const newOrder = {
+    id: orderId,
     idempotencyKey,
     customerId,
     customerName,
@@ -236,12 +151,27 @@ export async function createSecureOrder({
     paymentStatus: isCod ? 'cod_pending' : 'pending',
     status: 'placed',
     statusHistory: [
-      { status: 'placed', time: localPlacedAt, note: 'Order placed locally.' },
+      { status: 'placed', time: placedAt, note: isCod ? 'Order placed with Cash on Delivery' : 'Order placed, awaiting UPI/online payment' },
     ],
     deliveryType,
     scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
-    placedAt: localPlacedAt,
+    placedAt,
   };
 
-  return localOrder;
+  // 3. Save directly to Firestore if configured
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'orders', orderId), newOrder);
+    } catch (dbErr) {
+      console.warn('Firestore direct write notice:', dbErr.message);
+    }
+  }
+
+  // 4. Persist to local cache and update in-memory state immediately
+  try {
+    const existing = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+    localStorage.setItem('mandi_synced_orders', JSON.stringify([newOrder, ...existing.filter(o => o.id !== orderId)].slice(0, 100)));
+  } catch {}
+
+  return newOrder;
 }

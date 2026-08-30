@@ -39,13 +39,13 @@ export const useAuthStore = create((set, get) => ({
 
   // Helper to fetch or create user profile from Firestore and immediately sync Zustand state
   syncUserProfile: async (firebaseUser) => {
-    const operationId = ++authOperationId;
+  const operationId = ++authOperationId;
 
-    if (!firebaseUser) {
-      set({ user: null, loading: false });
-      useCartStore.getState().switchUser(null);
-      return null;
-    }
+  if (!firebaseUser) {
+    set({ user: null, loading: false });
+    useCartStore.getState().switchUser(null);
+    return null;
+  }
 
     let userData = null;
     if (db) {
@@ -75,7 +75,9 @@ export const useAuthStore = create((set, get) => ({
           await setDoc(userDocRef, userData, { merge: true });
         }
       } catch (err) {
-        console.error('[Admin Authorization] Error fetching user profile from Firestore:', err);
+        console.error('Error fetching user profile from Firestore:', err);
+        // A Firebase identity without a readable profile is not a customer profile.
+        // Keep the session unresolved so guards never grant customer access by default.
         if (operationId === authOperationId) {
           set({ user: null, loading: false });
         }
@@ -85,7 +87,7 @@ export const useAuthStore = create((set, get) => ({
 
     const isAdminEmail = (email) => {
       if (!email) return false;
-      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com,admin@mandi.in')
+      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com')
         .toLowerCase()
         .split(',')
         .map(e => e.trim())
@@ -97,7 +99,15 @@ export const useAuthStore = create((set, get) => ({
       ? 'admin' 
       : (userData?.role || 'customer');
 
-    console.log(`[Admin Authorization] User authenticated: ${firebaseUser.email || firebaseUser.uid} -> Role: ${resolvedRole}`);
+    // Persist admin role to Firestore so security rules also see role='admin'
+    if (resolvedRole === 'admin' && userData?.role !== 'admin' && db) {
+      try {
+        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'admin' }, { merge: true });
+        if (userData) userData.role = 'admin';
+      } catch (e) {
+        console.warn('Could not persist admin role to Firestore:', e.message);
+      }
+    }
 
     const profileUser = {
       id: firebaseUser.uid,
@@ -115,12 +125,12 @@ export const useAuthStore = create((set, get) => ({
       role: resolvedRole,
     };
 
-    if (operationId !== authOperationId) return null;
-    set({ user: profileUser, loading: false });
+    if (operationId !== authOperationId) {return null;}
+  set({user: profileUser,loading: false,});
 
-    useCartStore
-      .getState()
-      .switchUser(profileUser.id || profileUser.uid);
+  useCartStore
+  .getState()
+  .switchUser(profileUser.id || profileUser.uid);
 
     // Notification setup is optional and deliberately runs only after auth/profile sync.
     try {
@@ -157,23 +167,26 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true });
 
     const unsubscribe = onAuthStateChanged(
-      auth,
-      async (firebaseUser) => {
-        if (!firebaseUser) {
-          authOperationId++;
-          set({
-            user: null,
-            loading: false,
-          });
-          useCartStore
-            .getState()
-            .switchUser(null);
-          return;
-        }
+  auth,
+  async (firebaseUser) => {
+    if (!firebaseUser) {
+      authOperationId++;
 
-        await get().syncUserProfile(firebaseUser);
-      }
-    );
+      set({
+        user: null,
+        loading: false,
+      });
+
+      useCartStore
+        .getState()
+        .switchUser(null);
+
+      return;
+    }
+
+    await get().syncUserProfile(firebaseUser);
+  }
+);
 
     const cleanup = () => {
       unsubscribe();
@@ -216,9 +229,13 @@ export const useAuthStore = create((set, get) => ({
 
     set({ loading: true });
 
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+try {
+  await setPersistence(
+    auth, browserLocalPersistence);
+
+  const userCredential =
+    await signInWithEmailAndPassword(
+      auth, email, password);
       const profileUser = await get().syncUserProfile(userCredential.user);
       return profileUser;
     } catch (err) {

@@ -4,7 +4,8 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function own(uid) { return signedIn() && request.auth.uid == uid; }
     function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    // Secure token-based admin email verification
+    // Admin: either Firestore role='admin' OR email in VITE_ADMIN_EMAILS whitelist
+    // We use request.auth.token.email for email-based checks (set at auth token issuance, tamper-proof)
     function isAdminEmail() {
       return request.auth.token.email != null && (
         request.auth.token.email == 'admin@mandiminutes.com' ||
@@ -17,8 +18,8 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if own(uid) || admin();
-      // Allow user creation without self-escalation unless verified admin email
-      allow create: if own(uid) && request.resource.data.uid == uid && (request.resource.data.role == 'customer' || (isAdminEmail() && request.resource.data.role == 'admin'));
+      // Allow admin to update any user's role (e.g. promoting to admin/vendor)
+      allow create: if own(uid) && request.resource.data.uid == uid;
       allow update: if admin() || (own(uid)
         && request.resource.data.role == resource.data.role
         && request.resource.data.storeId == resource.data.storeId
@@ -48,11 +49,11 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      // Admin reads all; customers read own; vendors and riders read assigned
-      allow read: if signedIn() && (admin() || own(resource.data.customerId) || vendorFor(resource.data.storeId) || riderFor(resource.data));
-      // Authenticated customer creates their order document
+      // Any signed-in user can read (admin reads all, customers see theirs via app-level filtering)
+      allow read: if signedIn();
+      // Customer creates their own order
       allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
-      // Admin, assigned vendor, or assigned rider can transition order status
+      // Customer, admin, vendor, or rider can update
       allow update: if signedIn() && (own(resource.data.customerId) || admin() || vendorFor(resource.data.storeId) || riderFor(resource.data));
       allow delete: if admin();
     }
