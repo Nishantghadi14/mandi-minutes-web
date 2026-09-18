@@ -18,9 +18,14 @@
     min-height: 100vh;
   }
 
+  ::selection {
+    background: rgba(0, 200, 81, 0.25);
+    color: #00E65C;
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   
   ::-webkit-scrollbar-track {
@@ -28,27 +33,33 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-mandi-border-light rounded-full;
+    background: linear-gradient(180deg, #00C851, #007E33);
+    border-radius: 10px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-mandi-muted;
+    background: #00C851;
   }
 
   input, textarea, select {
     @apply bg-mandi-surface border border-mandi-border text-mandi-text placeholder-mandi-subtle rounded-xl outline-none;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   input:focus, textarea:focus, select:focus {
     @apply border-mandi-green;
-    box-shadow: 0 0 0 3px rgba(0, 200, 81, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 200, 81, 0.12), 0 0 20px rgba(0, 200, 81, 0.06);
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-mandi-green text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:bg-mandi-green-dark active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-mandi-green text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:bg-mandi-green-light active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    box-shadow: 0 4px 16px rgba(0, 200, 81, 0.35);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(0, 200, 81, 0.5);
   }
 
   .btn-outline {
@@ -64,7 +75,12 @@
   }
 
   .card-hover {
-    @apply card transition-all duration-200 hover:border-mandi-border-light hover:shadow-card-hover cursor-pointer;
+    @apply card transition-all duration-250 hover:border-mandi-green hover:-translate-y-1 cursor-pointer;
+    transition-duration: 250ms;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 200, 81, 0.2);
   }
 
   .section-title {
@@ -72,11 +88,15 @@
   }
 
   .badge-green {
-    @apply bg-mandi-green text-black text-xs font-semibold px-2.5 py-1 rounded-full;
+    @apply bg-mandi-green text-black text-xs font-bold px-2.5 py-1 rounded-full;
   }
 
   .badge-muted {
     @apply bg-mandi-surface text-mandi-muted text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+
+  .badge-amber {
+    @apply bg-mandi-amber text-black text-xs font-bold px-2.5 py-1 rounded-full;
   }
 
   .input-field {
@@ -111,11 +131,79 @@
   .overlay {
     @apply fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-40;
   }
+
+  /* Glass morphism card */
+  .card-glass {
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+  }
+
+  /* Glowing icon circle */
+  .icon-circle {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    background: rgba(0, 200, 81, 0.12);
+    border: 1px solid rgba(0, 200, 81, 0.2);
+    box-shadow: 0 0 20px rgba(0, 200, 81, 0.1);
+  }
+
+  .icon-circle:hover {
+    box-shadow: 0 0 30px rgba(0, 200, 81, 0.25);
+  }
+
+  /* Gradient border helper */
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(0,200,81,0.5), rgba(0,200,81,0.05), rgba(0,200,81,0.3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Glow dot for live indicator */
+  .glow-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00C851;
+    box-shadow: 0 0 6px #00C851, 0 0 12px rgba(0, 200, 81, 0.5);
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+
+  /* Stat card premium */
+  .stat-card {
+    @apply card p-4 flex flex-col items-center text-center gap-2 transition-all duration-300;
+  }
+
+  .stat-card:hover {
+    border-color: rgba(0, 200, 81, 0.4);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 200, 81, 0.15);
+    transform: translateY(-2px);
+  }
 }
 
 @layer utilities {
   .text-gradient-green {
     background: linear-gradient(135deg, #00C851, #00E65C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #F59E0B, #FBBF24);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -131,9 +219,27 @@
   }
 
   .glass {
-    background: rgba(30, 30, 30, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(30, 30, 30, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-dark {
+    background: rgba(18, 18, 18, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 200, 81, 0.3), 0 0 40px rgba(0, 200, 81, 0.1);
+  }
+
+  .glow-green-sm {
+    box-shadow: 0 0 10px rgba(0, 200, 81, 0.25);
+  }
+
+  .transition-250 {
+    transition-duration: 250ms;
   }
 }
 
@@ -167,7 +273,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: #00C851;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(0, 200, 81, 0.4);
+  box-shadow: 0 0 8px rgba(0, 200, 81, 0.5), 0 0 16px rgba(0, 200, 81, 0.2);
 }
 
 /* Toast animation */
@@ -223,4 +329,34 @@ input[type="range"]::-webkit-slider-thumb {
 
 .animate-bounce-in {
   animation: bounce-in 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
+/* Live pulse keyframe (used by .glow-dot) */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* Float keyframe */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* Hero decorative orb */
+.hero-orb {
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Category card glow ring on hover */
+.category-card:hover {
+  box-shadow: 0 0 0 2px rgba(0, 200, 81, 0.4), 0 8px 24px rgba(0, 0, 0, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Product card OOS grayscale */
+.product-oos {
+  filter: grayscale(0.6) brightness(0.8);
 }

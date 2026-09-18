@@ -1,5 +1,14 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+
+/** Smoothly scrolls to the top of the page on every route change */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pathname]);
+  return null;
+}
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -63,6 +72,7 @@ export default function App() {
   return (
     <HelmetProvider>
       <Router>
+        <ScrollToTop />
         <ToastProvider>
           <AuthProvider>
             <DataProvider>

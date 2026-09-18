@@ -75,10 +75,10 @@ export default function SearchPage() {
       <div className="flex justify-center border-b border-mandi-border mb-6">
         <div className="flex gap-8">
           <button onClick={() => setActiveTab('products')} className={`pb-3 font-semibold text-sm flex items-center gap-2 border-b-2 transition-all ${activeTab === 'products' ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>
-            <Package size={16} />Products ({filteredProducts.length})
+            <Package size={16} />{t('search.products')} ({filteredProducts.length})
           </button>
           <button onClick={() => setActiveTab('stores')} className={`pb-3 font-semibold text-sm flex items-center gap-2 border-b-2 transition-all ${activeTab === 'stores' ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>
-            <StoreIcon size={16} />Stores ({filteredStores.length})
+            <StoreIcon size={16} />{t('search.stores')} ({filteredStores.length})
           </button>
         </div>
       </div>
@@ -87,14 +87,14 @@ export default function SearchPage() {
         {/* Filters sidebar */}
         <div className="lg:col-span-1 space-y-4">
           <div className="card p-4">
-            <h3 className="text-mandi-text font-bold mb-3 flex items-center gap-2 text-sm"><SlidersHorizontal size={16} className="text-mandi-green" />Filters</h3>
+            <h3 className="text-mandi-text font-bold mb-3 flex items-center gap-2 text-sm"><SlidersHorizontal size={16} className="text-mandi-green" />{t('search.filters')}</h3>
 
             {/* Category filter */}
             <div className="mb-4">
-              <label className="block text-mandi-muted text-xs font-medium mb-2">Category</label>
+              <label className="block text-mandi-muted text-xs font-medium mb-2">{t('search.category')}</label>
               <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
                 <button onClick={() => setSelectedCat('all')} className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${selectedCat === 'all' ? 'bg-mandi-green text-black font-semibold' : 'text-mandi-muted hover:bg-mandi-surface'}`}>
-                  All Categories
+                  {t('search.allCategories')}
                 </button>
                 {categories.map(c => (
                   <button key={c.id} onClick={() => setSelectedCat(c.id)} className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1.5 ${selectedCat === c.id ? 'bg-mandi-green text-black font-semibold' : 'text-mandi-muted hover:bg-mandi-surface'}`}>
@@ -107,9 +107,9 @@ export default function SearchPage() {
             {/* Store filter */}
             {activeTab === 'products' && (
               <div className="mb-4">
-                <label className="block text-mandi-muted text-xs font-medium mb-2">Store</label>
+                <label className="block text-mandi-muted text-xs font-medium mb-2">{t('search.store')}</label>
                 <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} className="input-field text-xs py-2 w-full">
-                  <option value="all">All Stores</option>
+                  <option value="all">{t('search.allStores')}</option>
                   {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
@@ -119,7 +119,7 @@ export default function SearchPage() {
             {activeTab === 'products' && (
               <div>
                 <div className="flex justify-between text-xs text-mandi-muted mb-1">
-                  <span>Max Price</span>
+                  <span>{t('search.maxPrice')}</span>
                   <span className="text-mandi-green font-bold">₹{maxPrice}</span>
                 </div>
                 <input type="range" min="20" max="1000" step="10" value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} className="w-full cursor-pointer" />
@@ -134,8 +134,8 @@ export default function SearchPage() {
             filteredProducts.length === 0 ? (
               <div className="text-center py-16 card p-8">
                 <Package size={40} className="text-mandi-subtle mx-auto mb-3" />
-                <p className="text-mandi-text font-semibold">No products found</p>
-                <p className="text-mandi-muted text-sm mt-1">Try adjusting your search or filters</p>
+                <p className="text-mandi-text font-semibold">{t('search.noProducts')}</p>
+                <p className="text-mandi-muted text-sm mt-1">{t('search.noProductsHint')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -146,8 +146,8 @@ export default function SearchPage() {
             filteredStores.length === 0 ? (
               <div className="text-center py-16 card p-8">
                 <StoreIcon size={40} className="text-mandi-subtle mx-auto mb-3" />
-                <p className="text-mandi-text font-semibold">No stores found</p>
-                <p className="text-mandi-muted text-sm mt-1">Try searching another term or location</p>
+                <p className="text-mandi-text font-semibold">{t('search.noStores')}</p>
+                <p className="text-mandi-muted text-sm mt-1">{t('search.noStoresHint')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

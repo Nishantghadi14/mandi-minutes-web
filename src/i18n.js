@@ -1,4 +1,4 @@
-﻿import i18n from 'i18next';
+import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 // ─── Translation Resources ────────────────────────────────────────────────────
@@ -14,6 +14,11 @@ const resources = {
         refer: 'Refer & Earn ₹50',
         login: 'Login',
         logout: 'Logout',
+        cart: 'Cart',
+        profile: 'Profile',
+        setLocation: 'Set Location',
+        dashboard: 'Dashboard',
+        adminPanel: 'Admin Panel',
       },
       // Categories
       categories: {
@@ -27,6 +32,67 @@ const resources = {
         oil: 'Oil & Ghee',
         masala: 'Masala & Spices',
         household: 'Household',
+      },
+      // Hero section
+      hero: {
+        badge: 'Virar Express Delivery',
+        trustedKiranas: 'Trusted Kiranas',
+        headline: "Virar's Local Kirana Stores Delivered in 10-15 Mins",
+        subheadline: 'Fresh groceries, Gokul milk, Modak flour, fruits, and daily staples from Kirana shops across Virar West & East.',
+        shopNow: 'Shop Now',
+        setLocation: 'Set your delivery location',
+      },
+      // Stats
+      stats: {
+        kiranaStores: 'Kirana Stores',
+        productsListed: 'Products Listed',
+        ordersDelivered: 'Orders Delivered',
+        avgRating: 'Avg Rating',
+      },
+      // Sections
+      sections: {
+        shopByCategory: 'Shop by Category',
+        featuredStores: 'Featured Stores',
+        storesIn: 'Stores in',
+        nearby: 'nearby',
+        whyMandi: 'Why Mandi Minutes?',
+        ownAStore: 'Own a Kirana Store?',
+        vendorSubheadline: 'Partner with Mandi Minutes and reach thousands of customers in your area. Free registration, instant onboarding.',
+        becomeVendor: 'Become a Vendor',
+        partnership: 'Partnership',
+      },
+      // Why Mandi cards
+      why: {
+        fastTitle: 'Ultra-Fast Delivery',
+        fastDesc: 'Get groceries delivered in 10-30 minutes from nearby kirana stores.',
+        localTitle: 'Support Local Stores',
+        localDesc: 'Every order helps local kirana store owners grow their business digitally.',
+        freshTitle: 'Fresh & Authentic',
+        freshDesc: 'Products sourced fresh daily — no cold chain delays, no stale goods.',
+      },
+      // Location prompts
+      location: {
+        setTitle: 'Set your location',
+        setPincode: 'Enter your pincode to see stores near you',
+        setBtn: 'Set Location',
+        noStores: 'No stores found',
+        noStoresPincode: 'No stores currently serve pincode',
+        tryAnother: 'Try Another Pincode',
+      },
+      // Search page
+      search: {
+        filters: 'Filters',
+        category: 'Category',
+        allCategories: 'All Categories',
+        store: 'Store',
+        allStores: 'All Stores',
+        maxPrice: 'Max Price',
+        products: 'Products',
+        stores: 'Stores',
+        noProducts: 'No products found',
+        noProductsHint: 'Try adjusting your search or filters',
+        noStores: 'No stores found',
+        noStoresHint: 'Try searching another term or location',
       },
       // Checkout
       checkout: {
@@ -64,6 +130,33 @@ const resources = {
         outOfStock: 'This item is out of stock.',
         minOrder: 'Minimum order amount is ₹49.',
         invalidCoupon: 'Invalid coupon code.',
+        networkIssue: 'Network connection issue',
+        cachedCatalog: 'Could not sync latest store listings. Showing cached catalog.',
+      },
+      // Footer
+      footer: {
+        quickLinks: 'Quick Links',
+        forPartners: 'For Partners',
+        contact: 'Contact',
+        tagline: 'Connecting you with your nearest kirana stores for ultrafast grocery delivery. Fresh, local, and delivered in minutes.',
+        downloadApp: 'Download App (Coming Soon)',
+        downloadOn: 'Download on',
+        getItOn: 'Get it on',
+        rights: 'All rights reserved.',
+        links: {
+          home: 'Home',
+          browseProducts: 'Browse Products',
+          myOrders: 'My Orders',
+          wishlist: 'Wishlist',
+          aboutUs: 'About Us',
+          becomeVendor: 'Become a Vendor',
+          vendorDashboard: 'Vendor Dashboard',
+          riderPortal: 'Rider Portal',
+          adminPanel: 'Admin Panel',
+          contactUs: 'Contact Us',
+          privacyPolicy: 'Privacy Policy',
+          termsOfService: 'Terms of Service',
+        },
       },
       // Common
       common: {
@@ -82,6 +175,9 @@ const resources = {
         close: 'Close',
         virar: 'Virar, Palghar',
         express: '10-15 min delivery',
+        retry: 'Retry',
+        goShopping: 'Go Shopping',
+        cartEmpty: 'Cart is empty',
       },
     },
   },
@@ -97,6 +193,11 @@ const resources = {
         refer: 'रेफर करें & ₹50 पाएं',
         login: 'लॉग इन',
         logout: 'लॉग आउट',
+        cart: 'कार्ट',
+        profile: 'प्रोफ़ाइल',
+        setLocation: 'लोकेशन सेट करें',
+        dashboard: 'डैशबोर्ड',
+        adminPanel: 'एडमिन पैनल',
       },
       // Categories
       categories: {
@@ -110,6 +211,67 @@ const resources = {
         oil: 'तेल & घी',
         masala: 'मसाले',
         household: 'घरेलू सामान',
+      },
+      // Hero section
+      hero: {
+        badge: 'विरार एक्सप्रेस डिलीवरी',
+        trustedKiranas: 'भरोसेमंद किराना',
+        headline: 'विरार के किराना स्टोर — 10-15 मिनट में डिलीवरी',
+        subheadline: 'गोकुल दूध, मोदक आटा, ताज़ी सब्जियां और रोज़ की ज़रूरतें — विरार वेस्ट & ईस्ट के किराना स्टोर से।',
+        shopNow: 'अभी खरीदें',
+        setLocation: 'अपनी डिलीवरी लोकेशन सेट करें',
+      },
+      // Stats
+      stats: {
+        kiranaStores: 'किराना स्टोर',
+        productsListed: 'उत्पाद सूचीबद्ध',
+        ordersDelivered: 'ऑर्डर डिलीवर',
+        avgRating: 'औसत रेटिंग',
+      },
+      // Sections
+      sections: {
+        shopByCategory: 'श्रेणी के अनुसार खरीदें',
+        featuredStores: 'फीचर्ड स्टोर',
+        storesIn: 'स्टोर —',
+        nearby: 'पास में',
+        whyMandi: 'मंडी मिनट्स क्यों?',
+        ownAStore: 'क्या आपकी किराना दुकान है?',
+        vendorSubheadline: 'मंडी मिनट्स के साथ जुड़ें और अपने क्षेत्र में हज़ारों ग्राहकों तक पहुंचें। मुफ्त रजिस्ट्रेशन, तुरंत ऑनबोर्डिंग।',
+        becomeVendor: 'वेंडर बनें',
+        partnership: 'पार्टनरशिप',
+      },
+      // Why Mandi cards
+      why: {
+        fastTitle: 'अति-तीव्र डिलीवरी',
+        fastDesc: 'पास के किराना स्टोर से 10-30 मिनट में किराने का सामान पाएं।',
+        localTitle: 'स्थानीय दुकानों को सहारा दें',
+        localDesc: 'हर ऑर्डर से स्थानीय किराना दुकानदारों को डिजिटल रूप से बढ़ने में मदद मिलती है।',
+        freshTitle: 'ताज़ा & असली',
+        freshDesc: 'रोज़ाना ताज़े उत्पाद — कोई कोल्ड चेन देरी नहीं, कोई पुराना सामान नहीं।',
+      },
+      // Location prompts
+      location: {
+        setTitle: 'अपनी लोकेशन सेट करें',
+        setPincode: 'पास के स्टोर देखने के लिए पिनकोड दर्ज करें',
+        setBtn: 'लोकेशन सेट करें',
+        noStores: 'कोई स्टोर नहीं मिला',
+        noStoresPincode: 'पिनकोड पर अभी कोई स्टोर नहीं है',
+        tryAnother: 'दूसरा पिनकोड आज़माएं',
+      },
+      // Search page
+      search: {
+        filters: 'फ़िल्टर',
+        category: 'श्रेणी',
+        allCategories: 'सभी श्रेणियां',
+        store: 'स्टोर',
+        allStores: 'सभी स्टोर',
+        maxPrice: 'अधिकतम कीमत',
+        products: 'उत्पाद',
+        stores: 'स्टोर',
+        noProducts: 'कोई उत्पाद नहीं मिला',
+        noProductsHint: 'खोज या फ़िल्टर बदलकर देखें',
+        noStores: 'कोई स्टोर नहीं मिला',
+        noStoresHint: 'कोई और शब्द या लोकेशन खोजें',
       },
       // Checkout
       checkout: {
@@ -147,6 +309,33 @@ const resources = {
         outOfStock: 'यह उत्पाद स्टॉक में नहीं है।',
         minOrder: 'न्यूनतम ऑर्डर राशि ₹49 है।',
         invalidCoupon: 'अमान्य कूपन कोड।',
+        networkIssue: 'नेटवर्क कनेक्शन समस्या',
+        cachedCatalog: 'नवीनतम स्टोर सूची सिंक नहीं हो सकी। संग्रहीत डेटा दिखाया जा रहा है।',
+      },
+      // Footer
+      footer: {
+        quickLinks: 'त्वरित लिंक',
+        forPartners: 'पार्टनर के लिए',
+        contact: 'संपर्क',
+        tagline: 'आपके नज़दीकी किराना स्टोर से जोड़ता है — ताज़ा, स्थानीय, मिनटों में डिलीवरी।',
+        downloadApp: 'ऐप डाउनलोड करें (जल्द आ रहा है)',
+        downloadOn: 'डाउनलोड करें',
+        getItOn: 'पाएं',
+        rights: 'सर्वाधिकार सुरक्षित।',
+        links: {
+          home: 'होम',
+          browseProducts: 'उत्पाद देखें',
+          myOrders: 'मेरे ऑर्डर',
+          wishlist: 'विशलिस्ट',
+          aboutUs: 'हमारे बारे में',
+          becomeVendor: 'वेंडर बनें',
+          vendorDashboard: 'वेंडर डैशबोर्ड',
+          riderPortal: 'राइडर पोर्टल',
+          adminPanel: 'एडमिन पैनल',
+          contactUs: 'संपर्क करें',
+          privacyPolicy: 'गोपनीयता नीति',
+          termsOfService: 'सेवा की शर्तें',
+        },
       },
       // Common
       common: {
@@ -165,6 +354,9 @@ const resources = {
         close: 'बंद करें',
         virar: 'विरार, पालघर',
         express: '10-15 मिनट डिलीवरी',
+        retry: 'पुनः प्रयास',
+        goShopping: 'खरीदारी करें',
+        cartEmpty: 'कार्ट खाली है',
       },
     },
   },
@@ -180,6 +372,11 @@ const resources = {
         refer: 'रेफर करा & ₹50 मिळवा',
         login: 'लॉग इन',
         logout: 'लॉग आउट',
+        cart: 'कार्ट',
+        profile: 'प्रोफाइल',
+        setLocation: 'स्थान सेट करा',
+        dashboard: 'डॅशबोर्ड',
+        adminPanel: 'ॲडमिन पॅनेल',
       },
       // Categories
       categories: {
@@ -193,6 +390,67 @@ const resources = {
         oil: 'तेल & तूप',
         masala: 'मसाले',
         household: 'घरगुती वस्तू',
+      },
+      // Hero section
+      hero: {
+        badge: 'विरार एक्सप्रेस डिलिव्हरी',
+        trustedKiranas: 'विश्वसनीय किराणा',
+        headline: 'विरारचे किराणा स्टोअर — 10-15 मिनिटांत डिलिव्हरी',
+        subheadline: 'गोकुल दूध, मोदकाचे पीठ, ताज्या भाज्या आणि दैनंदिन गरजा — विरार पश्चिम व पूर्वेतील किराणा दुकानांतून।',
+        shopNow: 'आत्ता खरेदी करा',
+        setLocation: 'तुमचे डिलिव्हरी स्थान सेट करा',
+      },
+      // Stats
+      stats: {
+        kiranaStores: 'किराणा स्टोअर',
+        productsListed: 'उत्पादने नोंदणीकृत',
+        ordersDelivered: 'ऑर्डर डिलिव्हर',
+        avgRating: 'सरासरी रेटिंग',
+      },
+      // Sections
+      sections: {
+        shopByCategory: 'श्रेणीनुसार खरेदी करा',
+        featuredStores: 'फीचर्ड स्टोअर',
+        storesIn: 'स्टोअर —',
+        nearby: 'जवळपास',
+        whyMandi: 'मंडी मिनिट्स का?',
+        ownAStore: 'तुमचे किराणा दुकान आहे का?',
+        vendorSubheadline: 'मंडी मिनिट्सशी जोडा आणि तुमच्या परिसरातील हजारो ग्राहकांपर्यंत पोहोचा. मोफत नोंदणी, तात्काळ ऑनबोर्डिंग।',
+        becomeVendor: 'विक्रेता व्हा',
+        partnership: 'भागीदारी',
+      },
+      // Why Mandi cards
+      why: {
+        fastTitle: 'अति-जलद डिलिव्हरी',
+        fastDesc: 'जवळच्या किराणा स्टोअरमधून 10-30 मिनिटांत किराणा माल मिळवा।',
+        localTitle: 'स्थानिक दुकानांना पाठिंबा द्या',
+        localDesc: 'प्रत्येक ऑर्डरमुळे स्थानिक किराणा दुकान मालकांना डिजिटली वाढण्यास मदत होते।',
+        freshTitle: 'ताजे & खरे',
+        freshDesc: 'दररोज ताजी उत्पादने — कोणताही कोल्ड चेन विलंब नाही, जुना माल नाही।',
+      },
+      // Location prompts
+      location: {
+        setTitle: 'तुमचे स्थान सेट करा',
+        setPincode: 'जवळचे स्टोअर पाहण्यासाठी पिनकोड प्रविष्ट करा',
+        setBtn: 'स्थान सेट करा',
+        noStores: 'कोणतेही स्टोअर आढळले नाही',
+        noStoresPincode: 'पिनकोडवर सध्या कोणतेही स्टोअर नाही',
+        tryAnother: 'दुसरा पिनकोड वापरून पहा',
+      },
+      // Search page
+      search: {
+        filters: 'फिल्टर',
+        category: 'श्रेणी',
+        allCategories: 'सर्व श्रेणी',
+        store: 'स्टोर',
+        allStores: 'सर्व स्टोअर',
+        maxPrice: 'जास्तीत जास्त किंमत',
+        products: 'उत्पादने',
+        stores: 'स्टोर',
+        noProducts: 'कोणतेही उत्पाद आढळले नाही',
+        noProductsHint: 'शोध किंवा फिल्टर बदलून पहा',
+        noStores: 'कोणतेही स्टोअर आढळले नाही',
+        noStoresHint: 'दुसरा शब्द किंवा स्थान शोधा',
       },
       // Checkout
       checkout: {
@@ -230,6 +488,33 @@ const resources = {
         outOfStock: 'हा उत्पाद स्टॉकमध्ये नाही.',
         minOrder: 'किमान ऑर्डर रक्कम ₹49 आहे.',
         invalidCoupon: 'अवैध कूपन कोड.',
+        networkIssue: 'नेटवर्क कनेक्शन समस्या',
+        cachedCatalog: 'नवीनतम स्टोअर यादी सिंक होऊ शकली नाही. जतन केलेला डेटा दाखवत आहे.',
+      },
+      // Footer
+      footer: {
+        quickLinks: 'द्रुत दुवे',
+        forPartners: 'भागीदारांसाठी',
+        contact: 'संपर्क',
+        tagline: 'तुमच्या जवळच्या किराणा स्टोअरशी जोडतो — ताजे, स्थानिक, मिनिटांत डिलिव्हरी।',
+        downloadApp: 'ॲप डाउनलोड करा (लवकरच येत आहे)',
+        downloadOn: 'डाउनलोड करा',
+        getItOn: 'मिळवा',
+        rights: 'सर्व हक्क राखीव.',
+        links: {
+          home: 'मुखपृष्ठ',
+          browseProducts: 'उत्पादने पहा',
+          myOrders: 'माझे ऑर्डर',
+          wishlist: 'इच्छासूची',
+          aboutUs: 'आमच्याबद्दल',
+          becomeVendor: 'विक्रेता व्हा',
+          vendorDashboard: 'विक्रेता डॅशबोर्ड',
+          riderPortal: 'रायडर पोर्टल',
+          adminPanel: 'ॲडमिन पॅनेल',
+          contactUs: 'संपर्क करा',
+          privacyPolicy: 'गोपनीयता धोरण',
+          termsOfService: 'सेवेच्या अटी',
+        },
       },
       // Common
       common: {

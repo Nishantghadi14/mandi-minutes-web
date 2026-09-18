@@ -1,0 +1,82 @@
+# ============================================================
+#  Mandi Minutes — Prerequisites & Requirements
+#  (This is a Node.js / React project, not a Python project.
+#   This file documents the tools you need to run it.)
+# ============================================================
+
+
+# ── Runtime ──────────────────────────────────────────────────
+Node.js         >= 18.0.0    https://nodejs.org/en/download
+npm             >= 9.0.0     (bundled with Node.js)
+# OR use one of these Node version managers instead:
+#   nvm (Linux/Mac)   https://github.com/nvm-sh/nvm
+#   nvm-windows       https://github.com/coreybutler/nvm-windows
+#   fnm (cross-platform, fast) https://github.com/Schniz/fnm
+
+
+# ── Source Control ───────────────────────────────────────────
+Git             >= 2.30      https://git-scm.com/downloads
+
+
+# ── Firebase (optional — needed for live data & deploy) ──────
+Firebase CLI    >= 13.0.0    npm install -g firebase-tools
+# Required if you want to:
+#   - Deploy Firestore security rules
+#   - Deploy Cloud Functions (functions/)
+#   - Use Firebase Hosting
+
+
+# ── Deployment (choose one) ──────────────────────────────────
+Vercel CLI      >= 39.0.0    npm install -g vercel
+# OR deploy via the Vercel dashboard at https://vercel.com
+
+
+# ── Environment Variables ────────────────────────────────────
+# Create a .env.local file in the project root with:
+#
+#   VITE_FIREBASE_API_KEY=
+#   VITE_FIREBASE_AUTH_DOMAIN=
+#   VITE_FIREBASE_PROJECT_ID=
+#   VITE_FIREBASE_STORAGE_BUCKET=
+#   VITE_FIREBASE_MESSAGING_SENDER_ID=
+#   VITE_FIREBASE_APP_ID=
+#   VITE_FIREBASE_VAPID_KEY=
+#
+# Get these from: Firebase Console → Project Settings → Your Apps
+# The app works WITHOUT these (uses local demo data as fallback).
+
+
+# ── Quick Start ───────────────────────────────────────────────
+# git clone https://github.com/Nishantghadi14/mandi-minutes-web.git
+# cd mandi-minutes-web
+# npm install
+# npm run dev          → http://localhost:5173
+
+
+# ── npm Dependencies (managed via package.json) ───────────────
+# All JavaScript dependencies are declared in package.json and
+# installed automatically by `npm install`. Key packages:
+#
+# Production:
+#   firebase            ^12.17.1   — Firestore, Auth, Functions, FCM
+#   react               ^19.2.8    — UI library
+#   react-dom           ^19.2.8    — DOM renderer
+#   react-router-dom    ^7.18.2    — Client-side routing
+#   react-helmet-async  ^3.0.0     — Document head management (SEO)
+#   react-i18next       ^17.0.12   — Internationalisation
+#   i18next             ^26.4.0    — i18n core
+#   lucide-react        ^1.30.0    — Icon library
+#   zustand             ^5.0.14    — Lightweight global state
+#   recharts            ^3.10.1    — Charts (vendor/admin dashboards)
+#   react-leaflet       ^5.0.0     — Interactive maps (order tracking)
+#   leaflet             ^1.9.4     — Map engine
+#   qrcode              ^1.5.4     — QR code for UPI payments
+#
+# Development:
+#   vite                ^8.2.0     — Build tool & dev server
+#   @vitejs/plugin-react ^6.0.4    — React HMR + JSX transform
+#   tailwindcss         ^3.4.19    — Utility-first CSS framework
+#   postcss             ^8.5.26    — CSS processing
+#   autoprefixer        ^10.5.4    — Vendor prefix injection
+#   oxlint              ^1.75.0    — Fast JavaScript linter
+#   vitest              ^4.1.11    — Unit test runner

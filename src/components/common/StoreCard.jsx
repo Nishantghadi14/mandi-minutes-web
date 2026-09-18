@@ -1,4 +1,4 @@
-import { Star, MapPin, ShoppingBag, Zap } from 'lucide-react';
+import { Star, MapPin, ShoppingBag, Zap, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../../context/LocationContext';
 import LazyImage from './LazyImage';
@@ -13,66 +13,80 @@ export default function StoreCard({ store }) {
   };
 
   const badgeColors = {
-    'Top Rated': 'bg-yellow-500 text-black',
-    'Popular': 'bg-mandi-green text-black',
-    'Fast Delivery': 'bg-blue-500 text-white',
-    'New': 'bg-purple-500 text-white',
-    'Trusted': 'bg-orange-500 text-black',
-    'Organic': 'bg-emerald-600 text-white',
+    'Top Rated':    'bg-mandi-amber text-black',
+    'Popular':      'bg-mandi-green text-black',
+    'Fast Delivery':'bg-mandi-blue text-white',
+    'New':          'bg-purple-500 text-white',
+    'Trusted':      'bg-orange-500 text-black',
+    'Organic':      'bg-emerald-600 text-white',
   };
 
   return (
-    <div onClick={handleClick} className="card-hover overflow-hidden group">
-      {/* Cover image */}
-      <div className="relative h-36 overflow-hidden">
+    <div
+      onClick={handleClick}
+      className="card overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1.5"
+      style={{ '--hover-shadow': '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,200,81,0.25)' }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,200,81,0.25)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = ''}
+    >
+      {/* Cover image — taller, with overlaid info */}
+      <div className="relative h-44 overflow-hidden">
         <LazyImage
           src={store.coverImage || store.image}
           alt={store.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           containerClass="w-full h-full"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-mandi-card via-transparent to-transparent" />
+
+        {/* Strong bottom gradient — info lives on top of image */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+
+        {/* Badge - top left */}
         {store.badge && (
-          <div className={`absolute top-2 left-2 text-xs font-bold px-2 py-1 rounded-full ${badgeColors[store.badge] || 'bg-mandi-green text-black'}`}>
+          <div className={`absolute top-2.5 left-2.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${badgeColors[store.badge] || 'bg-mandi-green text-black'}`}>
             {store.badge}
           </div>
         )}
+
+        {/* Rating - top right */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
+          <Star size={11} className="text-mandi-amber fill-mandi-amber" />
+          <span className="text-white text-xs font-bold">{store.rating}</span>
+        </div>
+
+        {/* Closed overlay */}
         {!store.isOpen && (
-          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-            <span className="bg-mandi-card text-mandi-muted text-sm font-semibold px-3 py-1.5 rounded-full border border-mandi-border">Currently Closed</span>
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="font-bold text-mandi-text text-base leading-tight flex-1 pr-2">{store.name}</h3>
-          <div className="flex items-center gap-1 bg-mandi-green-muted px-2 py-0.5 rounded-lg flex-shrink-0">
-            <Star size={12} className="text-mandi-green fill-mandi-green" />
-            <span className="text-mandi-green text-xs font-semibold">{store.rating}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 text-mandi-muted text-xs mb-3">
-          <MapPin size={11} />
-          <span>{store.address}</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-mandi-surface px-2.5 py-1.5 rounded-lg">
-            <Zap size={12} className="text-mandi-green" />
-            <span className="text-mandi-text text-xs font-semibold">{store.deliveryTime}</span>
-          </div>
-          <div className="flex items-center gap-1.5 bg-mandi-surface px-2.5 py-1.5 rounded-lg">
-            <ShoppingBag size={12} className="text-mandi-muted" />
-            <span className="text-mandi-muted text-xs">Min ₹{store.minOrder}</span>
-          </div>
-          <div className="ml-auto">
-            <span className={`text-xs font-medium ${store.deliveryCharge === 0 ? 'text-mandi-green' : 'text-mandi-muted'}`}>
-              {store.deliveryCharge === 0 ? 'Free delivery' : `₹${store.deliveryCharge} delivery`}
+          <div className="absolute inset-0 bg-black/65 flex items-center justify-center backdrop-blur-[1px]">
+            <span className="bg-mandi-card/90 text-mandi-muted text-sm font-semibold px-4 py-1.5 rounded-full border border-mandi-border">
+              Currently Closed
             </span>
           </div>
+        )}
+
+        {/* Store name overlaid at bottom of image */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
+          <h3 className="font-bold text-white text-base leading-tight drop-shadow-sm">{store.name}</h3>
+          <div className="flex items-center gap-1 mt-0.5">
+            <MapPin size={10} className="text-white/60" />
+            <span className="text-white/60 text-xs truncate">{store.address}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom info strip */}
+      <div className="px-4 py-3 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-mandi-green/10 border border-mandi-green/20 px-2.5 py-1.5 rounded-lg">
+          <Clock size={11} className="text-mandi-green" />
+          <span className="text-mandi-green text-xs font-semibold">{store.deliveryTime}</span>
+        </div>
+        <div className="flex items-center gap-1.5 bg-mandi-surface px-2.5 py-1.5 rounded-lg">
+          <ShoppingBag size={11} className="text-mandi-muted" />
+          <span className="text-mandi-muted text-xs">Min ₹{store.minOrder}</span>
+        </div>
+        <div className="ml-auto">
+          <span className={`text-xs font-semibold ${store.deliveryCharge === 0 ? 'text-mandi-green' : 'text-mandi-muted'}`}>
+            {store.deliveryCharge === 0 ? '🆓 Free delivery' : `₹${store.deliveryCharge} delivery`}
+          </span>
         </div>
       </div>
     </div>
