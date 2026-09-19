@@ -73,7 +73,7 @@ export default function ContactPage() {
             <h3 className="text-mandi-text font-bold text-base">Direct Contact</h3>
             <div className="flex items-start gap-3">
               <MapPin size={16} className="text-mandi-green mt-1 flex-shrink-0" />
-              <p className="text-mandi-muted text-xs">Cyber Hub, DLF Phase 2, Gurugram, Haryana 122002</p>
+              <p className="text-mandi-muted text-xs">Virar West, Maharashtra, 401303</p>
             </div>
             <div className="flex items-center gap-3">
               <Phone size={16} className="text-mandi-green flex-shrink-0" />

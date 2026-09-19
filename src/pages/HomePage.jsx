@@ -92,12 +92,7 @@ export default function HomePage() {
     }
   }, [location, getStoresByPincode]);
 
-  const stats = [
-    { label: t('stats.kiranaStores'),    value: '500+', icon: Store },
-    { label: t('stats.productsListed'),  value: '10K+', icon: Package },
-    { label: t('stats.ordersDelivered'), value: '50K+', icon: Zap },
-    { label: t('stats.avgRating'),       value: '4.7★', icon: Star },
-  ];
+
 
   const hasStoreError = Boolean(errorStates?.stores);
   const isStoresLoading = Boolean(loadingStates?.stores);
@@ -237,14 +232,7 @@ export default function HomePage() {
         <PromoBanner banners={banners} />
       </section>
 
-      {/* ── Stats ── */}
-      <section className="mb-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {stats.map((stat, i) => (
-            <StatCard key={stat.label} stat={stat} delay={i * 80} />
-          ))}
-        </div>
-      </section>
+
 
       {/* ── Shop by Category ── */}
       <section className="mb-10">

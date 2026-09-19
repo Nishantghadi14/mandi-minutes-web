@@ -214,7 +214,7 @@ export const useAuthStore = create((set, get) => ({
         role: role,
         storeId: role === 'vendor' ? 'store-mahalaxmi-1' : null,
         addresses: [
-          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+          { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
         ],
         wishlist: [],
         referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
@@ -291,7 +291,7 @@ try {
         role: 'customer',
         storeId: null,
         addresses: [
-          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+          { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
         ],
         wishlist: [],
         referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
@@ -338,7 +338,7 @@ try {
         role: 'customer',
         storeId: null,
         addresses: [
-          { id: 'addr-1', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true }
+          { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
         ],
         wishlist: [],
         referralCode: myReferralCode,

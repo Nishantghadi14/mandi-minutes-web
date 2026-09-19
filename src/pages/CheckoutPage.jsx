@@ -55,7 +55,7 @@ export default function CheckoutPage() {
         setSelectedAddress(user.addresses.find(a => a.isDefault) || user.addresses[0]);
         setShowAddressForm(false);
       } else {
-        const defaultAddr = { id: 'addr-default', label: 'Home', line1: 'Shop 4, Agashi Road, Near Station', city: 'Virar West, Palghar', pincode: '401305', isDefault: true };
+        const defaultAddr = { id: 'addr-default', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true };
         setSelectedAddress(defaultAddr);
         setShowAddressForm(false);
       }

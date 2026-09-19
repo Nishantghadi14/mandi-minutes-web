@@ -122,7 +122,7 @@ export default function Footer() {
             <div className="space-y-3 mb-6">
               <div className="flex items-start gap-2.5 text-mandi-muted text-sm">
                 <MapPin size={15} className="text-mandi-green flex-shrink-0 mt-0.5" />
-                <span>Cyber Hub, DLF, Gurugram, Haryana 122002</span>
+                <span>Virar West, Maharashtra, 401303</span>
               </div>
               <a href="tel:+919920941603" className="flex items-center gap-2.5 text-mandi-muted text-sm hover:text-mandi-green transition-colors group">
                 <Phone size={15} className="text-mandi-green flex-shrink-0 group-hover:drop-shadow-green" />

@@ -12,7 +12,7 @@ export const sampleOrders = [
     subtotal: 360,
     deliveryCharge: 0,
     total: 360,
-    address: { label: 'Home', line1: 'Flat 302, Gokul Towers, Bolinj Road', city: 'Virar West', pincode: '401305' },
+    address: { label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303' },
     paymentMethod: 'UPI',
     status: 'delivered',
     statusHistory: [
@@ -62,8 +62,8 @@ export const sampleUsers = [
     password: 'password123',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Virar',
     addresses: [
-      { id: 'addr-1', label: 'Home', line1: 'Flat 302, Gokul Towers, Bolinj Road', city: 'Virar West', pincode: '401305', isDefault: true },
-      { id: 'addr-2', label: 'Office', line1: 'Shop 12, Station Road', city: 'Virar East', pincode: '401303', isDefault: false },
+      { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true },
+      { id: 'addr-2', label: 'Office', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: false },
     ],
     wishlist: ['prod-rice-07', 'prod-daal-01', 'prod-daal-13'],
   },
