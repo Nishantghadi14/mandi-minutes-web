@@ -197,34 +197,30 @@ export const useAuthStore = create((set, get) => ({
     return cleanup;
   },
 
-  // Real Email & Password Login
+  // Email & Password Login
   login: async (email, password) => {
     if (!isFirebaseConfigured || !auth) {
-      const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
-      const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      const role = import.meta.env.PROD
-        ? 'customer'
-        : (email.toLowerCase().includes('admin') ? 'admin' : (email.toLowerCase().includes('vendor') ? 'vendor' : 'customer'));
-      const localUser = {
-        id: uid,
-        uid: uid,
-        name: name,
-        email: email,
-        phone: '9820098200',
-        role: role,
-        storeId: role === 'vendor' ? 'store-mahalaxmi-1' : null,
-        addresses: [
-          { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
-        ],
-        wishlist: [],
-        referralCode: `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
-      set({ user: localUser, loading: false });
-      useCartStore.getState().switchUser(localUser.id);
-      return localUser;
+      if (import.meta.env.PROD) {
+        throw new Error('Firebase Authentication is not configured for this app. Please set VITE_FIREBASE_* keys in .env and re-deploy.');
+      }
+      
+      // Strict local fallback: check registered accounts in localStorage
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      const found = registeredUsers.find(u => u.email?.toLowerCase() === email?.toLowerCase());
+
+      if (!found) {
+        throw new Error('No account found with this email address. Please click "Sign Up" below to create an account.');
+      }
+
+      if (found.password && found.password !== password) {
+        throw new Error('Invalid email or password. Please try again.');
+      }
+
+      const { password: _p, ...safeUser } = found;
+      localStorage.setItem('mandi_local_user', JSON.stringify(safeUser));
+      set({ user: safeUser, loading: false });
+      useCartStore.getState().switchUser(safeUser.id);
+      return safeUser;
     }
 
     set({ loading: true });
@@ -323,17 +319,27 @@ try {
     }
   },
 
-  // Real Email & Password Registration
+  // Email & Password Registration
   register: async (name, email, phone, password, referralCode = '') => {
     if (!isFirebaseConfigured || !auth) {
+      if (import.meta.env.PROD) {
+        throw new Error('Firebase Authentication is not configured for this app. Please set VITE_FIREBASE_* keys in .env and re-deploy.');
+      }
+      
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      if (registeredUsers.some(u => u.email?.toLowerCase() === email?.toLowerCase())) {
+        throw new Error('An account with this email address already exists. Please log in.');
+      }
+
       const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
       const myReferralCode = `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`;
       const sanitizedReferral = referralCode.trim().toUpperCase();
-      const localUser = {
+      const newUser = {
         id: uid,
         uid: uid,
         name: name || 'Mandi Customer',
         email: email,
+        password: password,
         phone: phone || '',
         role: 'customer',
         storeId: null,
@@ -346,10 +352,15 @@ try {
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name || 'Customer')}`,
         createdAt: new Date().toISOString(),
       };
-      localStorage.setItem('mandi_local_user', JSON.stringify(localUser));
-      set({ user: localUser, loading: false });
-      useCartStore.getState().switchUser(localUser.id);
-      return localUser;
+
+      registeredUsers.push(newUser);
+      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+
+      const { password: _p, ...safeUser } = newUser;
+      localStorage.setItem('mandi_local_user', JSON.stringify(safeUser));
+      set({ user: safeUser, loading: false });
+      useCartStore.getState().switchUser(safeUser.id);
+      return safeUser;
     }
 
     set({ loading: true });
