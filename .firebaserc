@@ -1,7 +1,17 @@
 {
   "projects": {
-    "default": "mandi-minutes"
+    "default": "mandi-minutes-virar"
   },
-  "targets": {},
-  "etags": {}
+  "targets": {
+    "mandi-minutes-virar": {
+      "hosting": {
+        "main": [
+          "mandi-minutes"
+        ],
+        "virar": [
+          "mandi-minutes-virar"
+        ]
+      }
+    }
+  }
 }
