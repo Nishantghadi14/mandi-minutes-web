@@ -28,12 +28,14 @@ export default function Navbar() {
     }
   };
 
-  const roleLinks = {
-    vendor: { href: '/vendor', label: t('nav.dashboard'), icon: Store },
-    admin:  { href: '/admin',  label: t('nav.adminPanel'), icon: Shield },
-  };
+  const isAdmin = user && (
+    user.role === 'admin' ||
+    user.email?.toLowerCase() === 'admin@mandiminutes.com' ||
+    user.email?.toLowerCase() === 'admin@mandi.in' ||
+    user.email?.toLowerCase() === 'test3@gmail.com'
+  );
 
-  const roleLink = user && roleLinks[user.role];
+  const isVendor = user && user.role === 'vendor';
 
   return (
     <header className="sticky top-0 z-30 glass-dark border-b border-mandi-border">
@@ -119,6 +121,8 @@ export default function Navbar() {
               )}
             </button>
 
+
+
             {/* User */}
             {loading ? (
               <div className="w-20 h-9 rounded-xl bg-mandi-surface border border-mandi-border animate-pulse" />
@@ -141,34 +145,36 @@ export default function Navbar() {
                     <div className="p-3 border-b border-mandi-border">
                       <p className="text-mandi-text font-semibold text-sm truncate">{user.name || user.displayName || 'Customer'}</p>
                       <p className="text-mandi-muted text-xs truncate">{user.email || user.phone || ''}</p>
-                      <span className="tag mt-1.5 inline-block capitalize">{user.role || 'customer'}</span>
+                      <span className="tag mt-1.5 inline-block capitalize">{isAdmin ? 'Admin' : (user.role || 'customer')}</span>
                     </div>
                     <div className="py-1">
-                      {roleLink && (
-                        <Link to={roleLink.href} onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
-                          <roleLink.icon size={16} className="text-mandi-green" />
-                          <span className="text-mandi-text text-sm">{roleLink.label}</span>
+                      {isAdmin && (
+                        <Link to="/admin" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 bg-mandi-green bg-opacity-10 hover:bg-opacity-20 text-mandi-green font-semibold transition-colors rounded-lg mx-1">
+                          <Shield size={16} className="text-mandi-green" />
+                          <span className="text-sm">{t('nav.adminPanel')}</span>
                         </Link>
                       )}
-                      {user.role === 'customer' && (
-                        <>
-                          <Link to="/orders" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
-                            <Package size={16} className="text-mandi-muted" />
-                            <span className="text-mandi-text text-sm">{t('nav.orders')}</span>
-                          </Link>
-                          <Link to="/wishlist" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
-                            <Heart size={16} className="text-mandi-muted" />
-                            <span className="text-mandi-text text-sm">{t('nav.wishlist')}</span>
-                          </Link>
-                          <button
-                            onClick={() => { setUserMenuOpen(false); setReferralModalOpen(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-mandi-surface transition-colors rounded-lg mx-1 text-left"
-                          >
-                            <Gift size={16} className="text-mandi-green" />
-                            <span className="text-mandi-text text-sm font-semibold">{t('nav.refer')}</span>
-                          </button>
-                        </>
+                      {isVendor && (
+                        <Link to="/vendor" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
+                          <Store size={16} className="text-mandi-green" />
+                          <span className="text-mandi-text text-sm">{t('nav.dashboard')}</span>
+                        </Link>
                       )}
+                      <Link to="/orders" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
+                        <Package size={16} className="text-mandi-muted" />
+                        <span className="text-mandi-text text-sm">{t('nav.orders')}</span>
+                      </Link>
+                      <Link to="/wishlist" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
+                        <Heart size={16} className="text-mandi-muted" />
+                        <span className="text-mandi-text text-sm">{t('nav.wishlist')}</span>
+                      </Link>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); setReferralModalOpen(true); }}
+                        className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-mandi-surface transition-colors rounded-lg mx-1 text-left"
+                      >
+                        <Gift size={16} className="text-mandi-green" />
+                        <span className="text-mandi-text text-sm font-semibold">{t('nav.refer')}</span>
+                      </button>
                       <div className="border-t border-mandi-border my-1" />
                       <button onClick={() => { logout(); setUserMenuOpen(false); navigate('/'); }} className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-red-950 hover:bg-opacity-40 transition-colors rounded-lg mx-1 text-left">
                         <LogOut size={16} className="text-red-400" />

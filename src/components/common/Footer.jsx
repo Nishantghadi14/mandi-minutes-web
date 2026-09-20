@@ -109,7 +109,6 @@ export default function Footer() {
               <li><FooterNavLink to="/vendor-onboarding" label={t('footer.links.becomeVendor')} /></li>
               <li><FooterNavLink to="/vendor" label={t('footer.links.vendorDashboard')} requireAuth allowedRoles={['vendor', 'admin']} /></li>
               <li><FooterNavLink to="/rider"  label={t('footer.links.riderPortal')}     requireAuth allowedRoles={['rider', 'admin']} /></li>
-              <li><FooterNavLink to="/admin"  label={t('footer.links.adminPanel')}      requireAuth allowedRoles={['admin']} /></li>
               <li><FooterNavLink to="/contact" label={t('footer.links.contactUs')} /></li>
               <li><FooterNavLink to="/privacy" label={t('footer.links.privacyPolicy')} /></li>
               <li><FooterNavLink to="/terms"   label={t('footer.links.termsOfService')} /></li>
