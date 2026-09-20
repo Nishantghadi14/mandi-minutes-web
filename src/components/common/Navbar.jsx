@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ShoppingCart, MapPin, Search, ChevronDown, User, LogOut, Package, Store, Shield, Zap, Heart, Gift } from 'lucide-react';
+import { ShoppingCart, MapPin, Search, ChevronDown, User, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
+import { useTheme } from '../../context/ThemeContext';
 import ReferralModal from './ReferralModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +13,7 @@ export default function Navbar() {
   const { itemCount, setIsOpen } = useCart();
   const { user, loading, logout, openAuthModal } = useAuth();
   const { location, setLocationModal } = useLocation();
+  const { isDark, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
@@ -88,6 +90,21 @@ export default function Navbar() {
             <div className="hidden sm:flex">
               <LanguageSwitcher />
             </div>
+
+            {/* Theme toggle */}
+            <button
+              id="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2.5 rounded-xl border border-mandi-border bg-mandi-surface hover:border-mandi-green transition-all duration-300 active:scale-90 group relative overflow-hidden"
+            >
+              <div key={isDark ? 'sun' : 'moon'} className="transition-transform duration-300 transform group-hover:rotate-45 active:scale-75">
+                {isDark
+                  ? <Sun size={17} className="text-mandi-green group-hover:drop-shadow-[0_0_8px_rgba(0,200,81,0.8)] transition-all duration-200" />
+                  : <Moon size={17} className="text-mandi-green group-hover:drop-shadow-[0_0_8px_rgba(0,200,81,0.8)] transition-all duration-200" />
+                }
+              </div>
+            </button>
 
             {/* Cart button */}
             <button

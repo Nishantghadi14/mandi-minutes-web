@@ -3,12 +3,14 @@ import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from '../context/LocationContext';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 import StoreCard from '../components/common/StoreCard';
 import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff, Clock, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function PromoBanner({ banners }) {
   const [idx, setIdx] = useState(0);
+  const { isDark } = useTheme();
   const active = banners.filter(b => b.active);
 
   useEffect(() => {
@@ -19,11 +21,12 @@ function PromoBanner({ banners }) {
 
   if (!active.length) return null;
   const b = active[idx];
+  const gradient = isDark ? (b.colorDark || b.color || 'from-green-900 to-emerald-950') : (b.colorLight || 'from-green-50 to-emerald-100');
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      <div className={`bg-gradient-to-br ${b.color || 'from-green-950 via-[#0a2010] to-mandi-dark'} border border-mandi-border rounded-2xl p-5 transition-all duration-500`}
-        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
+      <div className={`bg-gradient-to-br ${gradient} border border-mandi-border rounded-2xl p-5 transition-all duration-500`}
+        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-mandi-text font-black text-lg mb-1">{b.title}</h2>
@@ -82,6 +85,7 @@ function StatCard({ stat, delay = 0 }) {
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const { location, setLocationModal } = useLocation();
   const { getStoresByPincode, categories, banners, loadingStates, errorStates, retryFetch } = useData();
   const [stores, setStores] = useState([]);
@@ -248,7 +252,7 @@ export default function HomePage() {
               key={cat.id}
               to={`/search?category=${cat.id}`}
               className="category-card flex flex-col items-center gap-2 p-3 rounded-2xl border border-mandi-border transition-all duration-250 group"
-              style={{ background: cat.color }}
+              style={{ background: isDark ? cat.colorDark : (cat.colorLight || cat.colorDark) }}
             >
               <span className="text-2xl group-hover:scale-125 transition-transform duration-200 ease-out">{cat.icon}</span>
               <span className="text-mandi-text text-xs font-semibold text-center leading-tight">{t(`categories.${cat.id}`, cat.name)}</span>

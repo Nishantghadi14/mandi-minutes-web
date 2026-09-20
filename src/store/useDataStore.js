@@ -18,9 +18,9 @@ import { initialCategories } from '../data/initialCategories';
 import { seedVirarDatabase } from '../config/seedDatabase';
 
 const defaultBanners = [
-  { id: 'b1', title: '🎉 Flat 20% off on first order!', subtitle: 'Use code NEWUSER at checkout', color: 'from-green-900 to-mandi-dark', active: true },
-  { id: 'b2', title: '⚡ Express Delivery in 10 min', subtitle: 'Available in select pincodes', color: 'from-yellow-900 to-mandi-dark', active: true },
-  { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', color: 'from-blue-900 to-mandi-dark', active: true },
+  { id: 'b1', title: '🎉 Flat 20% off on first order!', subtitle: 'Use code NEWUSER at checkout', colorDark: 'from-green-900 to-emerald-950', colorLight: 'from-green-50 to-emerald-100', active: true },
+  { id: 'b2', title: '⚡ Express Delivery in 10 min', subtitle: 'Available in select pincodes', colorDark: 'from-yellow-900 to-amber-950', colorLight: 'from-amber-50 to-yellow-100', active: true },
+  { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', colorDark: 'from-blue-900 to-indigo-950', colorLight: 'from-blue-50 to-indigo-100', active: true },
 ];
 
 const getInitialOrders = () => {

@@ -15,6 +15,7 @@ import { CartProvider } from './context/CartContext';
 import { LocationProvider } from './context/LocationContext';
 import { DataProvider } from './context/DataContext';
 import { ToastProvider } from './components/common/Toast';
+import { ThemeProvider } from './context/ThemeContext';
 
 import Navbar from './components/common/Navbar';
 import BottomNav from './components/common/BottomNav';
@@ -71,6 +72,7 @@ function PageLoader() {
 export default function App() {
   return (
     <HelmetProvider>
+      <ThemeProvider>
       <Router>
         <ScrollToTop />
         <ToastProvider>
@@ -115,6 +117,7 @@ export default function App() {
           </AuthProvider>
         </ToastProvider>
       </Router>
+      </ThemeProvider>
     </HelmetProvider>
   );
 }
