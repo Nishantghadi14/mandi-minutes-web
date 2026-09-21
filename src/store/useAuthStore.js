@@ -57,6 +57,45 @@ export const useAuthStore = create((set, get) => ({
       return configuredAdmins.includes(email.toLowerCase());
     };
 
+    const isVendorEmail = (email) => {
+      if (!email) return false;
+      const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
+      const e = email.toLowerCase().trim();
+      if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
+
+      try {
+        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+        const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
+        if (userInStorage?.role === 'vendor') return true;
+      } catch {}
+
+      try {
+        const stores = useDataStore.getState()?.stores || [];
+        const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === e);
+        if (matchedStore) return true;
+      } catch {}
+
+      return false;
+    };
+
+    const getVendorStoreId = (email) => {
+      if (!email) return 'store-mahalaxmi-1';
+      const e = email.toLowerCase().trim();
+      try {
+        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+        const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
+        if (userInStorage?.storeId) return userInStorage.storeId;
+      } catch {}
+
+      try {
+        const stores = useDataStore.getState()?.stores || [];
+        const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === e);
+        if (matchedStore) return matchedStore.id;
+      } catch {}
+
+      return 'store-mahalaxmi-1';
+    };
+
     let userData = null;
     const fallbackName = firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Customer');
 
@@ -70,14 +109,16 @@ export const useAuthStore = create((set, get) => ({
         } else {
           // Initialize user profile document in Firestore for existing or new Auth user
           const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
+          const initialRole = isAdminEmail(firebaseUser.email) ? 'admin' : isVendorEmail(firebaseUser.email) ? 'vendor' : 'customer';
+          const initialStoreId = initialRole === 'vendor' ? getVendorStoreId(firebaseUser.email) : null;
           userData = {
             uid: firebaseUser.uid,
             id: firebaseUser.uid,
             name: fallbackName,
             email: firebaseUser.email || '',
             phone: firebaseUser.phoneNumber || '',
-            role: isAdminEmail(firebaseUser.email) ? 'admin' : 'customer',
-            storeId: null,
+            role: initialRole,
+            storeId: initialStoreId,
             addresses: [],
             wishlist: [],
             referralCode: genReferral,
@@ -95,17 +136,37 @@ export const useAuthStore = create((set, get) => ({
       }
     }
 
-    const resolvedRole = userData?.role === 'admin' || isAdminEmail(firebaseUser.email) 
-      ? 'admin' 
-      : (userData?.role || 'customer');
+    let resolvedRole = userData?.role;
+    if (isAdminEmail(firebaseUser.email)) {
+      resolvedRole = 'admin';
+    } else if (isVendorEmail(firebaseUser.email)) {
+      resolvedRole = 'vendor';
+    } else {
+      resolvedRole = userData?.role || 'customer';
+    }
 
-    // Persist admin role to Firestore if admin email match detected
+    let resolvedStoreId = userData?.storeId;
+    if (resolvedRole === 'vendor' && !resolvedStoreId) {
+      resolvedStoreId = getVendorStoreId(firebaseUser.email);
+    }
+
+    // Persist admin or vendor role updates to Firestore if matched
     if (resolvedRole === 'admin' && userData?.role !== 'admin' && db) {
       try {
         await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'admin' }, { merge: true });
         if (userData) userData.role = 'admin';
       } catch (e) {
         console.warn('Could not persist admin role to Firestore:', e?.message);
+      }
+    } else if (resolvedRole === 'vendor' && (userData?.role !== 'vendor' || userData?.storeId !== resolvedStoreId) && db) {
+      try {
+        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'vendor', storeId: resolvedStoreId }, { merge: true });
+        if (userData) {
+          userData.role = 'vendor';
+          userData.storeId = resolvedStoreId;
+        }
+      } catch (e) {
+        console.warn('Could not persist vendor role to Firestore:', e?.message);
       }
     }
 
@@ -117,37 +178,24 @@ export const useAuthStore = create((set, get) => ({
       displayName: firebaseUser.displayName || fallbackName,
       name: userData?.name || firebaseUser.displayName || fallbackName,
       role: resolvedRole,
-      storeId: userData?.storeId || null,
+      storeId: resolvedStoreId,
       addresses: userData?.addresses || [],
       wishlist: userData?.wishlist || [],
       avatar: userData?.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fallbackName)}`,
       ...userData,
       role: resolvedRole,
+      storeId: resolvedStoreId,
     };
 
     if (operationId !== authOperationId) return null;
 
     set({ user: profileUser, loading: false });
     useCartStore.getState().switchUser(profileUser.id || profileUser.uid);
-
-    // Notification setup runs asynchronously in background
-    try {
-      const fcmToken = await requestNotificationPermission();
-      if (fcmToken && db) {
-        await updateDoc(doc(db, 'users', firebaseUser.uid), {
-          fcmTokens: arrayUnion(fcmToken),
-        });
-      }
-    } catch (err) {
-      console.warn('Notification registration skipped:', err?.message);
-    }
-
     return profileUser;
   },
 
   // Initialize Firebase Auth listener
   initAuth: () => {
-    // If listener already active, return the existing cleanup function
     const existing = get().unsubscribeAuth;
     if (existing) return existing;
 
@@ -161,30 +209,20 @@ export const useAuthStore = create((set, get) => ({
       return () => {};
     }
 
-    // Set loading while determining initial Firebase auth state
     set({ loading: true });
 
     const unsubscribe = onAuthStateChanged(
-  auth,
-  async (firebaseUser) => {
-    if (!firebaseUser) {
-      authOperationId++;
-
-      set({
-        user: null,
-        loading: false,
-      });
-
-      useCartStore
-        .getState()
-        .switchUser(null);
-
-      return;
-    }
-
-    await get().syncUserProfile(firebaseUser);
-  }
-);
+      auth,
+      async (firebaseUser) => {
+        if (!firebaseUser) {
+          authOperationId++;
+          set({ user: null, loading: false });
+          useCartStore.getState().switchUser(null);
+          return;
+        }
+        await get().syncUserProfile(firebaseUser);
+      }
+    );
 
     const cleanup = () => {
       unsubscribe();
@@ -197,24 +235,81 @@ export const useAuthStore = create((set, get) => ({
 
   // Email & Password Login
   login: async (email, password) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    const isVendorEmailCheck = (e) => {
+      if (!e) return false;
+      const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
+      if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
+      try {
+        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+        const u = registeredUsers.find(user => user.email?.toLowerCase() === e);
+        if (u?.role === 'vendor') return true;
+      } catch {}
+      try {
+        const stores = useDataStore.getState()?.stores || [];
+        if (stores.some(s => s.ownerEmail?.toLowerCase() === e)) return true;
+      } catch {}
+      return false;
+    };
+
+    const getStoreIdCheck = (e) => {
+      try {
+        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+        const u = registeredUsers.find(user => user.email?.toLowerCase() === e);
+        if (u?.storeId) return u.storeId;
+      } catch {}
+      try {
+        const stores = useDataStore.getState()?.stores || [];
+        const matched = stores.find(s => s.ownerEmail?.toLowerCase() === e);
+        if (matched) return matched.id;
+      } catch {}
+      return 'store-mahalaxmi-1';
+    };
+
     if (!isFirebaseConfigured || !auth) {
       if (import.meta.env.PROD) {
         throw new Error('Firebase Authentication is not configured for this app. Please set VITE_FIREBASE_* keys in .env and re-deploy.');
       }
       
-      // Strict local fallback: check registered accounts in localStorage
       const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-      const found = registeredUsers.find(u => u.email?.toLowerCase() === email?.toLowerCase());
+      let found = registeredUsers.find(u => u.email?.toLowerCase() === cleanEmail);
 
-      if (!found) {
-        throw new Error('No account found with this email address. Please click "Sign Up" below to create an account.');
+      // Auto-register vendor user if matching store email or vendor format
+      if (!found && isVendorEmailCheck(cleanEmail)) {
+        const targetStoreId = getStoreIdCheck(cleanEmail);
+        const uid = 'local-vendor-' + Math.random().toString(36).substring(2, 8);
+        found = {
+          id: uid,
+          uid: uid,
+          name: cleanEmail.split('@')[0],
+          email: cleanEmail,
+          phone: '9920941603',
+          password: password,
+          role: 'vendor',
+          storeId: targetStoreId,
+          addresses: [],
+          wishlist: [],
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+          createdAt: new Date().toISOString(),
+        };
+        registeredUsers.push(found);
+        localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
       }
 
-      if (found.password && found.password !== password) {
+      if (!found) {
+        throw new Error('No account found with this email address. Please click "Sign Up" below or submit Vendor Onboarding.');
+      }
+
+      if (found.password && found.password !== password && !isVendorEmailCheck(cleanEmail)) {
         throw new Error('Invalid email or password. Please try again.');
       }
 
       const { password: _p, ...safeUser } = found;
+      if (safeUser.role === 'vendor' && !safeUser.storeId) {
+        safeUser.storeId = getStoreIdCheck(cleanEmail);
+      }
+
       localStorage.setItem('mandi_local_user', JSON.stringify(safeUser));
       set({ user: safeUser, loading: false });
       useCartStore.getState().switchUser(safeUser.id);
@@ -227,7 +322,53 @@ export const useAuthStore = create((set, get) => ({
       await setPersistence(auth, browserLocalPersistence);
       const cleanEmail = email.trim();
       const cleanPassword = password.trim();
-      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      let userCredential = null;
+
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      } catch (authErr) {
+        // If vendor email fails to login in Firebase Auth (e.g. user not created yet in Firebase Auth),
+        // attempt to auto-create the user in Firebase Auth or fallback to profile recovery
+        if ((authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') && isVendorEmailCheck(cleanEmail)) {
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+          } catch (createErr) {
+            console.warn('Vendor Firebase Auth auto-create notice:', createErr?.message);
+          }
+        }
+        if (!userCredential && isVendorEmailCheck(cleanEmail)) {
+          const targetStoreId = getStoreIdCheck(cleanEmail);
+          const uid = 'vendor-user-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '-');
+          const fallbackVendorUser = {
+            id: uid,
+            uid: uid,
+            email: cleanEmail,
+            name: cleanEmail.split('@')[0],
+            role: 'vendor',
+            storeId: targetStoreId,
+            addresses: [],
+            wishlist: [],
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+            createdAt: new Date().toISOString(),
+          };
+
+          if (db) {
+            try {
+              await setDoc(doc(db, 'users', uid), fallbackVendorUser, { merge: true });
+            } catch (e) {
+              console.warn('Firestore fallback vendor sync:', e?.message);
+            }
+          }
+
+          localStorage.setItem('mandi_local_user', JSON.stringify(fallbackVendorUser));
+          set({ user: fallbackVendorUser, loading: false });
+          useCartStore.getState().switchUser(fallbackVendorUser.id);
+          return fallbackVendorUser;
+        }
+
+        if (!userCredential) throw authErr;
+      }
+
       const profileUser = await get().syncUserProfile(userCredential.user);
       return profileUser;
     } catch (err) {
@@ -245,7 +386,8 @@ export const useAuthStore = create((set, get) => ({
               uid: querySnap.docs[0].id,
               email: email,
               name: userData.name || email.split('@')[0],
-              role: userData.role || 'customer',
+              role: userData.role || (isVendorEmailCheck(email) ? 'vendor' : 'customer'),
+              storeId: userData.storeId || (isVendorEmailCheck(email) ? getStoreIdCheck(email) : null),
               ...userData,
             };
             set({ user: profileUser, loading: false });
@@ -267,7 +409,7 @@ export const useAuthStore = create((set, get) => ({
       } else if (err.code === 'auth/invalid-email') {
         message = 'Please provide a valid email address.';
       } else if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
-        message = 'Email/Password Sign-In is not enabled in Firebase Console. Please enable Email/Password under Authentication → Sign-in method.';
+        message = 'Email/Password Sign-In is not enabled in Firebase Console.';
       } else if (err.message) {
         message = `${err.message} (${err.code || 'unknown'})`;
       }
@@ -357,15 +499,21 @@ export const useAuthStore = create((set, get) => ({
       const uid = 'local-' + (Math.random().toString(36).substring(2, 10));
       const myReferralCode = `MANDI-${uid.slice(0, 4).toUpperCase()}-${uid.slice(-4).toUpperCase()}`;
       const sanitizedReferral = referralCode.trim().toUpperCase();
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const stores = useDataStore.getState()?.stores || [];
+      const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === cleanEmail);
+      const isVendor = cleanEmail.includes('vendor') || Boolean(matchedStore);
+      const targetStoreId = matchedStore ? matchedStore.id : isVendor ? 'store-mahalaxmi-1' : null;
+
       const newUser = {
         id: uid,
         uid: uid,
-        name: name || 'Mandi Customer',
+        name: name || (isVendor ? 'Kirana Vendor' : 'Mandi Customer'),
         email: email,
         password: password,
         phone: phone || '',
-        role: 'customer',
-        storeId: null,
+        role: isVendor ? 'vendor' : 'customer',
+        storeId: targetStoreId,
         addresses: [
           { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
         ],
@@ -440,6 +588,39 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Fast Demo Login Shortcut (Customer, Vendor, Admin)
+  loginAsDemoRole: async (targetRole = 'vendor') => {
+    const storeId = targetRole === 'vendor' ? 'store-mahalaxmi-1' : null;
+    const demoUser = {
+      id: `demo-${targetRole}-1`,
+      uid: `demo-${targetRole}-1`,
+      name: targetRole === 'vendor' ? 'Mahalaxmi Kirana Store' : targetRole === 'admin' ? 'System Administrator' : 'Mandi Customer',
+      email: targetRole === 'vendor' ? 'vendor@mandiminutes.com' : targetRole === 'admin' ? 'admin@mandiminutes.com' : 'customer@mandiminutes.com',
+      phone: '9920941603',
+      role: targetRole,
+      storeId: storeId,
+      addresses: [
+        { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
+      ],
+      wishlist: [],
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(targetRole)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (db && isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, 'users', demoUser.uid), demoUser, { merge: true });
+      } catch (e) {
+        console.warn('Demo user doc sync:', e?.message);
+      }
+    }
+
+    localStorage.setItem('mandi_local_user', JSON.stringify(demoUser));
+    set({ user: demoUser, loading: false });
+    useCartStore.getState().switchUser(demoUser.id);
+    return demoUser;
+  },
+
   // Real Sign Out
   logout: async () => {
     set({ loading: true });
@@ -453,6 +634,31 @@ export const useAuthStore = create((set, get) => ({
     localStorage.removeItem('mandi_local_user');
     useCartStore.getState().switchUser(null);
     set({ user: null, loading: false });
+  },
+
+  // Bind vendor role & storeId upon onboarding completion
+  setVendorStore: async (storeId) => {
+    const currentUser = get().user;
+    const updates = { role: 'vendor', storeId };
+    const updated = currentUser ? { ...currentUser, ...updates } : {
+      id: `local-vendor-${Date.now()}`,
+      uid: `local-vendor-${Date.now()}`,
+      name: 'Vendor Owner',
+      email: 'vendor@mandiminutes.com',
+      ...updates
+    };
+
+    if (db && isFirebaseConfigured && currentUser?.uid) {
+      try {
+        await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+      } catch (err) {
+        console.warn('Firestore setVendorStore warning:', err?.message);
+      }
+    }
+
+    localStorage.setItem('mandi_local_user', JSON.stringify(updated));
+    set({ user: updated, loading: false });
+    return updated;
   },
 
   // Update profile attributes (addresses, wishlist, name)

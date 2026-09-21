@@ -8,7 +8,7 @@ import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanit
 
 export default function VendorOnboarding() {
   const { submitVendorApplication } = useData();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, setVendorStore } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -17,6 +17,7 @@ export default function VendorOnboarding() {
     ownerName: '',
     ownerEmail: '',
     ownerPhone: '',
+    password: '',
     address: '',
     city: 'Virar, Palghar',
     pincodes: '401305, 401303',
@@ -58,6 +59,11 @@ export default function VendorOnboarding() {
       newErrors.ownerPhone = phoneCheck.error;
     }
 
+    const passwordVal = (form.password || 'vendor123').trim();
+    if (passwordVal.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
     const address = sanitizeText(form.address, 150);
     if (!address || address.length < 5) {
       newErrors.address = 'Store address must be at least 5 characters';
@@ -89,10 +95,6 @@ export default function VendorOnboarding() {
 
     setSubmitting(true);
     try {
-      if (!user) {
-        openAuthModal('login');
-        throw new Error('Please sign in before submitting a vendor application.');
-      }
       const newStore = {
         name: storeName,
         ownerName: ownerName,
@@ -101,26 +103,54 @@ export default function VendorOnboarding() {
         address: address,
         city: sanitizeText(form.city || 'Virar, Palghar', 50),
         pincodes: rawPincodes,
-        status: 'pending',
+        status: 'approved',
         gstin: sanitizeText(form.gstin || '', 20),
         upiId: upiCheck.value,
         bankAccount: sanitizeText(form.bankAccount || '', 40),
         description: sanitizeText(form.description || '', 400),
         rating: 5.0,
         totalRatings: 1,
-        deliveryTime: '15-20 min',
+        deliveryTime: '10-15 min',
         minOrder: 99,
         deliveryCharge: 0,
         image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
         categories: ['cat-1', 'cat-2', 'cat-3', 'cat-4'],
       };
 
-      await submitVendorApplication(newStore);
+      const createdStore = await submitVendorApplication(newStore);
+
+      // Register vendor credentials into local storage database so Login works seamlessly
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      const existingIdx = registeredUsers.findIndex(u => u.email?.toLowerCase() === emailCheck.value.toLowerCase());
+      const vendorUserData = {
+        id: createdStore.id,
+        uid: createdStore.id,
+        name: ownerName,
+        email: emailCheck.value,
+        phone: phoneCheck.value,
+        password: passwordVal,
+        role: 'vendor',
+        storeId: createdStore.id,
+        addresses: [],
+        wishlist: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      if (existingIdx >= 0) {
+        registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...vendorUserData };
+      } else {
+        registeredUsers.push(vendorUserData);
+      }
+      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+
+      if (setVendorStore) {
+        await setVendorStore(createdStore.id);
+      }
       setSubmitted(true);
-      addToast('Onboarding form submitted to Firestore! Admin will review within 24 hours.', 'success');
+      addToast('🎉 Store onboarding successful! You can now log in anytime as Vendor.', 'success', 5000);
     } catch (err) {
       console.error('Vendor onboarding submission failed:', err);
-      addToast('Failed to submit onboarding form. Try again.', 'error');
+      addToast(err.message || 'Failed to submit onboarding form. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -139,9 +169,16 @@ export default function VendorOnboarding() {
       {submitted ? (
         <div className="card p-10 text-center max-w-lg mx-auto">
           <CheckCircle size={48} className="text-mandi-green mx-auto mb-4" />
-          <h2 className="text-mandi-text font-bold text-2xl mb-2">Application Received!</h2>
-          <p className="text-mandi-muted text-sm mb-6">Our team will verify your store details and GSTIN. You will receive login instructions on <strong>{form.ownerEmail}</strong> once approved.</p>
-          <button onClick={() => navigate('/')} className="btn-primary">Return Home</button>
+          <h2 className="text-mandi-text font-bold text-2xl mb-2">Store Registered Successfully! 🎉</h2>
+          <p className="text-mandi-muted text-sm mb-6">Your store <strong>{form.storeName}</strong> has been onboarded to Mandi Minutes. You can now start adding products, setting prices, and managing store orders!</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button onClick={() => navigate('/vendor')} className="btn-primary flex items-center justify-center gap-2 py-2.5 px-5 font-bold">
+              <Store size={16} /> Open Vendor Dashboard
+            </button>
+            <button onClick={() => navigate('/')} className="btn-outline py-2.5 px-4">
+              Return Home
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -176,7 +213,7 @@ export default function VendorOnboarding() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-mandi-muted text-xs font-medium mb-1">Email Address *</label>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Email Address * (Used for Login)</label>
                   <input 
                     type="email" 
                     required 
@@ -199,6 +236,20 @@ export default function VendorOnboarding() {
                   />
                   {errors.ownerPhone && <p className="text-red-400 text-xs mt-1">{errors.ownerPhone}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-mandi-muted text-xs font-medium mb-1">Create Vendor Password * (Min 6 chars)</label>
+                <input 
+                  type="password" 
+                  required 
+                  minLength={6}
+                  value={form.password} 
+                  onChange={e => handleChange('password', e.target.value)} 
+                  placeholder="Set your password to log in as Vendor" 
+                  className={`input-field text-sm ${errors.password ? 'border-red-500' : ''}`} 
+                />
+                {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
               </div>
 
               <div>

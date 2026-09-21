@@ -9,7 +9,7 @@ import { useToast } from './Toast';
 import { validateIndianPhone, validateEmail, sanitizeText } from '../../utils/validators';
 
 export default function AuthModal() {
-  const { authModal, closeAuthModal, login, register, sendPhoneOtp, confirmPhoneOtp } = useAuth();
+  const { authModal, closeAuthModal, login, register, sendPhoneOtp, confirmPhoneOtp, loginAsDemoRole } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -82,16 +82,21 @@ export default function AuthModal() {
 
     setLoading(true);
     try {
+      let loggedUser = null;
       if (mode === 'login') {
-        await login(emailCheck.value, form.password);
+        loggedUser = await login(emailCheck.value, form.password);
         addToast('Welcome back to Mandi Minutes!', 'success');
       } else {
         const sanitizedName = sanitizeText(form.name, 60);
-        await register(sanitizedName, emailCheck.value, form.phone, form.password, form.referralCode);
+        loggedUser = await register(sanitizedName, emailCheck.value, form.phone, form.password, form.referralCode);
         addToast('Account created successfully! Welcome 🎉', 'success');
       }
       closeAuthModal();
-      if (items && items.length > 0) {
+      if (loggedUser?.role === 'vendor') {
+        navigate('/vendor');
+      } else if (loggedUser?.role === 'admin') {
+        navigate('/admin');
+      } else if (items && items.length > 0) {
         navigate('/checkout');
       }
     } catch (err) {

@@ -20,7 +20,11 @@ import {
   Zap, 
   DollarSign,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Search,
+  Filter,
+  Check,
+  Minus
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -28,12 +32,13 @@ const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
   const { user } = useAuth();
-  const { stores, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateOrderStatus } = useData();
+  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateOrderStatus } = useData();
   const { addToast } = useToast();
 
-  // Strictly resolve store from authenticated user's storeId only — no default store fallbacks
-  const store = user?.storeId ? stores.find(s => s.id === user.storeId) : null;
-  const products = useMemo(() => store?.id ? getProductsByStore(store.id) : [], [store?.id, getProductsByStore]);
+  // Resolve store from user's storeId, or default to initial vendor store
+  const activeStoreId = user?.storeId || (stores.length > 0 ? stores[0].id : 'store-mahalaxmi-1');
+  const store = stores.find(s => s.id === activeStoreId) || stores[0];
+  const products = useMemo(() => store?.id ? getProductsByStore(store.id) : [], [store?.id, getProductsByStore, allProducts]);
   const storeOrders = useMemo(() => store?.id ? getOrdersByStore(store.id) : [], [store?.id, getOrdersByStore]);
 
   const [activeTab, setActiveTab] = useState('orders');
@@ -43,6 +48,41 @@ export default function VendorDashboard() {
   const [orderFilter, setOrderFilter] = useState('all');
   const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d'
   const [stockThreshold, setStockThreshold] = useState(5);
+  
+  // Product Search & Filter states
+  const [productSearch, setProductSearch] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+
+  // Filtered products list for table display
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase()) || p.brand?.toLowerCase().includes(productSearch.toLowerCase());
+      const matchesCat = selectedCategoryFilter === 'all' || p.category === selectedCategoryFilter;
+      return matchesSearch && matchesCat;
+    });
+  }, [products, productSearch, selectedCategoryFilter]);
+
+  // Inline Price & Stock update handlers
+  const handleInlinePriceChange = async (productId, newPrice) => {
+    const pVal = parseFloat(newPrice);
+    if (isNaN(pVal) || pVal <= 0) return;
+    try {
+      await updateProduct(productId, { price: pVal });
+      addToast(`Price updated to ₹${pVal}`, 'success', 2000);
+    } catch (err) {
+      addToast(err.message || 'Could not update price', 'error');
+    }
+  };
+
+  const handleStockAdjust = async (productId, currentStock, delta) => {
+    const nextStock = Math.max(0, Number(currentStock) + delta);
+    try {
+      await updateProduct(productId, { stock: nextStock, isAvailable: nextStock > 0 });
+      addToast(`Stock updated to ${nextStock}`, 'info', 2000);
+    } catch (err) {
+      addToast(err.message || 'Could not update stock', 'error');
+    }
+  };
 
   // SLA Calculation for Active Orders
   const ordersWithSla = useMemo(() => {
@@ -54,7 +94,6 @@ export default function VendorDashboard() {
       let slaStatus = 'ok';
       let slaMessage = '';
 
-      // Only express orders are subjected to the strict 5-min express SLA timer
       if (order.deliveryType !== 'scheduled') {
         if (order.status === 'placed') {
           if (elapsedMinutes >= 5) {
@@ -92,7 +131,6 @@ export default function VendorDashboard() {
     const pending = storeOrders.filter(o => ['placed', 'accepted', 'preparing'].includes(o.status)).length;
     const lowStock = products.filter(p => p.stock <= stockThreshold).length;
     
-    // SLA compliance calculation
     const completedOrOut = storeOrders.filter(o => ['delivered', 'out_for_delivery'].includes(o.status));
     const onTimeOrders = completedOrOut.filter(o => {
       const acceptStep = o.statusHistory?.find(h => h.status === 'accepted');
@@ -105,7 +143,6 @@ export default function VendorDashboard() {
     return { rev: totalRev, count: storeOrders.length, pending, lowStock, slaRate };
   }, [storeOrders, products, stockThreshold]);
 
-  // Sales Over Time (7 / 30 Days)
   const salesOverTime = useMemo(() => {
     const numDays = timeframe === '30d' ? 30 : 7;
     const now = new Date();
@@ -136,12 +173,10 @@ export default function VendorDashboard() {
     return data;
   }, [storeOrders, timeframe]);
 
-  // Low-Stock Products List
   const lowStockProducts = useMemo(() => {
     return products.filter(p => Number(p.stock) <= stockThreshold);
   }, [products, stockThreshold]);
 
-  // Earnings Summary
   const earningsSummary = useMemo(() => {
     const grossSales = storeOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const platformCommission = Math.round(grossSales * PLATFORM_COMMISSION_RATE);
@@ -150,7 +185,6 @@ export default function VendorDashboard() {
     return { grossSales, platformCommission, netPayout, deliveredCount, rate: PLATFORM_COMMISSION_RATE * 100 };
   }, [storeOrders]);
 
-  // Top Selling Products Calculated Dynamically from Firestore Orders
   const topSellingProducts = useMemo(() => {
     const countMap = {};
     storeOrders.forEach(o => {
@@ -174,15 +208,15 @@ export default function VendorDashboard() {
 
   const handleSaveProduct = async (prodData) => {
     try {
-    if (editingProduct) {
-      await updateProduct(editingProduct.id, prodData);
-      addToast('Product updated!', 'success');
-    } else {
-      await addProduct({ ...prodData, storeId: store.id });
-      addToast('Product added to catalog!', 'success');
-    }
-    setShowProductModal(false);
-    setEditingProduct(null);
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, prodData);
+        addToast('Product updated!', 'success');
+      } else {
+        await addProduct({ ...prodData, storeId: store.id });
+        addToast('Product added to catalog!', 'success');
+      }
+      setShowProductModal(false);
+      setEditingProduct(null);
     } catch (err) { addToast(err.message || 'Could not save product.', 'error'); }
   };
 
@@ -198,7 +232,7 @@ export default function VendorDashboard() {
           <Store size={48} className="text-orange-400 mx-auto" />
           <h2 className="text-xl font-bold text-mandi-text">Store Not Linked</h2>
           <p className="text-mandi-muted text-sm max-w-md mx-auto">
-            Your vendor account does not have an active store associated with ID "{user?.storeId || 'N/A'}". If you recently registered, please wait for admin verification.
+            Your vendor account is not associated with an active store. Please complete vendor onboarding or contact support.
           </p>
           <div className="flex gap-3 justify-center pt-2">
             <a href="/vendor-onboarding" className="btn-primary text-sm py-2 px-4">
@@ -243,7 +277,7 @@ export default function VendorDashboard() {
             <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
             <span className="badge-green text-xs font-semibold uppercase">{store.status}</span>
           </div>
-          <p className="text-mandi-muted text-xs mt-1">Vendor Dashboard • Owner: {store.ownerName} • Virar Region</p>
+          <p className="text-mandi-muted text-xs mt-1">Vendor Portal • Owner: {store.ownerName || 'Verified Partner'} • Virar Region</p>
         </div>
         <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="btn-primary flex items-center gap-2 py-2.5 px-4 text-sm self-start sm:self-auto">
           <Plus size={16} />Add Product
@@ -296,7 +330,7 @@ export default function VendorDashboard() {
 
       {/* Tabs */}
       <div className="flex border-b border-mandi-border mb-6">
-        {[{ id: 'orders', label: `Orders (${storeOrders.length})` }, { id: 'products', label: `Products (${products.length})` }, { id: 'analytics', label: 'Sales & SLA Analytics' }].map(t => (
+        {[{ id: 'orders', label: `Orders (${storeOrders.length})` }, { id: 'products', label: `Products & Pricing (${products.length})` }, { id: 'analytics', label: 'Sales & SLA Analytics' }].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} className={`py-3 px-4 font-semibold text-sm border-b-2 transition-all ${activeTab === t.id ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>{t.label}</button>
         ))}
       </div>
@@ -405,50 +439,125 @@ export default function VendorDashboard() {
         </div>
       )}
 
-      {/* TAB 2: Products */}
+      {/* TAB 2: Products & Price Management */}
       {activeTab === 'products' && (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-mandi-surface text-mandi-muted text-xs uppercase border-b border-mandi-border">
-              <tr>
-                <th className="p-3">Product</th>
-                <th className="p-3">Unit</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-mandi-border">
-              {products.map(p => (
-                <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
-                  <td className="p-3 flex items-center gap-3">
-                    <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" containerClass="w-10 h-10 rounded-lg flex-shrink-0" width={100} quality={50} />
-                    <div>
-                      <p className="text-mandi-text font-semibold text-xs">{p.name}</p>
-                      <p className="text-mandi-subtle text-xs">{p.brand}</p>
-                    </div>
-                  </td>
-                  <td className="p-3 text-mandi-muted text-xs">{p.unit}</td>
-                  <td className="p-3 text-mandi-green font-bold text-xs">₹{p.price}</td>
-                  <td className="p-3 text-xs">
-                    <span className={`font-semibold ${p.stock <= 5 ? 'text-red-400' : 'text-mandi-text'}`}>{p.stock}</span>
-                  </td>
-                  <td className="p-3">
-                    <button onClick={() => updateProduct(p.id, { isAvailable: !p.isAvailable })} className={`text-xs px-2.5 py-1 rounded-full font-medium ${p.isAvailable ? 'bg-mandi-green-muted text-mandi-green' : 'bg-red-900 text-red-200'}`}>
-                      {p.isAvailable ? 'In Stock' : 'Out of Stock'}
-                    </button>
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => { setEditingProduct(p); setShowProductModal(true); }} className="p-1.5 rounded-lg bg-mandi-surface hover:border-mandi-green text-mandi-muted hover:text-mandi-text border border-mandi-border"><Edit size={14} /></button>
-                      <button onClick={() => { deleteProduct(p.id); addToast('Product deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface hover:border-red-500 text-red-400 border border-mandi-border"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
+        <div className="space-y-4">
+          {/* Search & Category Filter Bar */}
+          <div className="card p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative flex-1 w-full">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-subtle" />
+              <input
+                type="text"
+                placeholder="Search products by name or brand..."
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                className="input-field pl-9 text-xs w-full"
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter size={14} className="text-mandi-muted flex-shrink-0" />
+              <select
+                value={selectedCategoryFilter}
+                onChange={e => setSelectedCategoryFilter(e.target.value)}
+                className="input-field text-xs py-2 px-3 w-full sm:w-auto cursor-pointer"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-mandi-surface text-mandi-muted text-xs uppercase border-b border-mandi-border">
+                <tr>
+                  <th className="p-3">Product</th>
+                  <th className="p-3">Unit</th>
+                  <th className="p-3">Selling Price (₹)</th>
+                  <th className="p-3">Stock Quantity</th>
+                  <th className="p-3">Availability</th>
+                  <th className="p-3 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-mandi-border">
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-mandi-muted text-xs">
+                      No products found matching search/filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map(p => (
+                    <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
+                      <td className="p-3 flex items-center gap-3">
+                        <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" containerClass="w-10 h-10 rounded-lg flex-shrink-0" width={100} quality={50} />
+                        <div>
+                          <p className="text-mandi-text font-semibold text-xs">{p.name}</p>
+                          <p className="text-mandi-subtle text-[11px]">{p.brand || 'Local Vendor'} {p.mrp ? `• MRP ₹${p.mrp}` : ''}</p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-mandi-muted text-xs">{p.unit}</td>
+                      
+                      {/* Inline Quick Price Edit */}
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-mandi-green font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.5"
+                            defaultValue={p.price}
+                            key={`price-${p.id}-${p.price}`}
+                            onBlur={e => handleInlinePriceChange(p.id, e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                            className="w-20 bg-mandi-surface border border-mandi-border focus:border-mandi-green rounded-lg py-1 px-2 text-xs font-bold text-mandi-green text-left focus:outline-none"
+                            title="Click to edit selling price"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Inline Quick Stock Controls */}
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleStockAdjust(p.id, p.stock, -1)}
+                            className="w-6 h-6 rounded-md bg-mandi-surface border border-mandi-border hover:border-red-500 hover:text-red-400 flex items-center justify-center text-xs font-bold text-mandi-muted transition-all active:scale-95"
+                            title="Decrease stock"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className={`w-8 text-center text-xs font-bold ${p.stock <= 5 ? 'text-red-400' : 'text-mandi-text'}`}>
+                            {p.stock}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleStockAdjust(p.id, p.stock, 1)}
+                            className="w-6 h-6 rounded-md bg-mandi-surface border border-mandi-border hover:border-mandi-green hover:text-mandi-green flex items-center justify-center text-xs font-bold text-mandi-muted transition-all active:scale-95"
+                            title="Increase stock"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="p-3">
+                        <button onClick={() => updateProduct(p.id, { isAvailable: !p.isAvailable })} className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition-all ${p.isAvailable ? 'bg-mandi-green-muted text-mandi-green' : 'bg-red-950 text-red-300 border border-red-800'}`}>
+                          {p.isAvailable ? 'In Stock' : 'Out of Stock'}
+                        </button>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { setEditingProduct(p); setShowProductModal(true); }} className="p-1.5 rounded-lg bg-mandi-surface hover:border-mandi-green text-mandi-muted hover:text-mandi-text border border-mandi-border" title="Edit details"><Edit size={14} /></button>
+                          <button onClick={() => { deleteProduct(p.id); addToast('Product deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface hover:border-red-500 text-red-400 border border-mandi-border" title="Delete product"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

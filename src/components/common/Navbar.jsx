@@ -154,10 +154,16 @@ export default function Navbar() {
                           <span className="text-sm">{t('nav.adminPanel')}</span>
                         </Link>
                       )}
-                      {isVendor && (
-                        <Link to="/vendor" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
-                          <Store size={16} className="text-mandi-green" />
-                          <span className="text-mandi-text text-sm">{t('nav.dashboard')}</span>
+                      {(isVendor || isAdmin) && (
+                        <Link to="/vendor" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 bg-opacity-10 hover:bg-opacity-20 text-orange-400 font-semibold transition-colors rounded-lg mx-1">
+                          <Store size={16} className="text-orange-400" />
+                          <span className="text-sm">Vendor Dashboard</span>
+                        </Link>
+                      )}
+                      {!isVendor && !isAdmin && (
+                        <Link to="/vendor-onboarding" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1 text-orange-300">
+                          <Store size={16} className="text-orange-400" />
+                          <span className="text-sm">Partner as Vendor</span>
                         </Link>
                       )}
                       <Link to="/orders" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1">
