@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import ProductModal from '../components/vendor/ProductModal';
 import InvoiceModal from '../components/vendor/InvoiceModal';
+import MasterCatalogModal from '../components/vendor/MasterCatalogModal';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
 import { 
@@ -24,30 +25,84 @@ import {
   Search,
   Filter,
   Check,
-  Minus
+  Minus,
+  Sparkles,
+  Settings,
+  Save,
+  MapPin
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
-  const { user } = useAuth();
-  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateOrderStatus } = useData();
+  const { user, setVendorStore } = useAuth();
+  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateOrderStatus, updateStore, addStore } = useData();
   const { addToast } = useToast();
 
-  // Resolve store from user's storeId, or default to initial vendor store
-  const activeStoreId = user?.storeId || (stores.length > 0 ? stores[0].id : 'store-mahalaxmi-1');
-  const store = stores.find(s => s.id === activeStoreId) || stores[0];
-  const products = useMemo(() => store?.id ? getProductsByStore(store.id) : [], [store?.id, getProductsByStore, allProducts]);
+  // Resolve store dynamically matching logged-in vendor user email, storeId, or uid
+  const store = useMemo(() => {
+    if (!user) return null;
+    return stores.find(s => 
+      (user.storeId && s.id === user.storeId) ||
+      (user.email && s.ownerEmail?.toLowerCase() === user.email.toLowerCase()) ||
+      (user.uid && s.id === user.uid)
+    ) || (user.role === 'vendor' ? null : stores[0]);
+  }, [stores, user]);
+
+  const products = useMemo(() => store?.id ? getProductsByStore(store.id, true) : [], [store?.id, getProductsByStore, allProducts]);
   const storeOrders = useMemo(() => store?.id ? getOrdersByStore(store.id) : [], [store?.id, getOrdersByStore]);
 
   const [activeTab, setActiveTab] = useState('orders');
   const [editingProduct, setEditingProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showMasterModal, setShowMasterModal] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
   const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d'
   const [stockThreshold, setStockThreshold] = useState(5);
+  
+  // Store Customization Form State
+  const [storeForm, setStoreForm] = useState({
+    name: '',
+    ownerName: '',
+    ownerPhone: '',
+    description: '',
+    status: 'approved',
+    deliveryTime: '10-15 min',
+    minOrder: 99,
+    deliveryCharge: 0,
+    image: '',
+    coverImage: '',
+    pincodes: '401305, 401303',
+    address: '',
+    city: 'Virar, Palghar',
+    upiId: '',
+    gstin: '',
+  });
+
+  // Sync storeForm when active store loads
+  useEffect(() => {
+    if (store) {
+      setStoreForm({
+        name: store.name || '',
+        ownerName: store.ownerName || user?.name || '',
+        ownerPhone: store.ownerPhone || user?.phone || '',
+        description: store.description || '',
+        status: store.status || 'approved',
+        deliveryTime: store.deliveryTime || '10-15 min',
+        minOrder: store.minOrder || 99,
+        deliveryCharge: store.deliveryCharge || 0,
+        image: store.image || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
+        coverImage: store.coverImage || 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80',
+        pincodes: Array.isArray(store.pincodes) ? store.pincodes.join(', ') : (store.pincodes || '401305, 401303'),
+        address: store.address || '',
+        city: store.city || 'Virar, Palghar',
+        upiId: store.upiId || '',
+        gstin: store.gstin || '',
+      });
+    }
+  }, [store, user]);
   
   // Product Search & Filter states
   const [productSearch, setProductSearch] = useState('');
@@ -220,9 +275,52 @@ export default function VendorDashboard() {
     } catch (err) { addToast(err.message || 'Could not save product.', 'error'); }
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    try { await updateOrderStatus(orderId, newStatus); addToast(`Order status updated to ${newStatus.replace(/_/g, ' ')}`, 'success'); }
-    catch (err) { addToast(err.message || 'Could not update order status.', 'error'); }
+  const handleBatchSaveProducts = async (prodList) => {
+    if (!store) return;
+    try {
+      for (const prod of prodList) {
+        await addProduct({ ...prod, storeId: store.id });
+      }
+      addToast(`🎉 Added ${prodList.length} items to your shop catalog!`, 'success', 4000);
+    } catch (err) {
+      addToast(err.message || 'Could not add master products.', 'error');
+    }
+  };
+
+  const handleSaveStoreCustomization = async (e) => {
+    e.preventDefault();
+    if (!store) return;
+    try {
+      const pinArray = storeForm.pincodes
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+      const updates = {
+        name: storeForm.name,
+        ownerName: storeForm.ownerName,
+        ownerPhone: storeForm.ownerPhone,
+        description: storeForm.description,
+        status: storeForm.status,
+        isOpen: storeForm.status !== 'closed',
+        deliveryTime: storeForm.deliveryTime,
+        minOrder: Number(storeForm.minOrder) || 99,
+        deliveryCharge: Number(storeForm.deliveryCharge) || 0,
+        image: storeForm.image,
+        coverImage: storeForm.coverImage,
+        pincodes: pinArray,
+        address: storeForm.address,
+        city: storeForm.city,
+        upiId: storeForm.upiId,
+        gstin: storeForm.gstin,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateStore(store.id, updates);
+      addToast('🎉 Shop settings & customization updated successfully!', 'success', 4000);
+    } catch (err) {
+      addToast(err.message || 'Could not update store settings.', 'error');
+    }
   };
 
   if (!store) {
@@ -275,13 +373,20 @@ export default function VendorDashboard() {
           <div className="flex items-center gap-2">
             <Store size={22} className="text-mandi-green" />
             <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
-            <span className="badge-green text-xs font-semibold uppercase">{store.status}</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-950 text-red-400 border border-red-800' : 'badge-green'}`}>
+              {store.status === 'closed' ? 'Store Paused' : store.status}
+            </span>
           </div>
           <p className="text-mandi-muted text-xs mt-1">Vendor Portal • Owner: {store.ownerName || 'Verified Partner'} • Virar Region</p>
         </div>
-        <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="btn-primary flex items-center gap-2 py-2.5 px-4 text-sm self-start sm:self-auto">
-          <Plus size={16} />Add Product
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button onClick={() => setShowMasterModal(true)} className="btn-outline text-mandi-green border-mandi-green border-opacity-40 hover:bg-mandi-green hover:text-black flex items-center gap-1.5 text-xs font-bold py-2 px-3 transition-all">
+            <Sparkles size={15} />Browse Master Catalog
+          </button>
+          <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="btn-primary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
+            <Plus size={15} />Add Custom Product
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -329,9 +434,14 @@ export default function VendorDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-mandi-border mb-6">
-        {[{ id: 'orders', label: `Orders (${storeOrders.length})` }, { id: 'products', label: `Products & Pricing (${products.length})` }, { id: 'analytics', label: 'Sales & SLA Analytics' }].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={`py-3 px-4 font-semibold text-sm border-b-2 transition-all ${activeTab === t.id ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>{t.label}</button>
+      <div className="flex border-b border-mandi-border mb-6 overflow-x-auto">
+        {[
+          { id: 'orders', label: `Orders (${storeOrders.length})` },
+          { id: 'products', label: `Products & Pricing (${products.length})` },
+          { id: 'analytics', label: 'Sales & SLA Analytics' },
+          { id: 'customization', label: '⚙️ Shop Customization' },
+        ].map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)} className={`py-3 px-4 font-semibold text-sm border-b-2 whitespace-nowrap transition-all ${activeTab === t.id ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>{t.label}</button>
         ))}
       </div>
 
@@ -728,9 +838,246 @@ export default function VendorDashboard() {
         </div>
       )}
 
+      {/* TAB 4: Shop Settings & Customization */}
+      {activeTab === 'customization' && (
+        <div className="card p-6 max-w-4xl space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-mandi-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-mandi-green bg-opacity-15 flex items-center justify-center text-mandi-green">
+                <Settings size={22} />
+              </div>
+              <div>
+                <h2 className="text-mandi-text font-bold text-lg">Shop Customization & Settings</h2>
+                <p className="text-mandi-muted text-xs">Update your shop branding, operating hours, delivery parameters, and payout details.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveStoreCustomization}
+              className="btn-primary py-2 px-5 text-xs font-bold flex items-center gap-1.5"
+            >
+              <Save size={15} /> Save Changes
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveStoreCustomization} className="space-y-6">
+            {/* Store Status Toggle */}
+            <div className="p-4 rounded-xl bg-mandi-surface border border-mandi-border flex items-center justify-between">
+              <div>
+                <p className="text-mandi-text font-bold text-sm">Store Operating Status</p>
+                <p className="text-mandi-muted text-xs">Toggle whether your shop is actively accepting customer orders on Mandi Minutes.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStoreForm(f => ({ ...f, status: f.status === 'closed' ? 'approved' : 'closed' }))}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    storeForm.status === 'closed'
+                      ? 'bg-red-950 text-red-300 border border-red-800'
+                      : 'bg-mandi-green text-black'
+                  }`}
+                >
+                  <Store size={15} />
+                  {storeForm.status === 'closed' ? 'Store Paused / Closed' : 'Store Open (Active)'}
+                </button>
+              </div>
+            </div>
+
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <h3 className="text-mandi-text font-semibold text-sm border-b border-mandi-border pb-2">Store Profile & Branding</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Store Name *</label>
+                  <input
+                    required
+                    value={storeForm.name}
+                    onChange={e => setStoreForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Gupta General Store"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Owner Name *</label>
+                  <input
+                    required
+                    value={storeForm.ownerName}
+                    onChange={e => setStoreForm(f => ({ ...f, ownerName: e.target.value }))}
+                    placeholder="Full Owner Name"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Owner Contact Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={storeForm.ownerPhone}
+                    onChange={e => setStoreForm(f => ({ ...f, ownerPhone: e.target.value }))}
+                    placeholder="10-digit phone number"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Estimated Delivery Time *</label>
+                  <select
+                    value={storeForm.deliveryTime}
+                    onChange={e => setStoreForm(f => ({ ...f, deliveryTime: e.target.value }))}
+                    className="input-field text-sm w-full cursor-pointer"
+                  >
+                    <option value="10-15 min">10-15 min (Express)</option>
+                    <option value="15-20 min">15-20 min</option>
+                    <option value="20-30 min">20-30 min</option>
+                    <option value="30-45 min">30-45 min</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-mandi-muted text-xs font-medium mb-1">Store Description / Bio</label>
+                <textarea
+                  rows={3}
+                  value={storeForm.description}
+                  onChange={e => setStoreForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Tell customers about your Kirana store specialties..."
+                  className="input-field text-sm w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Store Logo / Thumbnail Image URL</label>
+                  <input
+                    value={storeForm.image}
+                    onChange={e => setStoreForm(f => ({ ...f, image: e.target.value }))}
+                    placeholder="https://..."
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Store Cover Banner Image URL</label>
+                  <input
+                    value={storeForm.coverImage}
+                    onChange={e => setStoreForm(f => ({ ...f, coverImage: e.target.value }))}
+                    placeholder="https://..."
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Delivery & Logistics Settings */}
+            <div className="space-y-4">
+              <h3 className="text-mandi-text font-semibold text-sm border-b border-mandi-border pb-2">Delivery & Order Thresholds</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Minimum Order Amount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={storeForm.minOrder}
+                    onChange={e => setStoreForm(f => ({ ...f, minOrder: e.target.value }))}
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Delivery Charge (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={storeForm.deliveryCharge}
+                    onChange={e => setStoreForm(f => ({ ...f, deliveryCharge: e.target.value }))}
+                    placeholder="0 for Free Delivery"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-mandi-muted text-xs font-medium mb-1">Serviced Delivery PIN Codes (Comma-separated) *</label>
+                <input
+                  required
+                  value={storeForm.pincodes}
+                  onChange={e => setStoreForm(f => ({ ...f, pincodes: e.target.value }))}
+                  placeholder="e.g. 401305, 401303"
+                  className="input-field text-sm w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">Street Address *</label>
+                  <input
+                    required
+                    value={storeForm.address}
+                    onChange={e => setStoreForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="Shop No., Market Street, Landmark"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">City / Region *</label>
+                  <input
+                    required
+                    value={storeForm.city}
+                    onChange={e => setStoreForm(f => ({ ...f, city: e.target.value }))}
+                    placeholder="Virar, Palghar"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Payout & Legal Info */}
+            <div className="space-y-4">
+              <h3 className="text-mandi-text font-semibold text-sm border-b border-mandi-border pb-2">Payout & Bank Details</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">UPI ID for Direct Payouts *</label>
+                  <input
+                    required
+                    value={storeForm.upiId}
+                    onChange={e => setStoreForm(f => ({ ...f, upiId: e.target.value }))}
+                    placeholder="merchant@upi / 9920941603@ybl"
+                    className="input-field text-sm w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-mandi-muted text-xs font-medium mb-1">GSTIN Number (Optional)</label>
+                  <input
+                    value={storeForm.gstin}
+                    onChange={e => setStoreForm(f => ({ ...f, gstin: e.target.value }))}
+                    placeholder="27AAAAA0000A1Z5"
+                    className="input-field text-sm w-full uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-mandi-border flex justify-end">
+              <button
+                type="submit"
+                className="btn-primary py-3 px-8 text-sm font-bold flex items-center gap-2"
+              >
+                <Save size={16} /> Save Shop Customization
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Modals */}
       {showProductModal && (
         <ProductModal product={editingProduct} storeId={store.id} onClose={() => setShowProductModal(false)} onSave={handleSaveProduct} />
+      )}
+      {showMasterModal && (
+        <MasterCatalogModal storeId={store.id} onClose={() => setShowMasterModal(false)} onSaveBatch={handleBatchSaveProducts} />
       )}
       {invoiceOrder && (
         <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />

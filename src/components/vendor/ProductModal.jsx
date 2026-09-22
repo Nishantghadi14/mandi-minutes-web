@@ -173,6 +173,34 @@ export default function ProductModal({ product = null, storeId, onClose, onSave 
               placeholder="https://images.unsplash.com/..." 
               className="input-field text-sm" 
             />
+            <div className="mt-2">
+              <span className="text-[11px] text-mandi-subtle block mb-1">Quick Select Preset Image:</span>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {[
+                  { label: 'Milk/Dairy', url: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&q=80' },
+                  { label: 'Tomatoes', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80' },
+                  { label: 'Onions', url: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=400&q=80' },
+                  { label: 'Atta/Flour', url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80' },
+                  { label: 'Oil', url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&q=80' },
+                  { label: 'Pulses/Dal', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80' },
+                  { label: 'Snacks', url: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400&q=80' },
+                ].map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleChange('image', preset.url)}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] border whitespace-nowrap transition-all ${
+                      form.image === preset.url
+                        ? 'border-mandi-green bg-mandi-green bg-opacity-20 text-mandi-green font-bold'
+                        : 'border-mandi-border bg-mandi-surface text-mandi-muted hover:border-mandi-subtle'
+                    }`}
+                  >
+                    <img src={preset.url} alt={preset.label} className="w-4 h-4 rounded object-cover" />
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div>

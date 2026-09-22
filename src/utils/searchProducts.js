@@ -29,6 +29,7 @@ export function searchProducts(products = [], options = {}) {
     storeId = 'all',
     maxPrice = Infinity,
     sortBy = 'default',
+    stores = [],
   } = options;
 
   if (!Array.isArray(products)) return [];
@@ -36,7 +37,17 @@ export function searchProducts(products = [], options = {}) {
   const cleanQuery = String(query || '').trim().toLowerCase();
   const tokens = cleanQuery.split(/\s+/).filter(Boolean);
 
+  // Map of suspended store IDs for fast lookup
+  const suspendedStoreIds = new Set(
+    Array.isArray(stores) ? stores.filter(s => s.status === 'suspended').map(s => s.id) : []
+  );
+
   const filtered = products.filter(product => {
+    // 0. Exclude products from suspended stores
+    if (product.storeId && suspendedStoreIds.has(product.storeId)) {
+      return false;
+    }
+
     // 1. Category filter
     if (category && category !== 'all' && product.category !== category) {
       return false;
@@ -82,15 +93,20 @@ export function searchProducts(products = [], options = {}) {
 }
 
 /**
- * Filters stores by search query and category tags.
+ * Filters stores by search query and category tags (excluding suspended stores).
  */
 export function searchStores(stores = [], options = {}) {
-  const { query = '', category = 'all' } = options;
+  const { query = '', category = 'all', includeSuspended = false } = options;
   if (!Array.isArray(stores)) return [];
 
   const cleanQuery = String(query || '').trim().toLowerCase();
 
   return stores.filter(store => {
+    // Exclude suspended stores unless explicitly requested (e.g. Admin view)
+    if (!includeSuspended && store.status === 'suspended') {
+      return false;
+    }
+
     const nameMatch = String(store.name || '').toLowerCase().includes(cleanQuery);
     const cityMatch = String(store.city || '').toLowerCase().includes(cleanQuery);
     const descMatch = String(store.description || '').toLowerCase().includes(cleanQuery);

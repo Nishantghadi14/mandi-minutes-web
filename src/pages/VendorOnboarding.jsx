@@ -104,6 +104,7 @@ export default function VendorOnboarding() {
         city: sanitizeText(form.city || 'Virar, Palghar', 50),
         pincodes: rawPincodes,
         status: 'approved',
+        isOpen: true,
         gstin: sanitizeText(form.gstin || '', 20),
         upiId: upiCheck.value,
         bankAccount: sanitizeText(form.bankAccount || '', 40),

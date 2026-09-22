@@ -55,7 +55,7 @@ export default function StoreCard({ store }) {
         </div>
 
         {/* Closed overlay */}
-        {!store.isOpen && (
+        {(store.isOpen === false || store.status === 'closed') && (
           <div className="absolute inset-0 bg-black/65 flex items-center justify-center backdrop-blur-[1px]">
             <span className="bg-mandi-card/90 text-mandi-muted text-sm font-semibold px-4 py-1.5 rounded-full border border-mandi-border">
               Currently Closed

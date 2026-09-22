@@ -79,7 +79,7 @@ export const useAuthStore = create((set, get) => ({
     };
 
     const getVendorStoreId = (email) => {
-      if (!email) return 'store-mahalaxmi-1';
+      if (!email) return null;
       const e = email.toLowerCase().trim();
       try {
         const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
@@ -93,7 +93,7 @@ export const useAuthStore = create((set, get) => ({
         if (matchedStore) return matchedStore.id;
       } catch {}
 
-      return 'store-mahalaxmi-1';
+      return null;
     };
 
     let userData = null;

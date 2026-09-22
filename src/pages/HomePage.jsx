@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from '../context/LocationContext';
@@ -87,14 +87,16 @@ export default function HomePage() {
   const { t } = useTranslation();
   const { isDark } = useTheme();
   const { location, setLocationModal } = useLocation();
-  const { getStoresByPincode, categories, banners, loadingStates, errorStates, retryFetch } = useData();
-  const [stores, setStores] = useState([]);
+  const { stores: allStores, getStoresByPincode, categories, banners, loadingStates, errorStates, retryFetch } = useData();
 
-  useEffect(() => {
-    if (location?.pincode) {
-      setStores(getStoresByPincode(location.pincode));
-    }
-  }, [location, getStoresByPincode]);
+  // Reactively compute stores list whenever allStores or location updates
+  const stores = useMemo(() => {
+    if (!allStores || allStores.length === 0) return [];
+    const pincode = location?.pincode || '401305';
+    const matched = getStoresByPincode(pincode);
+    if (matched.length > 0) return matched;
+    return allStores.filter(s => s.status !== 'closed' && s.isOpen !== false);
+  }, [allStores, location?.pincode, getStoresByPincode]);
 
 
 

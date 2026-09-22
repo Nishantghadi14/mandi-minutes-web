@@ -23,6 +23,20 @@ const defaultBanners = [
   { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', colorDark: 'from-blue-900 to-indigo-950', colorLight: 'from-blue-50 to-indigo-100', active: true },
 ];
 
+const getInitialStores = () => {
+  if (typeof window === 'undefined') return initialStores;
+  try {
+    const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
+    if (cached && cached.length > 0) {
+      const mergedMap = new Map();
+      initialStores.forEach(s => mergedMap.set(s.id, s));
+      cached.forEach(s => mergedMap.set(s.id, s));
+      return Array.from(mergedMap.values());
+    }
+  } catch {}
+  return initialStores;
+};
+
 const getInitialOrders = () => {
   if (typeof window === 'undefined') return [];
   try {
@@ -33,7 +47,7 @@ const getInitialOrders = () => {
 };
 
 export const useDataStore = create((set, get) => ({
-  stores: initialStores,
+  stores: getInitialStores(),
   products: initialProducts,
   orders: getInitialOrders(),
   banners: defaultBanners,
@@ -108,10 +122,20 @@ export const useDataStore = create((set, get) => ({
       const storesUnsub = onSnapshot(
         query(collection(db, 'stores'), where('status', '==', 'approved')), 
         (snapshot) => {
-          if (!snapshot.empty) {
-            const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            set({ stores: list });
-          }
+          const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          const storeMap = new Map();
+          initialStores.forEach(s => storeMap.set(s.id, s));
+          try {
+            const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
+            cached.forEach(s => storeMap.set(s.id, s));
+          } catch {}
+          list.forEach(s => storeMap.set(s.id, s));
+
+          const mergedStores = Array.from(storeMap.values());
+          try {
+            localStorage.setItem('mandi_synced_stores', JSON.stringify(mergedStores));
+          } catch {}
+          set({ stores: mergedStores });
           markSuccess('stores');
         }, 
         (err) => markError('stores', err)
@@ -235,7 +259,11 @@ export const useDataStore = create((set, get) => ({
     return get().stores.filter(s => s.status === 'approved' && (s.pincodes?.includes(pincode) || s.pincodes?.includes(String(pincode))));
   },
 
-  getProductsByStore: (storeId) => {
+  getProductsByStore: (storeId, includeSuspended = false) => {
+    const store = get().stores.find(s => s.id === storeId);
+    if (!includeSuspended && store?.status === 'suspended') {
+      return [];
+    }
     return get().products.filter(p => p.storeId === storeId);
   },
 
@@ -341,6 +369,7 @@ export const useDataStore = create((set, get) => ({
     const newStore = {
       id,
       status: 'approved',
+      isOpen: true,
       rating: 4.8,
       totalRatings: 10,
       deliveryTime: '15-20 min',
@@ -359,7 +388,9 @@ export const useDataStore = create((set, get) => ({
         throw new Error('Could not create store. Please try again.');
       }
     }
-    set(state => ({ stores: [...state.stores, newStore] }));
+    const updatedList = [...get().stores.filter(s => s.id !== id), newStore];
+    try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
+    set({ stores: updatedList });
     return newStore;
   },
 
@@ -368,6 +399,7 @@ export const useDataStore = create((set, get) => ({
     const newStore = {
       id,
       status: 'approved',
+      isOpen: true,
       rating: 4.9,
       totalRatings: 1,
       deliveryTime: '10-15 min',
@@ -386,7 +418,9 @@ export const useDataStore = create((set, get) => ({
         const result = await httpsCallable(functions, 'submitVendorApplication')({ application: newStore });
         if (result?.data?.application) {
           const appRes = result.data.application;
-          set(state => ({ stores: [...state.stores.filter(s => s.id !== appRes.id), appRes] }));
+          const updatedList = [...get().stores.filter(s => s.id !== appRes.id), appRes];
+          try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
+          set({ stores: updatedList });
           return appRes;
         }
       } catch (cloudErr) {
@@ -402,14 +436,16 @@ export const useDataStore = create((set, get) => ({
       }
     }
 
-    set(state => ({ stores: [...state.stores.filter(s => s.id !== id), newStore] }));
+    const updatedList = [...get().stores.filter(s => s.id !== id), newStore];
+    try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
+    set({ stores: updatedList });
     return newStore;
   },
 
   updateStore: async (storeId, updates) => {
-    set(state => ({
-      stores: state.stores.map(s => s.id === storeId ? { ...s, ...updates } : s)
-    }));
+    const updatedList = get().stores.map(s => s.id === storeId ? { ...s, ...updates } : s);
+    try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
+    set({ stores: updatedList });
 
     if (db) {
       try {

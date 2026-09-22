@@ -35,8 +35,9 @@ export default function SearchPage() {
       category: selectedCat,
       storeId: selectedStore,
       maxPrice: maxPrice,
+      stores: stores,
     });
-  }, [products, debouncedQuery, selectedCat, selectedStore, maxPrice]);
+  }, [products, debouncedQuery, selectedCat, selectedStore, maxPrice, stores]);
 
   const filteredStores = useMemo(() => {
     return searchStores(stores, {

@@ -107,7 +107,11 @@ export default function StorePage() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-mandi-text font-black text-xl">{store.name}</h1>
-                {!store.isOpen && <span className="badge-muted">Closed</span>}
+                {store.status === 'suspended' ? (
+                  <span className="text-xs bg-red-950 text-red-400 border border-red-800 px-2.5 py-0.5 rounded-full font-bold uppercase">Suspended</span>
+                ) : (store.isOpen === false || store.status === 'closed') && (
+                  <span className="badge-muted text-xs bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-bold">Currently Closed</span>
+                )}
               </div>
               <p className="text-mandi-muted text-xs flex items-center gap-1 mb-2">
                 <MapPin size={12} className="text-mandi-green" />
@@ -130,6 +134,17 @@ export default function StorePage() {
             </div>
           </div>
         </div>
+
+        {/* Suspended Notice Banner */}
+        {store.status === 'suspended' && (
+          <div className="card p-6 mb-6 border-red-600/40 bg-red-950/30 text-center space-y-2">
+            <span className="text-3xl">🚫</span>
+            <h3 className="text-red-200 font-bold text-lg">Store Suspended</h3>
+            <p className="text-red-300/80 text-xs max-w-md mx-auto">
+              This store is currently suspended by Mandi Minutes administration. All products from this store are hidden until reactivated.
+            </p>
+          </div>
+        )}
 
         {/* Filters & Search */}
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
