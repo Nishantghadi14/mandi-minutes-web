@@ -161,8 +161,8 @@ export default function Navbar() {
                         </Link>
                       )}
                       {!isVendor && !isAdmin && (
-                        <Link to="/vendor-onboarding" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1 text-orange-300">
-                          <Store size={16} className="text-orange-400" />
+                        <Link to="/vendor-onboarding" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 hover:bg-mandi-surface transition-colors rounded-lg mx-1 text-orange-600 dark:text-orange-300">
+                          <Store size={16} className="text-orange-500 dark:text-orange-400" />
                           <span className="text-sm">Partner as Vendor</span>
                         </Link>
                       )}
@@ -182,9 +182,9 @@ export default function Navbar() {
                         <span className="text-mandi-text text-sm font-semibold">{t('nav.refer')}</span>
                       </button>
                       <div className="border-t border-mandi-border my-1" />
-                      <button onClick={() => { logout(); setUserMenuOpen(false); navigate('/'); }} className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-red-950 hover:bg-opacity-40 transition-colors rounded-lg mx-1 text-left">
-                        <LogOut size={16} className="text-red-400" />
-                        <span className="text-red-400 text-sm">{t('nav.logout')}</span>
+                      <button onClick={() => { logout(); setUserMenuOpen(false); navigate('/'); }} className="flex items-center gap-2 px-4 py-2.5 w-full hover:bg-red-500/10 transition-colors rounded-lg mx-1 text-left">
+                        <LogOut size={16} className="text-red-500 dark:text-red-400" />
+                        <span className="text-red-500 dark:text-red-400 text-sm">{t('nav.logout')}</span>
                       </button>
                     </div>
                   </div>

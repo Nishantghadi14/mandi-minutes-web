@@ -217,16 +217,16 @@ export default function OrderHistoryPage() {
 
       {/* Error Recovery Banner */}
       {hasError && (
-        <div className="mb-4 p-4 rounded-2xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between gap-3 text-red-200">
+        <div className="mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-200">
           <div className="flex items-center gap-3">
-            <WifiOff size={18} className="text-red-400 flex-shrink-0" />
+            <WifiOff size={18} className="text-red-500 dark:text-red-400 flex-shrink-0" />
             <p className="text-xs">
               <span className="font-semibold">Sync error:</span> Some orders may not be visible.
             </p>
           </div>
           <button
             onClick={() => retryFetch?.('orders')}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 bg-red-600 hover:bg-red-500"
+            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 bg-red-600 hover:bg-red-500 text-white"
           >
             <RefreshCw size={12} /> Retry
           </button>
@@ -254,8 +254,8 @@ export default function OrderHistoryPage() {
                       <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
                       <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
                       {isReviewed && (
-                        <span className="bg-yellow-950 text-yellow-300 border border-yellow-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Star size={10} className="fill-yellow-400" /> Rated {order.reviewRating || 5}★
+                        <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Star size={10} className="fill-amber-500 text-amber-500" /> Rated {order.reviewRating || 5}★
                         </span>
                       )}
                     </div>
@@ -322,7 +322,7 @@ export default function OrderHistoryPage() {
             <button onClick={() => setCartConflictOrder(null)} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text">
               <X size={18} />
             </button>
-            <div className="w-12 h-12 rounded-2xl bg-orange-950 bg-opacity-50 border border-orange-500 border-opacity-40 flex items-center justify-center text-orange-400">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400">
               <Store size={24} />
             </div>
             <div>

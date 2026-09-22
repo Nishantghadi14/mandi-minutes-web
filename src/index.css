@@ -44,29 +44,29 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Tailwind color aliases */
-  --color-dark:         #F0F4EB;   /* page background */
-  --color-card:         #FFFFFF;   /* card background */
-  --color-surface:      #E8EEE2;   /* input / surface background */
-  --color-border:       #CDD5C4;   /* border */
-  --color-border-light: #B8C4AD;   /* lighter border */
-  --color-text:         #1A1F14;   /* primary text */
-  --color-muted:        #4E5A45;   /* secondary text */
-  --color-subtle:       #8A9882;   /* placeholder / subtle text */
+  /* Tailwind color aliases - crisp, modern e-commerce palette */
+  --color-dark:         #F8FAFC;   /* clean crisp page background */
+  --color-card:         #FFFFFF;   /* pure white card background */
+  --color-surface:      #F1F5F0;   /* clean subtle fresh surface for inputs/chips */
+  --color-border:       #E2E8DF;   /* refined border */
+  --color-border-light: #ECEFE8;   /* soft divider */
+  --color-text:         #0F172A;   /* deep rich slate text */
+  --color-muted:        #475569;   /* readable secondary text */
+  --color-subtle:       #64748B;   /* readable placeholder / subtle text */
 
-  /* Shadow helpers */
-  --shadow-color:        rgba(0, 0, 0, 0.08);
-  --shadow-color-strong: rgba(0, 0, 0, 0.14);
+  /* Shadow helpers - soft modern layered shadows */
+  --shadow-color:        rgba(15, 23, 42, 0.05);
+  --shadow-color-strong: rgba(15, 23, 42, 0.10);
 
   /* Misc semantic helpers */
-  --glass-bg:       rgba(255, 255, 255, 0.80);
-  --glass-dark-bg:  rgba(240, 245, 234, 0.92);
-  --overlay-bg:     rgba(0, 0, 0, 0.40);
-  --scrollbar-bg:   #F0F4EB;
-  --range-track:    #CDD5C4;
+  --glass-bg:       rgba(255, 255, 255, 0.85);
+  --glass-dark-bg:  rgba(255, 255, 255, 0.90);
+  --overlay-bg:     rgba(15, 23, 42, 0.45);
+  --scrollbar-bg:   #F8FAFC;
+  --range-track:    #E2E8DF;
   --selection-bg:   rgba(0, 160, 60, 0.18);
   --selection-fg:   #007E33;
-  --icon-circle-bg: rgba(0, 200, 81, 0.10);
+  --icon-circle-bg: rgba(0, 180, 70, 0.10);
 }
 
 @tailwind base;
@@ -418,9 +418,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* Product card OOS grayscale */
 .product-oos { filter: grayscale(0.6) brightness(0.8); }
 
-/* ─── Light mode overrides for elements with inline dark classes ─
-   Specifically handles hero banners, promo bars and other sections
-   that have hardcoded dark gradient/bg inline styles.             */
+/* ─── Light mode overrides and contrast enhancements ─ */
 [data-theme="light"] .bg-mandi-dark  { background-color: var(--color-dark)    !important; }
 [data-theme="light"] .bg-mandi-card  { background-color: var(--color-card)    !important; }
 [data-theme="light"] .bg-mandi-surface { background-color: var(--color-surface) !important; }
@@ -428,3 +426,38 @@ input[type="range"]::-webkit-slider-thumb {
 [data-theme="light"] .text-mandi-muted { color: var(--color-muted) !important; }
 [data-theme="light"] .text-mandi-subtle { color: var(--color-subtle) !important; }
 [data-theme="light"] .border-mandi-border { border-color: var(--color-border) !important; }
+
+/* Enhanced green readability on light backgrounds */
+[data-theme="light"] .text-gradient-green {
+  background: linear-gradient(135deg, #008736, #00A844);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .text-mandi-green:not(.btn-primary *):not(button.btn-primary):not(a.btn-primary *):not(.badge-green *) {
+  color: #008736;
+}
+
+[data-theme="light"] .btn-outline {
+  color: #008736;
+  border-color: #008736;
+}
+
+[data-theme="light"] .btn-outline:hover {
+  background-color: #008736;
+  color: #ffffff;
+}
+
+[data-theme="light"] .tag {
+  background-color: rgba(0, 135, 54, 0.08);
+  color: #008736;
+  border-color: rgba(0, 135, 54, 0.20);
+}
+
+[data-theme="light"] .badge-muted {
+  background-color: #F1F5F0;
+  color: #475569;
+  border: 1px solid #E2E8DF;
+}
+

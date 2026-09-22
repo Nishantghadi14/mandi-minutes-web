@@ -53,8 +53,8 @@ export default function Footer() {
     <footer className="relative bg-mandi-card border-t border-mandi-border mt-16 mb-16 md:mb-0 overflow-hidden">
       {/* Subtle dot pattern background */}
       <div
-        className="absolute inset-0 opacity-30 pointer-events-none"
-        style={{ backgroundImage: 'radial-gradient(circle, #2A2A2A 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+        className="absolute inset-0 opacity-40 pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       />
       {/* Top green glow accent */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-px bg-gradient-to-r from-transparent via-mandi-green/40 to-transparent" />

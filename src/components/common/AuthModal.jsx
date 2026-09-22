@@ -282,7 +282,7 @@ export default function AuthModal() {
               </div>
             )}
 
-            {error && <p className="text-red-400 text-xs bg-red-950 bg-opacity-30 border border-red-800 p-2.5 rounded-xl">{error}</p>}
+            {error && <p className="text-red-600 dark:text-red-400 text-xs bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl">{error}</p>}
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
               {loading ? 'Authenticating...' : mode === 'login' ? 'Login' : 'Create Account'}
@@ -318,7 +318,7 @@ export default function AuthModal() {
               </div>
             )}
 
-            {error && <p className="text-red-400 text-xs bg-red-950 bg-opacity-30 border border-red-800 p-2.5 rounded-xl">{error}</p>}
+            {error && <p className="text-red-600 dark:text-red-400 text-xs bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl">{error}</p>}
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
               {loading ? 'Please wait...' : otpSent ? 'Verify OTP & Log In' : 'Send SMS OTP'}

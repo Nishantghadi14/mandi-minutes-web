@@ -52,7 +52,7 @@ export default function CartDrawer() {
             {items.length > 0 && (
               <button 
                 onClick={clearCart} 
-                className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-950 hover:bg-opacity-30 transition-colors"
+                className="text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
                 title="Clear all items"
               >
                 Clear

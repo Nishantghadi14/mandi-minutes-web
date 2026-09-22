@@ -326,8 +326,8 @@ export default function VendorDashboard() {
   if (!store) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="card p-8 border-orange-500 border-opacity-30 bg-orange-950 bg-opacity-20 space-y-4">
-          <Store size={48} className="text-orange-400 mx-auto" />
+        <div className="card p-8 border-orange-500/30 bg-orange-500/10 space-y-4">
+          <Store size={48} className="text-orange-500 dark:text-orange-400 mx-auto" />
           <h2 className="text-xl font-bold text-mandi-text">Store Not Linked</h2>
           <p className="text-mandi-muted text-sm max-w-md mx-auto">
             Your vendor account is not associated with an active store. Please complete vendor onboarding or contact support.
@@ -346,11 +346,11 @@ export default function VendorDashboard() {
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
       {/* SLA Alert Urgent Banner */}
       {slaBreachedOrders.length > 0 && (
-        <div className="mb-6 p-4 rounded-2xl bg-red-950 bg-opacity-50 border-2 border-red-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-red-200 shadow-lg animate-pulse">
+        <div className="mb-6 p-4 rounded-2xl bg-red-500/15 border-2 border-red-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-red-700 dark:text-red-200 shadow-lg animate-pulse">
           <div className="flex items-center gap-3">
-            <ShieldAlert size={24} className="text-red-400 flex-shrink-0" />
+            <ShieldAlert size={24} className="text-red-500 dark:text-red-400 flex-shrink-0" />
             <div>
-              <p className="text-sm font-bold text-red-100">
+              <p className="text-sm font-bold text-red-800 dark:text-red-100">
                 🚨 SLA Urgency Alert: {slaBreachedOrders.length} Order{slaBreachedOrders.length > 1 ? 's' : ''} Delayed!
               </p>
               <p className="text-xs text-red-300">
@@ -373,7 +373,7 @@ export default function VendorDashboard() {
           <div className="flex items-center gap-2">
             <Store size={22} className="text-mandi-green" />
             <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-950 text-red-400 border border-red-800' : 'badge-green'}`}>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30' : 'badge-green'}`}>
               {store.status === 'closed' ? 'Store Paused' : store.status}
             </span>
           </div>
@@ -474,7 +474,7 @@ export default function VendorDashboard() {
             filteredOrders.map(order => (
               <div 
                 key={order.id} 
-                className={`card p-5 space-y-3 transition-all ${order.slaStatus === 'breached' ? 'border-red-600 bg-red-950 bg-opacity-10' : ''}`}
+                className={`card p-5 space-y-3 transition-all ${order.slaStatus === 'breached' ? 'border-red-500/40 bg-red-500/10' : ''}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-mandi-border">
                   <div>
@@ -492,7 +492,7 @@ export default function VendorDashboard() {
                         </span>
                       )}
                       {order.deliveryType === 'scheduled' && (
-                        <span className="bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                           📅 Scheduled: {order.scheduledSlot?.label || order.scheduledSlot?.timeWindow || '2-Hour Slot'}
                         </span>
                       )}
@@ -652,7 +652,7 @@ export default function VendorDashboard() {
                       </td>
 
                       <td className="p-3">
-                        <button onClick={() => updateProduct(p.id, { isAvailable: !p.isAvailable })} className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition-all ${p.isAvailable ? 'bg-mandi-green-muted text-mandi-green' : 'bg-red-950 text-red-300 border border-red-800'}`}>
+                        <button onClick={() => updateProduct(p.id, { isAvailable: !p.isAvailable })} className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition-all ${p.isAvailable ? 'bg-mandi-green-muted text-mandi-green' : 'bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30'}`}>
                           {p.isAvailable ? 'In Stock' : 'Out of Stock'}
                         </button>
                       </td>
@@ -816,7 +816,7 @@ export default function VendorDashboard() {
                         <td className="p-3 text-mandi-muted">{p.category}</td>
                         <td className="p-3 text-mandi-green font-bold">₹{p.price}</td>
                         <td className="p-3">
-                          <span className="bg-red-950 text-red-300 font-bold px-2 py-0.5 rounded border border-red-800">
+                          <span className="bg-red-500/15 text-red-600 dark:text-red-300 font-bold px-2 py-0.5 rounded border border-red-500/30">
                             {p.stock} {p.unit} remaining
                           </span>
                         </td>
@@ -873,7 +873,7 @@ export default function VendorDashboard() {
                   onClick={() => setStoreForm(f => ({ ...f, status: f.status === 'closed' ? 'approved' : 'closed' }))}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                     storeForm.status === 'closed'
-                      ? 'bg-red-950 text-red-300 border border-red-800'
+                      ? 'bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30'
                       : 'bg-mandi-green text-black'
                   }`}
                 >

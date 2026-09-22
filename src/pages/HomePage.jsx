@@ -106,25 +106,25 @@ export default function HomePage() {
   const whyItems = [
     {
       emoji: '⚡',
-      gradient: 'from-yellow-500/20 to-orange-500/10',
-      border: 'border-yellow-500/20',
-      iconColor: 'text-yellow-400',
+      gradient: isDark ? 'from-yellow-500/20 to-orange-500/10' : 'from-amber-50 to-orange-50/60',
+      border: isDark ? 'border-yellow-500/20' : 'border-amber-200/80',
+      iconColor: isDark ? 'text-yellow-400' : 'text-amber-800',
       title: t('why.fastTitle'),
       desc: t('why.fastDesc'),
     },
     {
       emoji: '🏪',
-      gradient: 'from-mandi-green/20 to-emerald-600/10',
-      border: 'border-mandi-green/20',
-      iconColor: 'text-mandi-green',
+      gradient: isDark ? 'from-mandi-green/20 to-emerald-600/10' : 'from-emerald-50 to-green-50/60',
+      border: isDark ? 'border-mandi-green/20' : 'border-emerald-200/80',
+      iconColor: isDark ? 'text-mandi-green' : 'text-emerald-800',
       title: t('why.localTitle'),
       desc: t('why.localDesc'),
     },
     {
       emoji: '💚',
-      gradient: 'from-emerald-500/20 to-teal-500/10',
-      border: 'border-emerald-500/20',
-      iconColor: 'text-emerald-400',
+      gradient: isDark ? 'from-emerald-500/20 to-teal-500/10' : 'from-teal-50 to-emerald-50/60',
+      border: isDark ? 'border-emerald-500/20' : 'border-teal-200/80',
+      iconColor: isDark ? 'text-emerald-400' : 'text-teal-800',
       title: t('why.freshTitle'),
       desc: t('why.freshDesc'),
     },
@@ -142,7 +142,7 @@ export default function HomePage() {
 
       {/* Network Error Banner */}
       {hasStoreError && (
-        <div className="mb-6 p-4 rounded-2xl bg-red-950/40 border border-red-800/60 flex items-center justify-between gap-3 text-red-200 animate-slide-up-fade">
+        <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-200 animate-slide-up-fade">
           <div className="flex items-center gap-3">
             <WifiOff size={18} className="text-red-400 flex-shrink-0" />
             <div>
@@ -319,9 +319,7 @@ export default function HomePage() {
           {whyItems.map(item => (
             <div
               key={item.title}
-              className={`card p-6 transition-all duration-300 hover:-translate-y-1.5 bg-gradient-to-br ${item.gradient} border ${item.border}`}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.4)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = ''}
+              className={`card p-6 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card-hover bg-gradient-to-br ${item.gradient} border ${item.border}`}
             >
               <div className="text-4xl mb-4 animate-float inline-block">{item.emoji}</div>
               <h3 className={`font-bold text-base mb-2 ${item.iconColor}`}>{item.title}</h3>
@@ -347,7 +345,7 @@ export default function HomePage() {
           </div>
           <Link
             to="/vendor-onboarding"
-            className="relative z-10 flex-shrink-0 bg-white text-mandi-dark font-black px-7 py-3.5 rounded-xl hover:bg-green-50 active:scale-95 transition-all duration-200 flex items-center gap-2 group shadow-lg"
+            className="relative z-10 flex-shrink-0 bg-white text-emerald-950 font-black px-7 py-3.5 rounded-xl hover:bg-green-50 active:scale-95 transition-all duration-200 flex items-center gap-2 group shadow-lg"
           >
             <Store size={18} />
             {t('sections.becomeVendor')}

@@ -35,17 +35,14 @@ export default function ProductCard({ product }) {
   const isOOS = !product.isAvailable;
 
   return (
-    <div className={`card group flex flex-col relative overflow-hidden transition-all duration-250 hover:-translate-y-1 ${isOOS ? 'product-oos' : ''}`}
-      onMouseEnter={e => !isOOS && (e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,200,81,0.2)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}
-    >
+    <div className={`card group flex flex-col relative overflow-hidden transition-all duration-250 hover:-translate-y-1 hover:shadow-card-hover hover:border-mandi-green/50 ${isOOS ? 'product-oos' : ''}`}>
       {/* Wishlist button — hidden until hover */}
       <button
         onClick={handleWishlist}
-        className="absolute top-2 right-2 z-10 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-opacity-70"
+        className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/85 dark:bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-sm"
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
-        <Heart size={14} className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-white'} />
+        <Heart size={14} className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-slate-700 dark:text-white'} />
       </button>
 
       {/* Discount badge */}

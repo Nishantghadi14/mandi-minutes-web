@@ -22,7 +22,7 @@ export default function AboutPage() {
       </div>
 
       {/* Mission */}
-      <div className="card p-8 mb-8 bg-gradient-to-br from-mandi-card via-[#162916] to-mandi-card border-mandi-green border-opacity-30">
+      <div className="card p-8 mb-8 bg-gradient-to-br from-mandi-card via-mandi-green/5 to-mandi-card border-mandi-green border-opacity-30">
         <h2 className="text-2xl font-bold text-mandi-text mb-3">Our Mission</h2>
         <p className="text-mandi-muted leading-relaxed text-sm md:text-base">
           India's millions of neighborhood Kirana store owners have been the backbone of Indian retail for generations. Mandi Minutes bridges the gap between traditional Kirana trust and modern quick-commerce expectations. We enable local shopkeepers to list their inventory digitally and serve their immediate pincodes in minutes.

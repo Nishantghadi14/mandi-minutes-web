@@ -270,7 +270,7 @@ export default function CheckoutPage() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-mandi-text text-xs font-semibold">📅 Scheduled Slot</span>
-                      <span className="bg-orange-950 text-orange-300 border border-orange-800 text-[10px] px-1.5 py-0.5 rounded font-bold">Choose Time</span>
+                      <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] px-1.5 py-0.5 rounded font-bold">Choose Time</span>
                     </div>
                     <p className="text-mandi-muted text-xs">2-hour delivery window</p>
                   </div>

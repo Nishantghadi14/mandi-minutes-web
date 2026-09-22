@@ -82,20 +82,20 @@ export default function StorePage() {
 
       {/* Network Alert */}
       {hasError && (
-        <div className="mx-4 mt-4 p-3.5 rounded-xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between text-red-200 text-xs">
+        <div className="mx-4 mt-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-600 dark:text-red-200 text-xs">
           <div className="flex items-center gap-2">
-            <WifiOff size={16} className="text-red-400" />
+            <WifiOff size={16} className="text-red-500 dark:text-red-400" />
             <span>Connection dropped. Showing cached catalog products.</span>
           </div>
-          <button onClick={() => retryFetch?.('products')} className="btn-primary text-xs py-1 px-2.5 bg-red-600">Retry</button>
+          <button onClick={() => retryFetch?.('products')} className="btn-primary text-xs py-1 px-2.5 bg-red-600 text-white">Retry</button>
         </div>
       )}
 
       {/* Store Header */}
       <div className="relative h-56 md:h-72 overflow-hidden">
         <LazyImage src={store.coverImage || store.image} alt={store.name} className="w-full h-full object-cover" containerClass="w-full h-full" width={1200} quality={70} />
-        <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-black via-opacity-30 to-transparent" />
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-colors z-20">
+        <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-mandi-dark/30 to-transparent" />
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 bg-black/40 hover:bg-black/60 dark:bg-black/50 dark:hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white">
           <ArrowLeft size={18} className="text-white" />
         </button>
       </div>
@@ -108,9 +108,9 @@ export default function StorePage() {
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-mandi-text font-black text-xl">{store.name}</h1>
                 {store.status === 'suspended' ? (
-                  <span className="text-xs bg-red-950 text-red-400 border border-red-800 px-2.5 py-0.5 rounded-full font-bold uppercase">Suspended</span>
+                  <span className="text-xs bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full font-bold uppercase">Suspended</span>
                 ) : (store.isOpen === false || store.status === 'closed') && (
-                  <span className="badge-muted text-xs bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-bold">Currently Closed</span>
+                  <span className="badge-muted text-xs bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">Currently Closed</span>
                 )}
               </div>
               <p className="text-mandi-muted text-xs flex items-center gap-1 mb-2">
@@ -137,10 +137,10 @@ export default function StorePage() {
 
         {/* Suspended Notice Banner */}
         {store.status === 'suspended' && (
-          <div className="card p-6 mb-6 border-red-600/40 bg-red-950/30 text-center space-y-2">
+          <div className="card p-6 mb-6 border-red-500/30 bg-red-500/10 text-center space-y-2">
             <span className="text-3xl">🚫</span>
-            <h3 className="text-red-200 font-bold text-lg">Store Suspended</h3>
-            <p className="text-red-300/80 text-xs max-w-md mx-auto">
+            <h3 className="text-red-600 dark:text-red-200 font-bold text-lg">Store Suspended</h3>
+            <p className="text-red-600/80 dark:text-red-300/80 text-xs max-w-md mx-auto">
               This store is currently suspended by Mandi Minutes administration. All products from this store are hidden until reactivated.
             </p>
           </div>

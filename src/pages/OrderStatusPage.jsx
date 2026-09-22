@@ -57,12 +57,12 @@ export default function OrderStatusPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-6">
       {/* Network Alert */}
       {hasError && (
-        <div className="mb-4 p-3.5 rounded-xl bg-red-950 bg-opacity-40 border border-red-800 flex items-center justify-between text-red-200 text-xs">
+        <div className="mb-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-600 dark:text-red-200 text-xs">
           <div className="flex items-center gap-2">
-            <WifiOff size={16} className="text-red-400" />
+            <WifiOff size={16} className="text-red-500 dark:text-red-400" />
             <span>Connection dropped. Showing latest cached order status.</span>
           </div>
-          <button onClick={() => retryFetch?.('orders')} className="btn-primary text-xs py-1 px-2.5 bg-red-600">Retry</button>
+          <button onClick={() => retryFetch?.('orders')} className="btn-primary text-xs py-1 px-2.5 bg-red-600 text-white">Retry</button>
         </div>
       )}
 
@@ -80,20 +80,20 @@ export default function OrderStatusPage() {
       </div>
 
       {/* Confirmation Banner */}
-      <div className="bg-gradient-to-r from-mandi-green-dark to-green-900 border border-mandi-green border-opacity-30 rounded-2xl p-5 mb-6 flex items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-mandi-green-dark to-green-900 border border-mandi-green border-opacity-30 rounded-2xl p-5 mb-6 flex items-center justify-between gap-4 shadow-md">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-mandi-green rounded-full flex items-center justify-center flex-shrink-0 text-black">
+          <div className="w-12 h-12 bg-mandi-green rounded-full flex items-center justify-center flex-shrink-0 text-black shadow-sm">
             <CheckCircle2 size={28} />
           </div>
           <div>
-            <h2 className="text-mandi-text font-bold text-lg">Order Confirmed! 🎉</h2>
+            <h2 className="text-white font-bold text-lg">Order Confirmed! 🎉</h2>
             <p className="text-green-200 text-xs">Estimated Delivery: <span className="font-bold text-white">10-15 Mins</span> to Virar</p>
           </div>
         </div>
       </div>
 
       {/* WhatsApp Kirana Direct Action Card */}
-      <div className="card p-4 mb-6 bg-gradient-to-r from-[#0d2a14] to-mandi-card border-mandi-green border-opacity-40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="card p-4 mb-6 bg-gradient-to-r from-emerald-500/10 to-mandi-card border-mandi-green border-opacity-40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#25D366] bg-opacity-20 rounded-xl flex items-center justify-center text-[#25D366]">
             <MessageCircle size={22} />
