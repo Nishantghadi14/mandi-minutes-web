@@ -69,4 +69,27 @@ describe('Store Search Engine (searchStores)', () => {
     expect(daalStores).toHaveLength(1);
     expect(daalStores[0].id).toBe('store-2');
   });
+
+  it('handles live typing partial queries across stores', () => {
+    const partialMatch = searchStores(sampleStores, { query: 'gane' });
+    expect(partialMatch).toHaveLength(1);
+    expect(partialMatch[0].id).toBe('store-2');
+  });
 });
+
+describe('Live Search Multi-token and Partial Matching', () => {
+  it('matches products while typing partial words', () => {
+    const partialRice = searchProducts(sampleProducts, { query: 'ric' });
+    expect(partialRice).toHaveLength(3);
+
+    const partialBrand = searchProducts(sampleProducts, { query: 'maha' });
+    expect(partialBrand).toHaveLength(2); // Mahalaxmi brand products
+  });
+
+  it('matches multi-token queries regardless of order', () => {
+    const multiToken = searchProducts(sampleProducts, { query: 'loose basmati' });
+    expect(multiToken).toHaveLength(1);
+    expect(multiToken[0].id).toBe('p3');
+  });
+});
+

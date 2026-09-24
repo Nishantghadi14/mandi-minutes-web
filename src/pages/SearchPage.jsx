@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import StoreCard from '../components/common/StoreCard';
 import { searchProducts, searchStores, useDebounce } from '../utils/searchProducts';
-import { Search, SlidersHorizontal, Package, Store as StoreIcon, X } from 'lucide-react';
+import { Search, SlidersHorizontal, Package, Store as StoreIcon, X, ArrowRight } from 'lucide-react';
 
 export default function SearchPage() {
   const { t } = useTranslation();
@@ -22,12 +22,34 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState(1000);
   const [activeTab, setActiveTab] = useState('products');
 
-  const debouncedQuery = useDebounce(query, 250);
+  const debouncedQuery = useDebounce(query, 150);
 
+  // Sync state when URL parameters change from outside
   useEffect(() => {
-    setQuery(searchParams.get('q') || '');
-    setSelectedCat(searchParams.get('category') || 'all');
+    const urlQ = searchParams.get('q') || '';
+    if (urlQ !== query) {
+      setQuery(urlQ);
+    }
+    const urlCat = searchParams.get('category') || 'all';
+    if (urlCat !== selectedCat) {
+      setSelectedCat(urlCat);
+    }
   }, [searchParams]);
+
+  // Sync debouncedQuery and selectedCat to URL without history spam
+  useEffect(() => {
+    const currentQ = searchParams.get('q') || '';
+    const currentCat = searchParams.get('category') || 'all';
+    const nextQ = debouncedQuery.trim();
+    const nextCat = selectedCat || 'all';
+
+    if (currentQ !== nextQ || currentCat !== nextCat) {
+      const nextParams = {};
+      if (nextQ) nextParams.q = nextQ;
+      if (nextCat !== 'all') nextParams.category = nextCat;
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [debouncedQuery, selectedCat]);
 
   const filteredProducts = useMemo(() => {
     return searchProducts(products, {
@@ -46,6 +68,11 @@ export default function SearchPage() {
     });
   }, [stores, debouncedQuery, selectedCat]);
 
+  const handleClear = () => {
+    setQuery('');
+    setSearchParams(selectedCat !== 'all' ? { category: selectedCat } : {}, { replace: true });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
       <Helmet>
@@ -62,12 +89,19 @@ export default function SearchPage() {
           <input
             type="text"
             value={query}
-            onChange={e => { setQuery(e.target.value); setSearchParams({ q: e.target.value, category: selectedCat }); }}
+            onChange={e => setQuery(e.target.value)}
             placeholder={t('common.search')}
-            className="input-field pl-11 pr-10 py-3 text-base w-full shadow-card"
+            className="input-field pl-11 pr-10 py-3 text-base w-full shadow-card focus:border-mandi-green"
+            autoComplete="off"
           />
           {query && (
-            <button onClick={() => { setQuery(''); setSearchParams({}); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text"><X size={16} /></button>
+            <button
+              onClick={handleClear}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text p-1 rounded-full hover:bg-mandi-surface transition-colors"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
           )}
         </div>
       </div>
@@ -131,12 +165,54 @@ export default function SearchPage() {
 
         {/* Results */}
         <div className="lg:col-span-3">
+          {/* Cross-tab discovery callout */}
+          {activeTab === 'products' && debouncedQuery && filteredStores.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-between">
+              <span className="text-xs text-orange-600 dark:text-orange-300">
+                Found <strong>{filteredStores.length} store(s)</strong> matching "{debouncedQuery}"
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('stores')}
+                className="text-xs font-bold text-orange-500 hover:text-orange-400 flex items-center gap-1"
+              >
+                <span>View Stores</span>
+                <ArrowRight size={12} />
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'stores' && debouncedQuery && filteredProducts.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-mandi-green/10 border border-mandi-green/20 flex items-center justify-between">
+              <span className="text-xs text-mandi-text">
+                Found <strong>{filteredProducts.length} product(s)</strong> matching "{debouncedQuery}"
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('products')}
+                className="text-xs font-bold text-mandi-green hover:text-mandi-green-light flex items-center gap-1"
+              >
+                <span>View Products</span>
+                <ArrowRight size={12} />
+              </button>
+            </div>
+          )}
+
           {activeTab === 'products' ? (
             filteredProducts.length === 0 ? (
               <div className="text-center py-16 card p-8">
                 <Package size={40} className="text-mandi-subtle mx-auto mb-3" />
                 <p className="text-mandi-text font-semibold">{t('search.noProducts')}</p>
                 <p className="text-mandi-muted text-sm mt-1">{t('search.noProductsHint')}</p>
+                {filteredStores.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('stores')}
+                    className="btn-primary text-xs py-2 px-4 mt-4 inline-flex items-center gap-1.5"
+                  >
+                    <span>Browse matching stores ({filteredStores.length})</span>
+                    <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -149,6 +225,15 @@ export default function SearchPage() {
                 <StoreIcon size={40} className="text-mandi-subtle mx-auto mb-3" />
                 <p className="text-mandi-text font-semibold">{t('search.noStores')}</p>
                 <p className="text-mandi-muted text-sm mt-1">{t('search.noStoresHint')}</p>
+                {filteredProducts.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('products')}
+                    className="btn-primary text-xs py-2 px-4 mt-4 inline-flex items-center gap-1.5"
+                  >
+                    <span>Browse matching products ({filteredProducts.length})</span>
+                    <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

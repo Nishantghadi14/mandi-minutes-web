@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { ShoppingCart, MapPin, Search, ChevronDown, User, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ShoppingCart, MapPin, Search, ChevronDown, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import { useTheme } from '../../context/ThemeContext';
 import ReferralModal from './ReferralModal';
 import LanguageSwitcher from './LanguageSwitcher';
-import { Link, useNavigate } from 'react-router-dom';
+import LiveSearchDropdown from './LiveSearchDropdown';
+import { Link, useNavigate, useLocation as useRouteLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '../../utils/searchProducts';
 
 export default function Navbar() {
   const { itemCount, setIsOpen } = useCart();
@@ -15,17 +17,64 @@ export default function Navbar() {
   const { location, setLocationModal } = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
+  const searchContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
   const navigate = useNavigate();
+  const routeLocation = useRouteLocation();
   const { t } = useTranslation();
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery('');
+  const debouncedSearch = useDebounce(searchQuery, 150);
+
+  // Sync searchQuery with URL query if currently on /search
+  useEffect(() => {
+    if (routeLocation.pathname === '/search') {
+      const params = new URLSearchParams(routeLocation.search);
+      const q = params.get('q');
+      if (q !== null && q !== searchQuery) {
+        setSearchQuery(q);
+      }
     }
+  }, [routeLocation.pathname, routeLocation.search]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
+  const handleSearch = (e) => {
+    e?.preventDefault();
+    if (searchQuery.trim()) {
+      setIsSearchFocused(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleClearSearch = (e) => {
+    e.stopPropagation();
+    setSearchQuery('');
+    if (routeLocation.pathname === '/search') {
+      navigate('/search');
+    }
+    searchInputRef.current?.focus();
+  };
+
+  const handleSelectQuery = (term) => {
+    setSearchQuery(term);
+    setIsSearchFocused(false);
+    navigate(`/search?q=${encodeURIComponent(term)}`);
   };
 
   const isAdmin = user && (
@@ -72,19 +121,48 @@ export default function Navbar() {
             <ChevronDown size={11} className="text-mandi-subtle flex-shrink-0" />
           </button>
 
-          {/* Search */}
-          <form onSubmit={handleSearch} className="flex-1">
-            <div className="relative">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-mandi-subtle pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('common.search')}
-                className="input-field pl-10 pr-4 py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light transition-all"
-              />
-            </div>
-          </form>
+          {/* Live Search */}
+          <div ref={searchContainerRef} className="relative flex-1">
+            <form onSubmit={handleSearch} className="w-full">
+              <div className="relative">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-mandi-subtle pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    if (!isSearchFocused) setIsSearchFocused(true);
+                  }}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') setIsSearchFocused(false);
+                  }}
+                  placeholder={t('common.search')}
+                  className="input-field pl-10 pr-9 py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light focus:border-mandi-green transition-all"
+                  autoComplete="off"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text p-0.5 rounded-full hover:bg-mandi-border transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </form>
+
+            {/* Instant Live Search Dropdown */}
+            <LiveSearchDropdown
+              query={debouncedSearch}
+              isOpen={isSearchFocused}
+              onClose={() => setIsSearchFocused(false)}
+              onSelectQuery={handleSelectQuery}
+            />
+          </div>
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
