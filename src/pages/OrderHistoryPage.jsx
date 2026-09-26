@@ -22,9 +22,10 @@ function ReviewModal({ order, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
-      <div className="card max-w-md w-full p-6 space-y-4 relative bg-mandi-card border-mandi-border">
-        <button onClick={onClose} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="card max-w-md w-full p-5 sm:p-6 space-y-4 relative bg-mandi-card border-mandi-border rounded-t-3xl sm:rounded-2xl max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
+        <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-2 sm:hidden" />
+        <button onClick={onClose} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text p-1 active:scale-90">
           <X size={18} />
         </button>
 
@@ -212,8 +213,8 @@ export default function OrderHistoryPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6">
-      <h1 className="text-mandi-text font-black text-2xl mb-6">My Orders</h1>
+    <div className="max-w-4xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 pb-12 md:pb-8">
+      <h1 className="text-mandi-text font-black text-xl sm:text-2xl mb-4 sm:mb-6">My Orders</h1>
 
       {/* Error Recovery Banner */}
       {hasError && (

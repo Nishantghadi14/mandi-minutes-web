@@ -12,6 +12,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured, requestNotificationPermission } from '../config/firebase';
 import { useCartStore } from './useCartStore';
+import { useDataStore } from './useDataStore';
 
 const getInitialLocalUser = () => {
   if (typeof window === 'undefined') return null;
@@ -21,6 +22,54 @@ const getInitialLocalUser = () => {
   } catch {
     return null;
   }
+};
+
+const getStoreByOwnerEmail = (email) => {
+  if (!email) return null;
+  const e = email.toLowerCase().trim();
+  try {
+    const stores = useDataStore.getState()?.stores || [];
+    const matched = stores.find(s => s.ownerEmail?.toLowerCase() === e);
+    if (matched) return matched;
+  } catch {}
+  try {
+    const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
+    const matched = cached.find(s => s.ownerEmail?.toLowerCase() === e);
+    if (matched) return matched;
+  } catch {}
+  return null;
+};
+
+const isVendorEmailCheck = (email) => {
+  if (!email) return false;
+  const e = email.toLowerCase().trim();
+  const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
+  if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
+
+  try {
+    const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+    const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
+    if (userInStorage?.role === 'vendor') return true;
+  } catch {}
+
+  if (getStoreByOwnerEmail(e)) return true;
+
+  return false;
+};
+
+const getVendorStoreIdCheck = (email) => {
+  if (!email) return null;
+  const e = email.toLowerCase().trim();
+  try {
+    const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+    const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
+    if (userInStorage?.storeId) return userInStorage.storeId;
+  } catch {}
+
+  const store = getStoreByOwnerEmail(e);
+  if (store) return store.id;
+
+  return null;
 };
 
 let authOperationId = 0;
@@ -57,45 +106,6 @@ export const useAuthStore = create((set, get) => ({
       return configuredAdmins.includes(email.toLowerCase());
     };
 
-    const isVendorEmail = (email) => {
-      if (!email) return false;
-      const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
-      const e = email.toLowerCase().trim();
-      if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
-
-      try {
-        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-        const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
-        if (userInStorage?.role === 'vendor') return true;
-      } catch {}
-
-      try {
-        const stores = useDataStore.getState()?.stores || [];
-        const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === e);
-        if (matchedStore) return true;
-      } catch {}
-
-      return false;
-    };
-
-    const getVendorStoreId = (email) => {
-      if (!email) return null;
-      const e = email.toLowerCase().trim();
-      try {
-        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-        const userInStorage = registeredUsers.find(u => u.email?.toLowerCase() === e);
-        if (userInStorage?.storeId) return userInStorage.storeId;
-      } catch {}
-
-      try {
-        const stores = useDataStore.getState()?.stores || [];
-        const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === e);
-        if (matchedStore) return matchedStore.id;
-      } catch {}
-
-      return null;
-    };
-
     let userData = null;
     const fallbackName = firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Customer');
 
@@ -109,8 +119,8 @@ export const useAuthStore = create((set, get) => ({
         } else {
           // Initialize user profile document in Firestore for existing or new Auth user
           const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
-          const initialRole = isAdminEmail(firebaseUser.email) ? 'admin' : isVendorEmail(firebaseUser.email) ? 'vendor' : 'customer';
-          const initialStoreId = initialRole === 'vendor' ? getVendorStoreId(firebaseUser.email) : null;
+          const initialRole = isAdminEmail(firebaseUser.email) ? 'admin' : isVendorEmailCheck(firebaseUser.email) ? 'vendor' : 'customer';
+          const initialStoreId = initialRole === 'vendor' ? getVendorStoreIdCheck(firebaseUser.email) : null;
           userData = {
             uid: firebaseUser.uid,
             id: firebaseUser.uid,
@@ -139,7 +149,7 @@ export const useAuthStore = create((set, get) => ({
     let resolvedRole = userData?.role;
     if (isAdminEmail(firebaseUser.email)) {
       resolvedRole = 'admin';
-    } else if (isVendorEmail(firebaseUser.email)) {
+    } else if (isVendorEmailCheck(firebaseUser.email)) {
       resolvedRole = 'vendor';
     } else {
       resolvedRole = userData?.role || 'customer';
@@ -147,7 +157,7 @@ export const useAuthStore = create((set, get) => ({
 
     let resolvedStoreId = userData?.storeId;
     if (resolvedRole === 'vendor' && !resolvedStoreId) {
-      resolvedStoreId = getVendorStoreId(firebaseUser.email);
+      resolvedStoreId = getVendorStoreIdCheck(firebaseUser.email);
     }
 
     // Persist admin or vendor role updates to Firestore if matched
@@ -236,48 +246,27 @@ export const useAuthStore = create((set, get) => ({
   // Email & Password Login
   login: async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
 
-    const isVendorEmailCheck = (e) => {
-      if (!e) return false;
-      const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
-      if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
-      try {
-        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-        const u = registeredUsers.find(user => user.email?.toLowerCase() === e);
-        if (u?.role === 'vendor') return true;
-      } catch {}
-      try {
-        const stores = useDataStore.getState()?.stores || [];
-        if (stores.some(s => s.ownerEmail?.toLowerCase() === e)) return true;
-      } catch {}
-      return false;
-    };
+    // Check localStorage registered database
+    let registeredRecord = null;
+    try {
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      registeredRecord = registeredUsers.find(u => u.email?.toLowerCase() === cleanEmail);
+    } catch {}
 
-    const getStoreIdCheck = (e) => {
-      try {
-        const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-        const u = registeredUsers.find(user => user.email?.toLowerCase() === e);
-        if (u?.storeId) return u.storeId;
-      } catch {}
-      try {
-        const stores = useDataStore.getState()?.stores || [];
-        const matched = stores.find(s => s.ownerEmail?.toLowerCase() === e);
-        if (matched) return matched.id;
-      } catch {}
-      return 'store-mahalaxmi-1';
-    };
+    const isVendor = isVendorEmailCheck(cleanEmail);
+    const targetStoreId = getVendorStoreIdCheck(cleanEmail) || registeredRecord?.storeId || (isVendor ? 'store-mahalaxmi-1' : null);
 
     if (!isFirebaseConfigured || !auth) {
       if (import.meta.env.PROD) {
         throw new Error('Firebase Authentication is not configured for this app. Please set VITE_FIREBASE_* keys in .env and re-deploy.');
       }
       
-      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-      let found = registeredUsers.find(u => u.email?.toLowerCase() === cleanEmail);
+      let found = registeredRecord;
 
       // Auto-register vendor user if matching store email or vendor format
-      if (!found && isVendorEmailCheck(cleanEmail)) {
-        const targetStoreId = getStoreIdCheck(cleanEmail);
+      if (!found && isVendor) {
         const uid = 'local-vendor-' + Math.random().toString(36).substring(2, 8);
         found = {
           id: uid,
@@ -285,7 +274,7 @@ export const useAuthStore = create((set, get) => ({
           name: cleanEmail.split('@')[0],
           email: cleanEmail,
           phone: '9920941603',
-          password: password,
+          password: cleanPassword,
           role: 'vendor',
           storeId: targetStoreId,
           addresses: [],
@@ -293,21 +282,25 @@ export const useAuthStore = create((set, get) => ({
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
           createdAt: new Date().toISOString(),
         };
-        registeredUsers.push(found);
-        localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+        try {
+          const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+          registeredUsers.push(found);
+          localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+        } catch {}
       }
 
       if (!found) {
         throw new Error('No account found with this email address. Please click "Sign Up" below or submit Vendor Onboarding.');
       }
 
-      if (found.password && found.password !== password && !isVendorEmailCheck(cleanEmail)) {
+      if (found.password && found.password !== cleanPassword) {
         throw new Error('Invalid email or password. Please try again.');
       }
 
       const { password: _p, ...safeUser } = found;
-      if (safeUser.role === 'vendor' && !safeUser.storeId) {
-        safeUser.storeId = getStoreIdCheck(cleanEmail);
+      if (isVendor) {
+        safeUser.role = 'vendor';
+        safeUser.storeId = targetStoreId;
       }
 
       localStorage.setItem('mandi_local_user', JSON.stringify(safeUser));
@@ -320,30 +313,42 @@ export const useAuthStore = create((set, get) => ({
 
     try {
       await setPersistence(auth, browserLocalPersistence);
-      const cleanEmail = email.trim();
-      const cleanPassword = password.trim();
       let userCredential = null;
 
       try {
         userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
       } catch (authErr) {
-        // If vendor email fails to login in Firebase Auth (e.g. user not created yet in Firebase Auth),
-        // attempt to auto-create the user in Firebase Auth or fallback to profile recovery
-        if ((authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') && isVendorEmailCheck(cleanEmail)) {
+        // If vendor registered but not in Firebase Auth, or password matches local registration
+        if (registeredRecord && isVendor) {
+          if (registeredRecord.password && registeredRecord.password !== cleanPassword) {
+            throw new Error('Invalid email or password. Please try again.');
+          }
+          // Attempt to create user in Firebase Auth so future standard Firebase logins work
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+          } catch (createErr) {
+            console.warn('Vendor Firebase Auth auto-create notice:', createErr?.message);
+          }
+        } else if ((authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') && isVendor) {
           try {
             userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
           } catch (createErr) {
             console.warn('Vendor Firebase Auth auto-create notice:', createErr?.message);
           }
         }
-        if (!userCredential && isVendorEmailCheck(cleanEmail)) {
-          const targetStoreId = getStoreIdCheck(cleanEmail);
-          const uid = 'vendor-user-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '-');
+
+        // If Firebase Auth still didn't produce a credential, but this is a valid vendor from registration:
+        if (!userCredential && isVendor) {
+          if (registeredRecord && registeredRecord.password && registeredRecord.password !== cleanPassword) {
+            throw new Error('Invalid email or password. Please try again.');
+          }
+
+          const uid = registeredRecord?.uid || 'vendor-user-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '-');
           const fallbackVendorUser = {
             id: uid,
             uid: uid,
             email: cleanEmail,
-            name: cleanEmail.split('@')[0],
+            name: registeredRecord?.name || cleanEmail.split('@')[0],
             role: 'vendor',
             storeId: targetStoreId,
             addresses: [],
@@ -372,46 +377,36 @@ export const useAuthStore = create((set, get) => ({
       const profileUser = await get().syncUserProfile(userCredential.user);
       return profileUser;
     } catch (err) {
-      // If Firebase Auth rate-limits during testing (auth/too-many-requests),
-      // fallback to Firestore profile lookup so testing is never blocked!
-      if (err.code === 'auth/too-many-requests' && db) {
-        try {
-          const usersRef = collection(db, 'users');
-          const q = query(usersRef, where('email', '==', email.toLowerCase()), limit(1));
-          const querySnap = await getDocs(q);
-          if (!querySnap.empty) {
-            const userData = querySnap.docs[0].data();
-            const profileUser = {
-              id: querySnap.docs[0].id,
-              uid: querySnap.docs[0].id,
-              email: email,
-              name: userData.name || email.split('@')[0],
-              role: userData.role || (isVendorEmailCheck(email) ? 'vendor' : 'customer'),
-              storeId: userData.storeId || (isVendorEmailCheck(email) ? getStoreIdCheck(email) : null),
-              ...userData,
-            };
-            set({ user: profileUser, loading: false });
-            useCartStore.getState().switchUser(profileUser.id);
-            return profileUser;
-          }
-        } catch (bypassErr) {
-          console.warn('Rate-limit bypass check notice:', bypassErr?.message);
-        }
-      }
-
-      console.error('🔥 Firebase Login Error:', err.code, err.message);
       set({ loading: false });
-      let message = 'Failed to sign in. Please check your credentials.';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        message = 'Invalid email or password.';
+      let message = 'Failed to sign in. Please verify your email and password.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        message = 'Invalid email or password. Please check your credentials or create a new account.';
       } else if (err.code === 'auth/too-many-requests') {
+        if (registeredRecord && registeredRecord.password === cleanPassword && isVendor) {
+          const fallbackVendorUser = {
+            id: registeredRecord.uid || registeredRecord.id,
+            uid: registeredRecord.uid || registeredRecord.id,
+            email: cleanEmail,
+            name: registeredRecord.name,
+            role: 'vendor',
+            storeId: targetStoreId,
+            addresses: [],
+            wishlist: [],
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+            createdAt: new Date().toISOString(),
+          };
+          localStorage.setItem('mandi_local_user', JSON.stringify(fallbackVendorUser));
+          set({ user: fallbackVendorUser, loading: false });
+          useCartStore.getState().switchUser(fallbackVendorUser.id);
+          return fallbackVendorUser;
+        }
         message = 'Too many attempts. Please try again shortly or click Sign Up.';
       } else if (err.code === 'auth/invalid-email') {
         message = 'Please provide a valid email address.';
       } else if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
         message = 'Email/Password Sign-In is not enabled in Firebase Console.';
       } else if (err.message) {
-        message = `${err.message} (${err.code || 'unknown'})`;
+        message = err.message;
       }
       throw new Error(message);
     }
@@ -634,6 +629,86 @@ export const useAuthStore = create((set, get) => ({
     localStorage.removeItem('mandi_local_user');
     useCartStore.getState().switchUser(null);
     set({ user: null, loading: false });
+  },
+
+  // Dedicated Vendor Registration upon onboarding completion
+  registerVendor: async ({ name, email, phone, password, storeId, storeName }) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+    const cleanName = (name || '').trim();
+    const cleanPhone = (phone || '').trim();
+
+    let uid = 'vendor-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '-');
+    let firebaseUser = null;
+
+    if (isFirebaseConfigured && auth) {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+        firebaseUser = cred.user;
+        uid = firebaseUser.uid;
+        if (cleanName) {
+          try { await updateProfile(firebaseUser, { displayName: cleanName }); } catch {}
+        }
+      } catch (authErr) {
+        if (authErr.code === 'auth/email-already-in-use') {
+          try {
+            const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+            firebaseUser = cred.user;
+            uid = firebaseUser.uid;
+          } catch (signInErr) {
+            console.warn('Firebase sign in for existing email notice:', signInErr?.message);
+          }
+        } else {
+          console.warn('Firebase create vendor account notice:', authErr?.message);
+        }
+      }
+    }
+
+    const vendorUser = {
+      id: uid,
+      uid: uid,
+      name: cleanName,
+      displayName: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      role: 'vendor',
+      storeId: storeId,
+      storeName: storeName || '',
+      addresses: [],
+      wishlist: [],
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanName || cleanEmail)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Save to Firestore if db exists
+    if (db && isFirebaseConfigured && uid) {
+      try {
+        await setDoc(doc(db, 'users', uid), vendorUser, { merge: true });
+      } catch (e) {
+        console.warn('Firestore vendor doc save warning:', e?.message);
+      }
+    }
+
+    // Save to localStorage registered users with password so Login works seamlessly
+    try {
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      const existingIdx = registeredUsers.findIndex(u => u.email?.toLowerCase() === cleanEmail);
+      const record = { ...vendorUser, password: cleanPassword };
+      if (existingIdx >= 0) {
+        registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...record };
+      } else {
+        registeredUsers.push(record);
+      }
+      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+    } catch (e) {
+      console.error('Error saving to mandi_registered_users:', e);
+    }
+
+    // Set active session immediately
+    localStorage.setItem('mandi_local_user', JSON.stringify(vendorUser));
+    set({ user: vendorUser, loading: false });
+    useCartStore.getState().switchUser(vendorUser.id);
+    return vendorUser;
   },
 
   // Bind vendor role & storeId upon onboarding completion

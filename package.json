@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "oxlint",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "vite build && cap sync android",
+    "build:apk": "vite build && cap sync android && powershell -ExecutionPolicy Bypass -Command \"Set-Location android; .\\gradlew.bat assembleDebug; Set-Location ..; Copy-Item android/app/build/outputs/apk/debug/app-debug.apk mandi-minutes.apk -Force\""
   },
   "dependencies": {
     "firebase": "^12.17.1",
@@ -26,6 +28,9 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",

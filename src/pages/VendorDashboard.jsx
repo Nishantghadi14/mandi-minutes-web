@@ -44,11 +44,35 @@ export default function VendorDashboard() {
   // Resolve store dynamically matching logged-in vendor user email, storeId, or uid
   const store = useMemo(() => {
     if (!user) return null;
-    return stores.find(s => 
+    let found = stores.find(s => 
       (user.storeId && s.id === user.storeId) ||
       (user.email && s.ownerEmail?.toLowerCase() === user.email.toLowerCase()) ||
       (user.uid && s.id === user.uid)
-    ) || (user.role === 'vendor' ? null : stores[0]);
+    );
+    if (!found && user.storeId) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
+        found = cached.find(s => s.id === user.storeId || s.ownerEmail?.toLowerCase() === user.email?.toLowerCase());
+      } catch {}
+    }
+    if (!found && user.role === 'vendor' && user.storeId) {
+      found = {
+        id: user.storeId,
+        name: user.storeName || 'My Kirana Store',
+        ownerName: user.name || 'Store Partner',
+        ownerEmail: user.email || '',
+        ownerPhone: user.phone || '',
+        rating: 0,
+        totalRatings: 0,
+        deliveryTime: '10-15 min',
+        minOrder: 99,
+        deliveryCharge: 0,
+        isOpen: true,
+        status: 'approved',
+        categories: ['cat-1', 'cat-2', 'cat-3', 'cat-4'],
+      };
+    }
+    return found || (user.role === 'vendor' ? null : stores[0]);
   }, [stores, user]);
 
   const products = useMemo(() => store?.id ? getProductsByStore(store.id, true) : [], [store?.id, getProductsByStore, allProducts]);

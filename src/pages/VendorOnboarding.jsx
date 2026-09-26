@@ -9,7 +9,7 @@ import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanit
 
 export default function VendorOnboarding() {
   const { submitVendorApplication } = useData();
-  const { user, openAuthModal, setVendorStore } = useAuth();
+  const { user, openAuthModal, registerVendor } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -112,8 +112,8 @@ export default function VendorOnboarding() {
         upiId: upiCheck.value,
         bankAccount: sanitizeText(form.bankAccount || '', 40),
         description: sanitizeText(form.description || '', 400),
-        rating: 5.0,
-        totalRatings: 1,
+        rating: 0,
+        totalRatings: 0,
         deliveryTime: '10-15 min',
         minOrder: 99,
         deliveryCharge: 0,
@@ -124,35 +124,18 @@ export default function VendorOnboarding() {
 
       const createdStore = await submitVendorApplication(newStore);
 
-      // Register vendor credentials into local storage database so Login works seamlessly
-      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
-      const existingIdx = registeredUsers.findIndex(u => u.email?.toLowerCase() === emailCheck.value.toLowerCase());
-      const vendorUserData = {
-        id: createdStore.id,
-        uid: createdStore.id,
+      // Register vendor user credentials & immediately establish active vendor session
+      await registerVendor({
         name: ownerName,
         email: emailCheck.value,
         phone: phoneCheck.value,
         password: passwordVal,
-        role: 'vendor',
         storeId: createdStore.id,
-        addresses: [],
-        wishlist: [],
-        createdAt: new Date().toISOString(),
-      };
+        storeName: storeName,
+      });
 
-      if (existingIdx >= 0) {
-        registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...vendorUserData };
-      } else {
-        registeredUsers.push(vendorUserData);
-      }
-      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
-
-      if (setVendorStore) {
-        await setVendorStore(createdStore.id);
-      }
       setSubmitted(true);
-      addToast('🎉 Store onboarding successful! You can now log in anytime as Vendor.', 'success', 5000);
+      addToast('🎉 Store onboarding successful! You are now logged in as Vendor.', 'success', 5000);
     } catch (err) {
       console.error('Vendor onboarding submission failed:', err);
       addToast(err.message || 'Failed to submit onboarding form. Please try again.', 'error');
@@ -172,15 +155,46 @@ export default function VendorOnboarding() {
       </div>
 
       {submitted ? (
-        <div className="card p-10 text-center max-w-lg mx-auto">
-          <CheckCircle size={48} className="text-mandi-green mx-auto mb-4" />
-          <h2 className="text-mandi-text font-bold text-2xl mb-2">Store Registered Successfully! 🎉</h2>
-          <p className="text-mandi-muted text-sm mb-6">Your store <strong>{form.storeName}</strong> has been onboarded to Mandi Minutes. You can now start adding products, setting prices, and managing store orders!</p>
+        <div className="card p-8 sm:p-10 text-center max-w-lg mx-auto shadow-2xl border border-mandi-green/30 animate-scale-in">
+          <div className="w-16 h-16 bg-mandi-green/15 text-mandi-green rounded-full flex items-center justify-center mx-auto mb-4 glow-green-sm">
+            <CheckCircle size={36} />
+          </div>
+          <h2 className="text-mandi-text font-black text-2xl mb-1">Store Registered Successfully! 🎉</h2>
+          <p className="text-mandi-green text-sm font-semibold mb-4">✓ You are now logged in as Vendor</p>
+          
+          <div className="bg-mandi-surface border border-mandi-border rounded-2xl p-4 text-left mb-6 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-mandi-muted">Store Name:</span>
+              <span className="text-mandi-text font-bold">{form.storeName}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-mandi-muted">Owner Name:</span>
+              <span className="text-mandi-text font-medium">{form.ownerName}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-mandi-muted">Login Email:</span>
+              <span className="text-mandi-text font-mono font-medium">{form.ownerEmail}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-mandi-muted">Account Role:</span>
+              <span className="badge-green text-[10px] font-bold uppercase">Vendor Partner</span>
+            </div>
+            <p className="text-[11px] text-mandi-subtle pt-2 border-t border-mandi-border">
+              💡 You can use <strong>{form.ownerEmail}</strong> and your password to log in anytime from any device.
+            </p>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => navigate('/vendor')} className="btn-primary flex items-center justify-center gap-2 py-2.5 px-5 font-bold">
-              <Store size={16} /> Open Vendor Dashboard
+            <button 
+              onClick={() => navigate('/vendor')} 
+              className="btn-primary flex items-center justify-center gap-2 py-3 px-6 font-bold shadow-green glow-green-sm text-sm"
+            >
+              <Store size={18} /> Open Vendor Dashboard
             </button>
-            <button onClick={() => navigate('/')} className="btn-outline py-2.5 px-4">
+            <button 
+              onClick={() => navigate('/')} 
+              className="btn-outline py-3 px-5 text-sm"
+            >
               Return Home
             </button>
           </div>
@@ -216,7 +230,7 @@ export default function VendorOnboarding() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-mandi-muted text-xs font-medium mb-1">Email Address * (Used for Login)</label>
                   <input 
@@ -269,7 +283,7 @@ export default function VendorOnboarding() {
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-mandi-muted text-xs font-medium mb-1">City *</label>
                   <input 
@@ -292,7 +306,7 @@ export default function VendorOnboarding() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-mandi-muted text-xs font-medium mb-1">Merchant UPI ID *</label>
                   <input 

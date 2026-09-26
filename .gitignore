@@ -37,3 +37,8 @@ firebase-adminsdk*.json
 *.sw?
 
 .vercel
+
+# Android build outputs & APKs
+*.apk
+android/app/build/
+android/.gradle/

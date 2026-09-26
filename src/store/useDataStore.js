@@ -23,14 +23,22 @@ const defaultBanners = [
   { id: 'b3', title: '🛒 Free delivery above ₹199', subtitle: 'On all orders from local stores', colorDark: 'from-blue-900 to-indigo-950', colorLight: 'from-blue-50 to-indigo-100', active: true },
 ];
 
+const sanitizeStoreRatings = (s) => {
+  // If the store is newly registered or has no real ratings, do not fake a 5 or 4.9 rating
+  if (s.id !== 'store-mahalaxmi-1' && (s.totalRatings === 0 || !s.totalRatings || (s.totalRatings <= 1 && (s.rating === 5 || s.rating === 4.9 || s.rating === 4.8)))) {
+    return { ...s, rating: 0, totalRatings: 0 };
+  }
+  return s;
+};
+
 const getInitialStores = () => {
   if (typeof window === 'undefined') return initialStores;
   try {
     const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
     if (cached && cached.length > 0) {
       const mergedMap = new Map();
-      initialStores.forEach(s => mergedMap.set(s.id, s));
-      cached.forEach(s => mergedMap.set(s.id, s));
+      initialStores.forEach(s => mergedMap.set(s.id, sanitizeStoreRatings(s)));
+      cached.forEach(s => mergedMap.set(s.id, sanitizeStoreRatings(s)));
       return Array.from(mergedMap.values());
     }
   } catch {}
@@ -131,7 +139,7 @@ export const useDataStore = create((set, get) => ({
           } catch {}
           list.forEach(s => storeMap.set(s.id, s));
 
-          const mergedStores = Array.from(storeMap.values());
+          const mergedStores = Array.from(storeMap.values()).map(sanitizeStoreRatings);
           try {
             localStorage.setItem('mandi_synced_stores', JSON.stringify(mergedStores));
           } catch {}
@@ -370,8 +378,8 @@ export const useDataStore = create((set, get) => ({
       id,
       status: 'approved',
       isOpen: true,
-      rating: 4.8,
-      totalRatings: 10,
+      rating: storeData.rating !== undefined ? Number(storeData.rating) : 0,
+      totalRatings: storeData.totalRatings !== undefined ? Number(storeData.totalRatings) : 0,
       deliveryTime: '15-20 min',
       minOrder: 99,
       deliveryCharge: 0,
@@ -401,8 +409,8 @@ export const useDataStore = create((set, get) => ({
       id,
       status: 'approved',
       isOpen: true,
-      rating: 4.9,
-      totalRatings: 1,
+      rating: 0,
+      totalRatings: 0,
       deliveryTime: '10-15 min',
       minOrder: 99,
       deliveryCharge: 0,
@@ -569,11 +577,31 @@ export const useDataStore = create((set, get) => ({
       createdAt,
     };
 
-    if (isFirebaseConfigured) {
-      const result = await httpsCallable(functions, 'submitStoreReview')({ storeId, orderId, rating, comment });
-      return result.data.review;
+    if (isFirebaseConfigured && functions) {
+      try {
+        const result = await httpsCallable(functions, 'submitStoreReview')({ storeId, orderId, rating, comment });
+        return result.data.review;
+      } catch (e) {
+        console.warn('Cloud function submitStoreReview notice:', e?.message);
+      }
     }
-    set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, isReviewed: true, review: reviewPayload } : o) }));
+    
+    set(state => {
+      const store = state.stores.find(s => s.id === storeId);
+      let updatedStores = state.stores;
+      if (store) {
+        const currentTotal = store.totalRatings || 0;
+        const currentRating = store.rating || 0;
+        const newTotal = currentTotal + 1;
+        const newRating = Number(((currentRating * currentTotal + Number(rating)) / newTotal).toFixed(1));
+        updatedStores = state.stores.map(s => s.id === storeId ? { ...s, rating: newRating, totalRatings: newTotal } : s);
+        try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedStores)); } catch {}
+      }
+      return {
+        stores: updatedStores,
+        orders: state.orders.map(o => o.id === orderId ? { ...o, isReviewed: true, review: reviewPayload } : o)
+      };
+    });
     return reviewPayload;
   },
 }));

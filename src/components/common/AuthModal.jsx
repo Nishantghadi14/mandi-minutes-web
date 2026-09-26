@@ -181,13 +181,16 @@ export default function AuthModal() {
 
   return (
     <div className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
+        {/* Mobile drag handle indicator */}
+        <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-4 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-5 sm:mb-6">
           <div>
-            <h2 className="text-xl font-bold text-mandi-text">{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-            <p className="text-mandi-muted text-sm">{mode === 'login' ? 'Login to your verified account' : 'Join Mandi Minutes today'}</p>
+            <h2 className="text-lg sm:text-xl font-bold text-mandi-text">{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+            <p className="text-mandi-muted text-xs sm:text-sm">{mode === 'login' ? 'Login to your verified account' : 'Join Mandi Minutes today'}</p>
           </div>
-          <button onClick={closeAuthModal} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1"><X size={20} /></button>
+          <button onClick={closeAuthModal} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1.5 rounded-lg active:scale-90"><X size={18} /></button>
         </div>
 
         {/* Security badge */}

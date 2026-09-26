@@ -77,10 +77,15 @@
    BASE
    ═══════════════════════════════════════════════════════════════ */
 @layer base {
-  * { box-sizing: border-box; }
+  * { 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent;
+  }
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   /* Smooth theme transition helper class applied during theme toggle */
@@ -100,6 +105,14 @@
   body {
     @apply bg-mandi-dark text-mandi-text font-sans;
     min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    touch-action: pan-y;
+  }
+
+  /* Eliminate 300ms tap delay and double tap zoom on buttons and interactive elements */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 
   ::selection {
@@ -119,6 +132,14 @@
     @apply bg-mandi-surface border border-mandi-border text-mandi-text rounded-xl outline-none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
+
+  /* Prevent iOS automatic zoom on focus by enforcing at least 16px font-size on mobile screens */
+  @media (max-width: 640px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+
   input::placeholder, textarea::placeholder {
     @apply text-mandi-subtle;
   }
@@ -306,6 +327,12 @@
   .glow-green-sm { box-shadow: 0 0 10px rgba(0, 200, 81, 0.25); }
 
   .transition-250 { transition-duration: 250ms; }
+
+  /* Safe area helpers for notched devices & navigation bars */
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+  .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
 }
 
 /* ═══════════════════════════════════════════════════════════════

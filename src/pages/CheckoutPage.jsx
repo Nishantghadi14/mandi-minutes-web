@@ -156,32 +156,32 @@ export default function CheckoutPage() {
 
   return (
     <>
-    <div className="max-w-3xl mx-auto px-4 py-6 pb-24 md:pb-6">
-      <h1 className="text-mandi-text font-black text-2xl mb-6">Checkout</h1>
+    <div className="max-w-3xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 pb-12 md:pb-8">
+      <h1 className="text-mandi-text font-black text-xl sm:text-2xl mb-4 sm:mb-6">Checkout</h1>
 
       {/* Progress steps */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-4 sm:mb-6">
         {stepLabels.map((label, i) => (
-          <div key={label} className="flex items-center gap-2 flex-1">
-            <div className={`flex items-center gap-2 ${i < step - 1 ? 'cursor-pointer' : ''}`} onClick={() => i < step - 1 && setStep(i + 1)}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i + 1 < step ? 'bg-mandi-green text-black' : i + 1 === step ? 'bg-mandi-green text-black ring-2 ring-mandi-green ring-offset-2 ring-offset-mandi-dark' : 'bg-mandi-surface border border-mandi-border text-mandi-muted'}`}>
-                {i + 1 < step ? <Check size={14} /> : i + 1}
+          <div key={label} className="flex items-center gap-1.5 sm:gap-2 flex-1">
+            <div className={`flex items-center gap-1.5 sm:gap-2 ${i < step - 1 ? 'cursor-pointer' : ''}`} onClick={() => i < step - 1 && setStep(i + 1)}>
+              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i + 1 < step ? 'bg-mandi-green text-black' : i + 1 === step ? 'bg-mandi-green text-black ring-2 ring-mandi-green ring-offset-2 ring-offset-mandi-dark' : 'bg-mandi-surface border border-mandi-border text-mandi-muted'}`}>
+                {i + 1 < step ? <Check size={13} /> : i + 1}
               </div>
-              <span className={`text-xs font-medium hidden sm:block ${i + 1 <= step ? 'text-mandi-text' : 'text-mandi-muted'}`}>{label}</span>
+              <span className={`text-[11px] sm:text-xs font-medium hidden sm:block ${i + 1 <= step ? 'text-mandi-text' : 'text-mandi-muted'}`}>{label}</span>
             </div>
             {i < stepLabels.length - 1 && <div className={`flex-1 h-0.5 ${i + 1 < step ? 'bg-mandi-green' : 'bg-mandi-border'}`} />}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <div className="md:col-span-2 space-y-4">
           {/* Step 1: Address */}
           {step >= 1 && (
-            <div className="card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-mandi-text font-bold flex items-center gap-2"><MapPin size={18} className="text-mandi-green" />Delivery Address</h2>
-                {step > 1 && <button onClick={() => setStep(1)} className="text-mandi-green text-sm hover:underline">Change</button>}
+            <div className="card p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3.5 sm:mb-4">
+                <h2 className="text-mandi-text font-bold text-sm sm:text-base flex items-center gap-2"><MapPin size={17} className="text-mandi-green" />Delivery Address</h2>
+                {step > 1 && <button onClick={() => setStep(1)} className="text-mandi-green text-xs sm:text-sm hover:underline">Change</button>}
               </div>
               {!showAddressForm && user?.addresses?.map(addr => (
                 <div key={addr.id} onClick={() => setSelectedAddress(addr)} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer mb-2 transition-all ${selectedAddress?.id === addr.id ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}>
@@ -247,7 +247,7 @@ export default function CheckoutPage() {
 
           {/* Step 2: Slot & Payment */}
           {step >= 2 && (
-            <div className="card p-5 space-y-4">
+            <div className="card p-4 sm:p-5 space-y-4">
               <div>
                 <h3 className="text-mandi-text font-bold text-sm mb-3">Delivery Mode</h3>
                 
@@ -340,7 +340,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Order Summary */}
-        <div className="card p-5 h-fit space-y-4">
+        <div className="card p-4 sm:p-5 h-fit space-y-4">
           <h2 className="text-mandi-text font-bold text-base">{t('checkout.summary', 'Order Summary')}</h2>
           {store && (
             <p className="text-mandi-muted text-xs">From <strong className="text-mandi-text">{store.name}</strong></p>

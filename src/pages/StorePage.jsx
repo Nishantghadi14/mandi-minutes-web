@@ -92,20 +92,20 @@ export default function StorePage() {
       )}
 
       {/* Store Header */}
-      <div className="relative h-56 md:h-72 overflow-hidden bg-mandi-surface">
+      <div className="relative h-44 sm:h-56 md:h-72 overflow-hidden bg-mandi-surface">
         <LazyImage src={store.coverImage} alt={`${store.name} cover`} className="w-full h-full object-cover" containerClass="w-full h-full" width={1200} quality={70} />
         <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-mandi-dark/30 to-transparent pointer-events-none" />
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 bg-black/40 hover:bg-black/60 dark:bg-black/50 dark:hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white">
+        <button onClick={() => navigate(-1)} className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 w-9 h-9 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white active:scale-90">
           <ArrowLeft size={18} className="text-white" />
         </button>
       </div>
 
-      <div className="px-4">
+      <div className="px-3.5 sm:px-4">
         {/* Store info card */}
-        <div className="card -mt-10 relative z-10 p-5 mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="card -mt-8 sm:-mt-10 relative z-10 p-4 sm:p-5 mb-4 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             {/* Store's Picture Avatar */}
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-mandi-card bg-mandi-surface shadow-lg flex-shrink-0 -mt-10 sm:-mt-12">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-mandi-card bg-mandi-surface shadow-md flex-shrink-0 -mt-8 sm:-mt-12">
               <LazyImage
                 src={store.image}
                 alt={store.name}
@@ -115,24 +115,32 @@ export default function StorePage() {
               />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-mandi-text font-black text-xl">{store.name}</h1>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h1 className="text-mandi-text font-black text-lg sm:text-xl">{store.name}</h1>
                 {store.status === 'suspended' ? (
-                  <span className="text-xs bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full font-bold uppercase">Suspended</span>
+                  <span className="text-[11px] bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase">Suspended</span>
                 ) : (store.isOpen === false || store.status === 'closed') && (
-                  <span className="badge-muted text-xs bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">Currently Closed</span>
+                  <span className="badge-muted text-[11px] bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">Currently Closed</span>
                 )}
               </div>
               <p className="text-mandi-muted text-xs flex items-center gap-1 mb-2">
-                <MapPin size={12} className="text-mandi-green" />
-                {store.address}, {store.city}
+                <MapPin size={12} className="text-mandi-green flex-shrink-0" />
+                <span className="truncate">{store.address}, {store.city}</span>
               </p>
-              <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
+                {store.totalRatings > 0 && store.rating > 0 ? (
+                  <span className="badge-green flex items-center gap-1 font-semibold">
+                    <Star size={11} fill="currentColor" /> {Number(store.rating).toFixed(1)} ({store.totalRatings}+ reviews)
+                  </span>
+                ) : (
+                  <span className="bg-mandi-surface text-mandi-muted px-2.5 py-0.5 rounded-full border border-mandi-border flex items-center gap-1.5 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-mandi-green animate-pulse" />
+                    <span className="text-mandi-text font-semibold">New Store</span>
+                    <span>• No ratings yet</span>
+                  </span>
+                )}
                 <span className="badge-green flex items-center gap-1 font-semibold">
-                  <Star size={12} fill="currentColor" /> {store.rating || '4.8'} ({store.totalRatings || 10}+)
-                </span>
-                <span className="badge-green flex items-center gap-1 font-semibold">
-                  <Zap size={12} /> {store.deliveryTime || '15-20 min'}
+                  <Zap size={11} /> {store.deliveryTime || '15-20 min'}
                 </span>
                 <span className="bg-mandi-surface text-mandi-muted px-2.5 py-0.5 rounded-full border border-mandi-border">
                   Min ₹{store.minOrder || 99}
@@ -184,10 +192,10 @@ export default function StorePage() {
 
         {/* Categories Bar */}
         {storeCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
             <button
               onClick={() => setActiveCategory('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${activeCategory === 'all' ? 'bg-mandi-green text-black' : 'bg-mandi-card border border-mandi-border text-mandi-muted hover:text-mandi-text'}`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${activeCategory === 'all' ? 'bg-mandi-green text-black shadow-sm' : 'bg-mandi-card border border-mandi-border text-mandi-muted hover:text-mandi-text'}`}
             >
               All Items ({allProducts.length})
             </button>
@@ -195,7 +203,7 @@ export default function StorePage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${activeCategory === cat.id ? 'bg-mandi-green text-black' : 'bg-mandi-card border border-mandi-border text-mandi-muted hover:text-mandi-text'}`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 active:scale-95 flex-shrink-0 ${activeCategory === cat.id ? 'bg-mandi-green text-black shadow-sm' : 'bg-mandi-card border border-mandi-border text-mandi-muted hover:text-mandi-text'}`}
               >
                 <span>{cat.icon}</span>
                 <span>{cat.name}</span>
@@ -206,14 +214,14 @@ export default function StorePage() {
 
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
-          <div className="card p-12 text-center">
+          <div className="card p-8 sm:p-12 text-center">
             <ShoppingBag size={40} className="text-mandi-subtle mx-auto mb-3" />
             <h3 className="text-mandi-text font-bold text-base mb-1">No products found</h3>
             <p className="text-mandi-muted text-xs mb-4">Try adjusting your filters or search keywords</p>
             {search && <button onClick={() => setSearch('')} className="btn-primary text-xs py-1.5 px-4">Clear Search</button>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
             {filteredProducts.map(p => (
               <ProductCard key={p.id} product={p} />
             ))}

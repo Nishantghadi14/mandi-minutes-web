@@ -133,10 +133,10 @@ export default function CartDrawer() {
             </div>
 
             {/* Checkout Button */}
-            <div className="p-4 border-t border-mandi-border">
-              <button onClick={handleCheckout} className="btn-primary w-full flex items-center justify-between">
-                <span>₹{total} to pay</span>
-                <div className="flex items-center gap-1"><span>Proceed to Checkout</span><ArrowRight size={16} /></div>
+            <div className="p-4 border-t border-mandi-border pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-mandi-card">
+              <button onClick={handleCheckout} className="btn-primary w-full flex items-center justify-between text-sm sm:text-base py-3 shadow-md active:scale-95">
+                <span className="font-bold">₹{total} to pay</span>
+                <div className="flex items-center gap-1 font-bold"><span>Proceed to Checkout</span><ArrowRight size={16} /></div>
               </button>
             </div>
           </>

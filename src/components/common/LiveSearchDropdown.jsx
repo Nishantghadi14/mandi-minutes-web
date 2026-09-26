@@ -182,9 +182,15 @@ export default function LiveSearchDropdown({
                         {s.name}
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-mandi-muted mt-0.5">
-                        <span className="flex items-center gap-0.5 text-mandi-amber font-bold">
-                          <Star size={10} fill="currentColor" /> {s.rating || '4.8'}
-                        </span>
+                        {s.totalRatings > 0 && s.rating > 0 ? (
+                          <span className="flex items-center gap-0.5 text-mandi-amber font-bold">
+                            <Star size={10} fill="currentColor" /> {Number(s.rating).toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-500 dark:text-emerald-400 font-semibold text-[10px]">
+                            New • Unrated
+                          </span>
+                        )}
                         <span>•</span>
                         <span className="flex items-center gap-0.5">
                           <Zap size={10} className="text-mandi-green" /> {s.deliveryTime || '15 min'}
@@ -298,9 +304,15 @@ export default function LiveSearchDropdown({
                           <HighlightMatch text={s.name} query={cleanQuery} />
                         </p>
                         <div className="flex items-center gap-2 text-xs text-mandi-muted">
-                          <span className="flex items-center gap-0.5 text-mandi-amber font-bold">
-                            <Star size={11} fill="currentColor" /> {s.rating || '4.8'}
-                          </span>
+                          {s.totalRatings > 0 && s.rating > 0 ? (
+                            <span className="flex items-center gap-0.5 text-mandi-amber font-bold">
+                              <Star size={11} fill="currentColor" /> {Number(s.rating).toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-500 dark:text-emerald-400 font-semibold text-xs">
+                              New • Unrated
+                            </span>
+                          )}
                           <span>•</span>
                           <span className="flex items-center gap-0.5">
                             <Zap size={11} className="text-mandi-green" /> {s.deliveryTime || '15 min'}

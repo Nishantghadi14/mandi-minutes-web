@@ -98,7 +98,8 @@ export default function HomePage() {
     return allStores.filter(s => s.status !== 'closed' && s.isOpen !== false);
   }, [allStores, location?.pincode, getStoresByPincode]);
 
-
+  const INITIAL_STORE_LIMIT = 3;
+  const visibleStores = stores.slice(0, INITIAL_STORE_LIMIT);
 
   const hasStoreError = Boolean(errorStates?.stores);
   const isStoresLoading = Boolean(loadingStates?.stores);
@@ -168,42 +169,42 @@ export default function HomePage() {
           <div className="hero-orb absolute top-0 right-0 w-72 h-72 bg-mandi-green opacity-[0.07] translate-x-1/3 -translate-y-1/3" />
           <div className="hero-orb absolute bottom-0 left-0 w-56 h-56 bg-mandi-green opacity-[0.05] -translate-x-1/3 translate-y-1/3" />
 
-          <div className="relative z-10 p-8 md:p-12">
-            <div className="flex flex-col md:flex-row md:items-center gap-8">
+          <div className="relative z-10 p-5 sm:p-8 md:p-12">
+            <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8">
               <div className="flex-1">
                 {/* Pills row */}
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <span className="flex items-center gap-1.5 bg-mandi-green text-black text-xs font-bold px-3 py-1.5 rounded-full">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+                  <span className="flex items-center gap-1.5 bg-mandi-green text-black text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
                     <Zap size={11} fill="black" /> {t('hero.badge')}
                   </span>
-                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-3 py-1.5 rounded-full">
+                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full">
                     <Clock size={11} className="text-mandi-green" /> 10-15 mins
                   </span>
-                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-3 py-1.5 rounded-full">
+                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full">
                     <ShieldCheck size={11} className="text-mandi-green" /> {t('hero.trustedKiranas')}
                   </span>
                 </div>
 
-                <h1 className="text-3xl md:text-5xl font-black text-mandi-text mb-3 leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-mandi-text mb-2.5 sm:mb-3 leading-tight">
                   {t('hero.headline')}
                 </h1>
-                <p className="text-mandi-muted text-base md:text-lg mb-7 max-w-lg leading-relaxed">
+                <p className="text-mandi-muted text-sm sm:text-base md:text-lg mb-5 sm:mb-7 max-w-lg leading-relaxed">
                   {t('hero.subheadline')}
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                   <button
                     onClick={() => setLocationModal(true)}
-                    className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-5 py-3 rounded-xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 max-w-xs group"
+                    className="flex items-center justify-center sm:justify-start gap-2 bg-mandi-surface border border-mandi-border px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 w-full sm:w-auto sm:max-w-xs group active:scale-95"
                   >
-                    <MapPin size={17} className="text-mandi-green group-hover:drop-shadow-green" />
+                    <MapPin size={16} className="text-mandi-green group-hover:drop-shadow-green flex-shrink-0" />
                     <span className="text-mandi-text text-sm font-medium truncate">
                       {location ? `📍 ${location.area}` : t('hero.setLocation')}
                     </span>
                   </button>
                   <Link
                     to="/search"
-                    className="btn-primary flex items-center gap-2 max-w-xs justify-center group"
+                    className="btn-primary flex items-center gap-2 w-full sm:w-auto sm:max-w-xs justify-center group text-sm sm:text-base py-2.5 sm:py-3"
                   >
                     <span>{t('hero.shopNow')}</span>
                     <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
@@ -238,26 +239,24 @@ export default function HomePage() {
         <PromoBanner banners={banners} />
       </section>
 
-
-
       {/* ── Shop by Category ── */}
       <section className="mb-10">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="section-title mb-0">{t('sections.shopByCategory')}</h2>
-          <Link to="/search" className="flex items-center gap-1 text-mandi-green text-sm font-semibold hover:text-mandi-green-light transition-colors">
-            {t('common.viewAll')} <ChevronRight size={15} />
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <h2 className="section-title mb-0 text-lg sm:text-xl">{t('sections.shopByCategory')}</h2>
+          <Link to="/search" className="flex items-center gap-1 text-mandi-green text-xs sm:text-sm font-semibold hover:text-mandi-green-light transition-colors">
+            {t('common.viewAll')} <ChevronRight size={14} />
           </Link>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
           {categories.map(cat => (
             <Link
               key={cat.id}
               to={`/search?category=${cat.id}`}
-              className="category-card flex flex-col items-center gap-2 p-3 rounded-2xl border border-mandi-border transition-all duration-250 group"
+              className="category-card flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-2xl border border-mandi-border transition-all duration-200 group active:scale-95"
               style={{ background: isDark ? cat.colorDark : (cat.colorLight || cat.colorDark) }}
             >
-              <span className="text-2xl group-hover:scale-125 transition-transform duration-200 ease-out">{cat.icon}</span>
-              <span className="text-mandi-text text-xs font-semibold text-center leading-tight">{t(`categories.${cat.id}`, cat.name)}</span>
+              <span className="text-2xl sm:text-3xl group-hover:scale-125 transition-transform duration-200 ease-out">{cat.icon}</span>
+              <span className="text-mandi-text text-[11px] sm:text-xs font-semibold text-center leading-tight truncate w-full px-0.5">{t(`categories.${cat.id}`, cat.name)}</span>
             </Link>
           ))}
         </div>
@@ -265,15 +264,26 @@ export default function HomePage() {
 
       {/* ── Stores near you ── */}
       <section className="mb-10">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="section-title mb-0">
-            {location ? `${t('sections.storesIn')} ${location.area.split(',')[0]}` : t('sections.featuredStores')}
-          </h2>
-          {location && stores.length > 0 && (
-            <span className="flex items-center gap-1.5 text-mandi-muted text-sm bg-mandi-surface border border-mandi-border px-3 py-1 rounded-full">
-              <Store size={13} className="text-mandi-green" />
-              {stores.length} {t('sections.nearby')}
-            </span>
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <div className="flex items-center gap-2">
+            <h2 className="section-title mb-0 text-lg sm:text-xl">
+              {location ? `${t('sections.storesIn')} ${location.area.split(',')[0]}` : t('sections.featuredStores')}
+            </h2>
+            {location && stores.length > 0 && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-mandi-muted text-xs bg-mandi-surface border border-mandi-border px-2.5 py-0.5 rounded-full font-medium">
+                <Store size={12} className="text-mandi-green" />
+                {stores.length} {t('sections.nearby')}
+              </span>
+            )}
+          </div>
+          {stores.length > INITIAL_STORE_LIMIT && (
+            <Link
+              to="/search?tab=stores"
+              className="flex items-center gap-1 text-mandi-green text-xs sm:text-sm font-bold hover:text-mandi-green-light transition-colors group"
+            >
+              <span>See All Stores ({stores.length})</span>
+              <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           )}
         </div>
 
@@ -306,9 +316,25 @@ export default function HomePage() {
             <button onClick={() => setLocationModal(true)} className="btn-outline">{t('location.tryAnother')}</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stores.map(store => <StoreCard key={store.id} store={store} />)}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visibleStores.map(store => <StoreCard key={store.id} store={store} />)}
+            </div>
+
+            {/* See All Stores Button */}
+            {stores.length > INITIAL_STORE_LIMIT && (
+              <div className="mt-6 flex items-center justify-center">
+                <Link
+                  to="/search?tab=stores"
+                  className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-8 rounded-2xl font-bold text-sm shadow-green glow-green-sm active:scale-95 transition-all group"
+                >
+                  <Store size={18} />
+                  <span>See All {stores.length} Stores</span>
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -331,21 +357,21 @@ export default function HomePage() {
 
       {/* ── Vendor CTA ── */}
       <section>
-        <div className="relative overflow-hidden rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 bg-vendor-mesh border border-mandi-green/20">
+        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6 bg-vendor-mesh border border-mandi-green/20">
           {/* Decorative orb */}
           <div className="hero-orb absolute top-0 right-0 w-64 h-64 bg-mandi-green opacity-10 translate-x-1/3 -translate-y-1/3" />
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
               <span className="bg-white/10 border border-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full">🤝 {t('sections.partnership')}</span>
             </div>
-            <h2 className="text-white font-black text-2xl md:text-3xl mb-2">{t('sections.ownAStore')}</h2>
-            <p className="text-green-200/80 text-sm md:text-base max-w-md">
+            <h2 className="text-white font-black text-xl sm:text-2xl md:text-3xl mb-2">{t('sections.ownAStore')}</h2>
+            <p className="text-green-200/80 text-xs sm:text-sm md:text-base max-w-md">
               {t('sections.vendorSubheadline')}
             </p>
           </div>
           <Link
             to="/vendor-onboarding"
-            className="relative z-10 flex-shrink-0 bg-white text-emerald-950 font-black px-7 py-3.5 rounded-xl hover:bg-green-50 active:scale-95 transition-all duration-200 flex items-center gap-2 group shadow-lg"
+            className="relative z-10 w-full sm:w-auto flex-shrink-0 bg-white text-emerald-950 font-black px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl hover:bg-green-50 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 group shadow-lg text-sm sm:text-base"
           >
             <Store size={18} />
             {t('sections.becomeVendor')}

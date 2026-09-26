@@ -83,7 +83,7 @@ export default function App() {
                   <ErrorBoundary>
                     <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
                       <Navbar />
-                      <main className="flex-1">
+                      <main className="flex-1 pb-20 sm:pb-0">
                         <Suspense fallback={<PageLoader />}>
                           <Routes>
                             <Route path="/" element={<HomePage />} />

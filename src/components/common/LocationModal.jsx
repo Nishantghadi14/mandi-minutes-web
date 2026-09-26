@@ -42,17 +42,20 @@ export default function LocationModal() {
   };
 
   return (
-    <div className="overlay flex items-center justify-center p-4">
-      <div className="bg-mandi-card border border-mandi-border rounded-2xl p-6 w-full max-w-md animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-mandi-green-muted p-2 rounded-xl"><MapPin size={22} className="text-mandi-green" /></div>
+    <div className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
+        {/* Mobile drag handle indicator */}
+        <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-4 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-5 sm:mb-6">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="bg-mandi-green-muted p-2 rounded-xl"><MapPin size={20} className="text-mandi-green" /></div>
             <div>
-              <h2 className="text-lg font-bold text-mandi-text">Set Virar Delivery Location</h2>
-              <p className="text-xs text-mandi-muted">Palghar District, Maharashtra</p>
+              <h2 className="text-base sm:text-lg font-bold text-mandi-text">Set Delivery Location</h2>
+              <p className="text-[11px] sm:text-xs text-mandi-muted">Palghar District, Maharashtra</p>
             </div>
           </div>
-          {location && <button onClick={() => setLocationModal(false)} className="text-mandi-subtle hover:text-mandi-text transition-colors"><X size={20} /></button>}
+          {location && <button onClick={() => setLocationModal(false)} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1.5 active:scale-90"><X size={18} /></button>}
         </div>
 
         <button onClick={handleDetect} disabled={detecting} className="w-full flex items-center gap-3 border border-mandi-green text-mandi-green font-semibold py-3 px-4 rounded-xl mb-4 hover:bg-mandi-green hover:text-black transition-all duration-200 disabled:opacity-50">

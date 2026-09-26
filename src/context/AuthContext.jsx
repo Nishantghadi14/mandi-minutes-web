@@ -27,12 +27,17 @@ export const useAuth = () => {
   const openAuthModal = useAuthStore(state => state.openAuthModal);
   const closeAuthModal = useAuthStore(state => state.closeAuthModal);
 
+  const registerVendor = useAuthStore(state => state.registerVendor);
+  const setVendorStore = useAuthStore(state => state.setVendorStore);
+
   return {
     user,
     loading,
     authModal,
     login,
     register,
+    registerVendor,
+    setVendorStore,
     sendPhoneOtp,
     confirmPhoneOtp,
     logout,
