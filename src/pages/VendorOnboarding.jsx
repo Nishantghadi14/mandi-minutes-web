@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Store, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
+import ImageUploadField from '../components/common/ImageUploadField';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanitizeText } from '../utils/validators';
@@ -25,6 +26,8 @@ export default function VendorOnboarding() {
     upiId: '',
     bankAccount: '',
     description: '',
+    image: '',
+    coverImage: '',
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -114,7 +117,8 @@ export default function VendorOnboarding() {
         deliveryTime: '10-15 min',
         minOrder: 99,
         deliveryCharge: 0,
-        image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
+        image: form.image || '',
+        coverImage: form.coverImage || '',
         categories: ['cat-1', 'cat-2', 'cat-3', 'cat-4'],
       };
 
@@ -329,6 +333,25 @@ export default function VendorOnboarding() {
                   onChange={e => handleChange('description', e.target.value)} 
                   placeholder="Tell customers about your store..." 
                   className="input-field text-sm w-full" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <ImageUploadField
+                  label="Store's Picture (Logo / Storefront)"
+                  value={form.image}
+                  onChange={(val) => handleChange('image', val)}
+                  aspectRatio="square"
+                  recommendedText="400×400px (1:1)"
+                  placeholderText="Image not available"
+                />
+                <ImageUploadField
+                  label="Store Cover Picture (Hero Banner)"
+                  value={form.coverImage}
+                  onChange={(val) => handleChange('coverImage', val)}
+                  aspectRatio="banner"
+                  recommendedText="1200×400px"
+                  placeholderText="Image not available"
                 />
               </div>
 

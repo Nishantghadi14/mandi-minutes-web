@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Package, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { validateProduct, sanitizeText } from '../../utils/validators';
+import ImageUploadField from '../common/ImageUploadField';
 
 export default function ProductModal({ product = null, storeId, onClose, onSave }) {
   const { categories } = useData();
@@ -16,13 +17,13 @@ export default function ProductModal({ product = null, storeId, onClose, onSave 
     stock: 50,
     isAvailable: true,
     description: '',
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80',
+    image: '',
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (product) {
-      setForm({ ...product });
+      setForm({ ...product, image: product.image || '' });
     }
   }, [product]);
 
@@ -166,15 +167,16 @@ export default function ProductModal({ product = null, storeId, onClose, onSave 
           </div>
 
           <div>
-            <label className="block text-mandi-muted text-xs font-medium mb-1">Image URL</label>
-            <input 
-              value={form.image} 
-              onChange={e => handleChange('image', e.target.value)} 
-              placeholder="https://images.unsplash.com/..." 
-              className="input-field text-sm" 
+            <ImageUploadField
+              label="Product Picture"
+              value={form.image}
+              onChange={val => handleChange('image', val)}
+              aspectRatio="square"
+              recommendedText="400×400px (1:1)"
+              placeholderText="Image not available"
             />
-            <div className="mt-2">
-              <span className="text-[11px] text-mandi-subtle block mb-1">Quick Select Preset Image:</span>
+            <div className="mt-3">
+              <span className="text-[11px] text-mandi-subtle block mb-1 font-medium">Quick Select Preset Product Image:</span>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {[
                   { label: 'Milk/Dairy', url: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&q=80' },

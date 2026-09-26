@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ImageOff } from 'lucide-react';
 
 export default function LazyImage({
   src,
@@ -7,7 +8,8 @@ export default function LazyImage({
   containerClass = '',
   width = 400,
   quality = 60,
-  fallbackSrc = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=60'
+  fallbackSrc = null,
+  fallbackText = 'Image not available',
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -19,13 +21,31 @@ export default function LazyImage({
 
   // Auto-optimize Unsplash images for payload reduction on mobile networks
   const optimizedSrc = useMemo(() => {
-    if (src && src.includes('unsplash.com') && !src.includes('w=')) {
+    if (src && typeof src === 'string' && src.includes('unsplash.com') && !src.includes('w=')) {
       return `${src}&auto=format&fit=crop&w=${width}&q=${quality}`;
     }
     return src;
   }, [src, width, quality]);
 
-  const displaySrc = error ? fallbackSrc : (optimizedSrc || src);
+  const hasValidSrc = Boolean(src && typeof src === 'string' && src.trim().length > 0);
+
+  if (!hasValidSrc || (error && !fallbackSrc)) {
+    return (
+      <div
+        className={`relative flex flex-col items-center justify-center bg-gradient-to-b from-mandi-surface/95 to-mandi-card text-mandi-muted border border-mandi-border/40 select-none p-1.5 text-center overflow-hidden ${containerClass || ''} ${!containerClass ? className : ''}`}
+        role="img"
+        aria-label={alt || fallbackText}
+        title={fallbackText}
+      >
+        <ImageOff className="opacity-45 shrink-0 w-4 h-4 sm:w-5 sm:h-5 max-w-[40%] max-h-[40%] mb-1" />
+        <span className="text-[9px] sm:text-[11px] font-medium tracking-tight text-mandi-muted/80 leading-tight text-center px-1 line-clamp-2">
+          {fallbackText}
+        </span>
+      </div>
+    );
+  }
+
+  const displaySrc = error && fallbackSrc ? fallbackSrc : (optimizedSrc || src);
 
   return (
     <div className={`relative overflow-hidden ${containerClass}`}>

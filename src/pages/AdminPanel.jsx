@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
+import ImageUploadField from '../components/common/ImageUploadField';
 import { isFirebaseConfigured } from '../config/firebase';
 import {
   Shield, Store, Megaphone, HelpCircle, Check, X, Plus, Trash2, RefreshCw,
@@ -129,7 +130,7 @@ export default function AdminPanel() {
   const [bannedUsers, setBannedUsers] = useState({});
 
   // Store / Banner forms
-  const [newStore, setNewStore] = useState({ name: '', ownerName: '', ownerEmail: '', ownerPhone: '', address: '', city: 'Virar, Palghar', pincodes: '401305, 401303', deliveryTime: '15-20 min', minOrder: 99, image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80' });
+  const [newStore, setNewStore] = useState({ name: '', ownerName: '', ownerEmail: '', ownerPhone: '', address: '', city: 'Virar, Palghar', pincodes: '401305, 401303', deliveryTime: '15-20 min', minOrder: 99, image: '', coverImage: '' });
   const [newBannerTitle, setNewBannerTitle] = useState('');
   const [newBannerSub, setNewBannerSub] = useState('');
   const [replyText, setReplyText] = useState({});
@@ -154,7 +155,7 @@ export default function AdminPanel() {
     addStore({ ...newStore, pincodes: newStore.pincodes.split(',').map(p => p.trim()) });
     addToast(`Store "${newStore.name}" created and approved!`, 'success');
     setShowAddStoreModal(false);
-    setNewStore({ name: '', ownerName: '', ownerEmail: '', ownerPhone: '', address: '', city: 'Virar, Palghar', pincodes: '401305, 401303', deliveryTime: '15-20 min', minOrder: 99, image: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80' });
+    setNewStore({ name: '', ownerName: '', ownerEmail: '', ownerPhone: '', address: '', city: 'Virar, Palghar', pincodes: '401305, 401303', deliveryTime: '15-20 min', minOrder: 99, image: '', coverImage: '' });
   };
 
   const handleDeleteStore = (storeId, storeName) => {
@@ -739,7 +740,24 @@ export default function AdminPanel() {
                 <div><label className="block text-mandi-muted text-xs font-medium mb-1">City *</label><input required value={newStore.city} onChange={e => setNewStore({ ...newStore, city: e.target.value })} className="input-field text-sm" /></div>
                 <div><label className="block text-mandi-muted text-xs font-medium mb-1">Served Pincodes *</label><input required value={newStore.pincodes} onChange={e => setNewStore({ ...newStore, pincodes: e.target.value })} placeholder="401305, 401303" className="input-field text-sm" /></div>
               </div>
-              <div><label className="block text-mandi-muted text-xs font-medium mb-1">Cover Image URL</label><input value={newStore.image} onChange={e => setNewStore({ ...newStore, image: e.target.value })} placeholder="https://..." className="input-field text-sm" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ImageUploadField
+                  label="Store's Picture (Logo / Storefront)"
+                  value={newStore.image}
+                  onChange={(val) => setNewStore({ ...newStore, image: val })}
+                  aspectRatio="square"
+                  recommendedText="400×400px (1:1)"
+                  placeholderText="Image not available"
+                />
+                <ImageUploadField
+                  label="Store Cover Picture (Hero Banner)"
+                  value={newStore.coverImage}
+                  onChange={(val) => setNewStore({ ...newStore, coverImage: val })}
+                  aspectRatio="banner"
+                  recommendedText="1200×400px"
+                  placeholderText="Image not available"
+                />
+              </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" className="btn-primary flex-1 py-2.5 text-sm">Create &amp; Approve Store</button>
                 <button type="button" onClick={() => setShowAddStoreModal(false)} className="py-2.5 px-4 bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border rounded-xl text-sm transition-all">Cancel</button>

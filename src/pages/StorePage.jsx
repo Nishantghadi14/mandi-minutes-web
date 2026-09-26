@@ -92,9 +92,9 @@ export default function StorePage() {
       )}
 
       {/* Store Header */}
-      <div className="relative h-56 md:h-72 overflow-hidden">
-        <LazyImage src={store.coverImage || store.image} alt={store.name} className="w-full h-full object-cover" containerClass="w-full h-full" width={1200} quality={70} />
-        <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-mandi-dark/30 to-transparent" />
+      <div className="relative h-56 md:h-72 overflow-hidden bg-mandi-surface">
+        <LazyImage src={store.coverImage} alt={`${store.name} cover`} className="w-full h-full object-cover" containerClass="w-full h-full" width={1200} quality={70} />
+        <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-mandi-dark/30 to-transparent pointer-events-none" />
         <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 bg-black/40 hover:bg-black/60 dark:bg-black/50 dark:hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white">
           <ArrowLeft size={18} className="text-white" />
         </button>
@@ -103,7 +103,17 @@ export default function StorePage() {
       <div className="px-4">
         {/* Store info card */}
         <div className="card -mt-10 relative z-10 p-5 mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Store's Picture Avatar */}
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-mandi-card bg-mandi-surface shadow-lg flex-shrink-0 -mt-10 sm:-mt-12">
+              <LazyImage
+                src={store.image}
+                alt={store.name}
+                className="w-full h-full object-cover"
+                containerClass="w-full h-full"
+                fallbackText="Image not available"
+              />
+            </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-mandi-text font-black text-xl">{store.name}</h1>

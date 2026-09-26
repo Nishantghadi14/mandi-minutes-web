@@ -29,14 +29,14 @@ export default function StoreCard({ store }) {
       {/* Cover image — taller, with overlaid info */}
       <div className="relative h-44 overflow-hidden">
         <LazyImage
-          src={store.coverImage || store.image}
+          src={store.coverImage}
           alt={store.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           containerClass="w-full h-full"
         />
 
         {/* Strong bottom gradient — info lives on top of image */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
 
         {/* Badge - top left */}
         {store.badge && (
@@ -60,12 +60,23 @@ export default function StoreCard({ store }) {
           </div>
         )}
 
-        {/* Store name overlaid at bottom of image */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
-          <h3 className="font-bold text-white text-base leading-tight drop-shadow-sm">{store.name}</h3>
-          <div className="flex items-center gap-1 mt-0.5">
-            <MapPin size={10} className="text-white/60" />
-            <span className="text-white/60 text-xs truncate">{store.address}</span>
+        {/* Store name & store picture overlaid at bottom of image */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 bg-mandi-surface shadow-md flex-shrink-0">
+            <LazyImage
+              src={store.image}
+              alt={store.name}
+              className="w-full h-full object-cover"
+              containerClass="w-full h-full"
+              fallbackText="No Image"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-white text-base leading-tight drop-shadow-sm truncate">{store.name}</h3>
+            <div className="flex items-center gap-1 mt-0.5">
+              <MapPin size={10} className="text-white/60" />
+              <span className="text-white/60 text-xs truncate">{store.address}</span>
+            </div>
           </div>
         </div>
       </div>

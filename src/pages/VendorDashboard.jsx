@@ -6,6 +6,7 @@ import InvoiceModal from '../components/vendor/InvoiceModal';
 import MasterCatalogModal from '../components/vendor/MasterCatalogModal';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
+import ImageUploadField from '../components/common/ImageUploadField';
 import { 
   Store, 
   ShoppingBag, 
@@ -93,8 +94,8 @@ export default function VendorDashboard() {
         deliveryTime: store.deliveryTime || '10-15 min',
         minOrder: store.minOrder || 99,
         deliveryCharge: store.deliveryCharge || 0,
-        image: store.image || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80',
-        coverImage: store.coverImage || 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80',
+        image: store.image || '',
+        coverImage: store.coverImage || '',
         pincodes: Array.isArray(store.pincodes) ? store.pincodes.join(', ') : (store.pincodes || '401305, 401303'),
         address: store.address || '',
         city: store.city || 'Virar, Palghar',
@@ -369,15 +370,25 @@ export default function VendorDashboard() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <Store size={22} className="text-mandi-green" />
-            <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30' : 'badge-green'}`}>
-              {store.status === 'closed' ? 'Store Paused' : store.status}
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-mandi-border bg-mandi-surface shadow-sm flex-shrink-0">
+            <LazyImage
+              src={store.image}
+              alt={store.name}
+              className="w-full h-full object-cover"
+              containerClass="w-full h-full"
+              fallbackText="No Image"
+            />
           </div>
-          <p className="text-mandi-muted text-xs mt-1">Vendor Portal • Owner: {store.ownerName || 'Verified Partner'} • Virar Region</p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30' : 'badge-green'}`}>
+                {store.status === 'closed' ? 'Store Paused' : store.status}
+              </span>
+            </div>
+            <p className="text-mandi-muted text-xs mt-1">Vendor Portal • Owner: {store.ownerName || 'Verified Partner'} • Virar Region</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button onClick={() => setShowMasterModal(true)} className="btn-outline text-mandi-green border-mandi-green border-opacity-40 hover:bg-mandi-green hover:text-black flex items-center gap-1.5 text-xs font-bold py-2 px-3 transition-all">
@@ -948,23 +959,25 @@ export default function VendorDashboard() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 <div>
-                  <label className="block text-mandi-muted text-xs font-medium mb-1">Store Logo / Thumbnail Image URL</label>
-                  <input
+                  <ImageUploadField
+                    label="Store's Picture (Logo / Storefront Photo)"
                     value={storeForm.image}
-                    onChange={e => setStoreForm(f => ({ ...f, image: e.target.value }))}
-                    placeholder="https://..."
-                    className="input-field text-sm w-full"
+                    onChange={(val) => setStoreForm((f) => ({ ...f, image: val }))}
+                    aspectRatio="square"
+                    recommendedText="Recommended: 400×400px (1:1 Square)"
+                    placeholderText="Image not available"
                   />
                 </div>
                 <div>
-                  <label className="block text-mandi-muted text-xs font-medium mb-1">Store Cover Banner Image URL</label>
-                  <input
+                  <ImageUploadField
+                    label="Store Cover Picture (Hero Banner)"
                     value={storeForm.coverImage}
-                    onChange={e => setStoreForm(f => ({ ...f, coverImage: e.target.value }))}
-                    placeholder="https://..."
-                    className="input-field text-sm w-full"
+                    onChange={(val) => setStoreForm((f) => ({ ...f, coverImage: val }))}
+                    aspectRatio="banner"
+                    recommendedText="Recommended: 1200×400px (Panoramic Banner)"
+                    placeholderText="Image not available"
                   />
                 </div>
               </div>
