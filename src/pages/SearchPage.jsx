@@ -366,9 +366,14 @@ export default function SearchPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
-                {filteredProducts.map(p => <ProductCard key={p.id} product={p} />)}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
+                  {filteredProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                </div>
+                <div className="md:hidden py-8 text-center text-xs text-mandi-subtle select-none">
+                  <p>✨ End of matching products</p>
+                </div>
+              </>
             )
           ) : (
             filteredStores.length === 0 ? (
@@ -387,9 +392,14 @@ export default function SearchPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-                {filteredStores.map(s => <StoreCard key={s.id} store={s} />)}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                  {filteredStores.map(s => <StoreCard key={s.id} store={s} />)}
+                </div>
+                <div className="md:hidden py-8 text-center text-xs text-mandi-subtle select-none">
+                  <p>✨ End of matching stores</p>
+                </div>
+              </>
             )
           )}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, MapPin, Search, ChevronDown, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon, X } from 'lucide-react';
+import { ShoppingCart, MapPin, Search, ChevronDown, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon, X, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
@@ -30,6 +30,9 @@ export default function Navbar() {
   const { t } = useTranslation();
 
   const debouncedSearch = useDebounce(searchQuery, 150);
+
+  // Determine if mobile search bar should be hidden for cleaner app view
+  const hideMobileSearch = ['/checkout', '/admin', '/vendor', '/rider', '/profile'].includes(routeLocation.pathname) || routeLocation.pathname.startsWith('/order-status');
 
   // Sync searchQuery with URL query if currently on /search
   useEffect(() => {
@@ -98,6 +101,10 @@ export default function Navbar() {
       <p className="text-mandi-muted text-xs truncate">{user.email || user.phone || ''}</p>
       <span className="tag mt-1.5 inline-block capitalize">{isAdmin ? 'Admin' : (user.role || 'customer')}</span>
       <div className="py-1 mt-2 space-y-0.5">
+        <Link to="/profile" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 hover:bg-mandi-surface transition-colors rounded-lg">
+          <User size={16} className="text-mandi-green" />
+          <span className="text-mandi-text text-sm font-semibold">Account & Settings</span>
+        </Link>
         {isAdmin && (
           <Link to="/admin" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 bg-mandi-green bg-opacity-10 hover:bg-opacity-20 text-mandi-green font-semibold transition-colors rounded-lg">
             <Shield size={16} className="text-mandi-green" />
@@ -145,49 +152,41 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto">
         {/* ─── MOBILE & TABLET TOP BAR (< lg: 0px to 1023px) ─── */}
         <div className="lg:hidden">
-          {/* Row 1: Brand & Location on Left, Language, Theme, Cart & Profile on Right */}
+          {/* Row 1: Brand on Left, Location & Controls on Right */}
           <div className="flex items-center justify-between px-3.5 sm:px-5 pt-2.5 sm:pt-3 pb-1.5 gap-2">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group" aria-label="Mandi Minutes Home">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-mandi-green rounded-xl flex items-center justify-center shadow-green glow-green-sm">
-                  <Zap size={18} className="text-black drop-shadow" fill="black" />
+            {/* Left: Brand Logo & Live Badge */}
+            <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group" aria-label="Mandi Minutes Home">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-mandi-green rounded-xl flex items-center justify-center shadow-green glow-green-sm">
+                <Zap size={18} className="text-black drop-shadow" fill="black" />
+              </div>
+              <div className="flex items-center leading-none">
+                <span className="text-base sm:text-lg font-black text-gradient-green">Mandi</span>
+                <span className="text-base sm:text-lg font-black text-mandi-text ml-0.5">Minutes</span>
+                <div className="hidden sm:flex items-center gap-1 ml-1.5 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5">
+                  <div className="glow-dot" />
+                  <span className="text-mandi-green text-[9px] font-bold tracking-wide uppercase">Live</span>
                 </div>
-                <div className="flex items-center leading-none">
-                  <span className="text-base sm:text-lg font-black text-gradient-green">Mandi</span>
-                  <span className="text-base sm:text-lg font-black text-mandi-text ml-0.5">Minutes</span>
-                  <div className="hidden sm:flex items-center gap-1 ml-1.5 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5">
-                    <div className="glow-dot" />
-                    <span className="text-mandi-green text-[9px] font-bold tracking-wide uppercase">Live</span>
-                  </div>
-                </div>
-              </Link>
+              </div>
+            </Link>
 
-              {/* Location Selector Button */}
+            {/* Right: Location Selector Chip on the Right (and Tablet Controls) */}
+            <div className="flex items-center gap-2 min-w-0">
+              {/* Location Selector Button — premium 2-tier quick commerce delivery chip */}
               <button
                 onClick={() => setLocationModal(true)}
-                className="flex items-center gap-1 bg-mandi-surface/90 border border-mandi-border px-2 sm:px-2.5 py-1 rounded-xl text-xs hover:border-mandi-green transition-all min-w-0 max-w-[130px] sm:max-w-[180px] active:scale-95"
+                className="flex items-center gap-1.5 bg-mandi-surface/90 hover:bg-mandi-card border border-mandi-border hover:border-mandi-green/50 px-2.5 py-1 sm:py-1.5 rounded-xl transition-all active:scale-95 shadow-sm min-w-0 max-w-[170px] sm:max-w-[220px] text-left group"
                 aria-label="Select Delivery Location"
               >
-                <MapPin size={11} className="text-mandi-green flex-shrink-0" />
-                <span className="text-mandi-text font-medium text-[11px] sm:text-xs truncate">
-                  {location ? location.area.split(',')[0] : t('nav.setLocation')}
-                </span>
-                <ChevronDown size={10} className="text-mandi-subtle flex-shrink-0" />
-              </button>
-            </div>
-
-            {/* Right Controls: Language, Theme, and on Tablet (sm+) Cart & Profile */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <LanguageSwitcher />
-
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="p-1.5 sm:p-2 rounded-xl border border-mandi-border bg-mandi-surface hover:border-mandi-green text-mandi-green transition-all active:scale-90"
-                aria-label="Toggle Theme"
-              >
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                <div className="w-5 h-5 rounded-lg bg-mandi-green/15 flex items-center justify-center flex-shrink-0 group-hover:bg-mandi-green/25 transition-colors">
+                  <MapPin size={11} className="text-mandi-green drop-shadow-green" />
+                </div>
+                <div className="flex flex-col min-w-0 leading-tight">
+                  <span className="text-[9px] text-mandi-subtle font-semibold uppercase tracking-wider truncate">Deliver to</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-mandi-text truncate">
+                    {location ? location.area.split(',')[0] : t('nav.setLocation')}
+                  </span>
+                </div>
+                <ChevronDown size={11} className="text-mandi-subtle flex-shrink-0 ml-0.5 group-hover:text-mandi-green transition-colors" />
               </button>
 
               {/* Cart Button — visible on Tablet (sm:flex), on Phone it's in BottomNav */}
@@ -238,48 +237,50 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Row 2: Full-Width Spacious Search Bar for Mobile & Tablet */}
-          <div ref={mobileSearchContainerRef} className="px-3.5 sm:px-5 pb-2.5 sm:pb-3 pt-0.5 relative">
-            <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
-                <Search size={16} className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-mandi-subtle pointer-events-none" />
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => {
-                    setSearchQuery(e.target.value);
-                    if (!isSearchFocused) setIsSearchFocused(true);
-                  }}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onKeyDown={e => {
-                    if (e.key === 'Escape') setIsSearchFocused(false);
-                  }}
-                  placeholder="Search milk, veggies, atta, snacks, kirana..."
-                  className="input-field pl-10 sm:pl-11 pr-9 py-2 sm:py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light focus:border-mandi-green transition-all shadow-sm"
-                  autoComplete="off"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text p-0.5 rounded-full hover:bg-mandi-border transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            </form>
+          {/* Row 2: Full-Width Spacious Search Bar for Mobile & Tablet (hidden on checkout, profile, and dashboard pages) */}
+          {!hideMobileSearch && (
+            <div ref={mobileSearchContainerRef} className="px-3.5 sm:px-5 pb-2.5 sm:pb-3 pt-0.5 relative">
+              <form onSubmit={handleSearch} className="w-full">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-mandi-subtle pointer-events-none" />
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => {
+                      setSearchQuery(e.target.value);
+                      if (!isSearchFocused) setIsSearchFocused(true);
+                    }}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') setIsSearchFocused(false);
+                    }}
+                    placeholder="Search milk, veggies, atta, snacks, kirana..."
+                    className="input-field pl-10 sm:pl-11 pr-9 py-2 sm:py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light focus:border-mandi-green transition-all shadow-sm"
+                    autoComplete="off"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text p-0.5 rounded-full hover:bg-mandi-border transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </form>
 
-            {/* Live Search Dropdown for Mobile & Tablet */}
-            <LiveSearchDropdown
-              query={debouncedSearch}
-              isOpen={isSearchFocused}
-              onClose={() => setIsSearchFocused(false)}
-              onSelectQuery={handleSelectQuery}
-            />
-          </div>
+              {/* Live Search Dropdown for Mobile & Tablet */}
+              <LiveSearchDropdown
+                query={debouncedSearch}
+                isOpen={isSearchFocused}
+                onClose={() => setIsSearchFocused(false)}
+                onSelectQuery={handleSelectQuery}
+              />
+            </div>
+          )}
         </div>
 
         {/* ─── DESKTOP SINGLE ROW BAR (>= lg: 1024px+) ─── */}

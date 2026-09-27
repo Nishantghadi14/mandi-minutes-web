@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Zap, MapPin, Phone, Mail, Camera, MessageCircle, Share2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,14 @@ function FooterNavLink({ to, label, requireAuth = false, allowedRoles = null }) 
 
 export default function Footer() {
   const { t } = useTranslation();
+  const loc = useLocation();
+
+  // Hide the heavy footer on focused transactional and dashboard routes
+  const HIDE_FOOTER_ROUTES = ['/checkout', '/admin', '/vendor', '/rider', '/profile'];
+  if (HIDE_FOOTER_ROUTES.includes(loc.pathname) || loc.pathname.startsWith('/order-status')) {
+    return null;
+  }
+
   const socialLinks = [
     { icon: Camera, href: '#', label: 'Instagram', color: 'hover:text-pink-400 hover:border-pink-400/40 hover:bg-pink-500/10' },
     { icon: MessageCircle, href: '#', label: 'WhatsApp', color: 'hover:text-green-400 hover:border-green-400/40 hover:bg-green-500/10' },
@@ -50,7 +58,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative bg-mandi-card border-t border-mandi-border mt-16 mb-16 md:mb-0 overflow-hidden">
+    <footer className="hidden md:block relative bg-mandi-card border-t border-mandi-border mt-16 overflow-hidden select-none">
       {/* Subtle dot pattern background */}
       <div
         className="absolute inset-0 opacity-40 pointer-events-none"

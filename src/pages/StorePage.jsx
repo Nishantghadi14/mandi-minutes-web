@@ -221,11 +221,16 @@ export default function StorePage() {
             {search && <button onClick={() => setSearch('')} className="btn-primary text-xs py-1.5 px-4">Clear Search</button>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
-            {filteredProducts.map(p => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+              {filteredProducts.map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            <div className="md:hidden py-8 text-center text-xs text-mandi-subtle select-none">
+              <p>✨ That's everything available in {store.name}</p>
+            </div>
+          </>
         )}
       </div>
     </div>

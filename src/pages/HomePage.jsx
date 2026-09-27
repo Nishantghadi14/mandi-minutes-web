@@ -379,6 +379,22 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* ── Native Mobile App Ending (replaces clunky website footer) ── */}
+      <div className="md:hidden py-10 px-4 text-center select-none opacity-75">
+        <div className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-mandi-surface border border-mandi-border mb-2.5 shadow-sm">
+          <Zap size={18} className="text-mandi-green" />
+        </div>
+        <p className="text-xs font-bold text-mandi-text tracking-wide">Mandi Minutes</p>
+        <p className="text-[11px] text-mandi-subtle mt-0.5">Delivering fresh groceries in 10-15 minutes</p>
+        <div className="flex items-center justify-center gap-3 mt-3 text-[10px] text-mandi-muted font-medium">
+          <span>🌱 100% Quality</span>
+          <span>•</span>
+          <span>⚡ Direct from Kirana</span>
+          <span>•</span>
+          <span>🛡️ Safe & Trusted</span>
+        </div>
+      </div>
     </div>
   );
 }
