@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /rider
+Disallow: /checkout
+
+Sitemap: https://mandiminutes.com/sitemap.xml

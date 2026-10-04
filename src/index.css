@@ -128,7 +128,10 @@
   }
   ::-webkit-scrollbar-thumb:hover { background: #00C851; }
 
-  input, textarea, select {
+  /* Form inputs (default) */
+  input:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none),
+  textarea:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none),
+  select:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none) {
     @apply bg-mandi-surface border border-mandi-border text-mandi-text rounded-xl outline-none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
@@ -143,9 +146,47 @@
   input::placeholder, textarea::placeholder {
     @apply text-mandi-subtle;
   }
-  input:focus, textarea:focus, select:focus {
+
+  /* Form input focus styles - strictly only apply to styled form fields, NEVER to bare search inputs */
+  input:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none):focus,
+  textarea:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none):focus,
+  select:not(.input-bare):not(.search-input-bare):not(.border-0):not(.border-none):focus {
     @apply border-mandi-green;
     box-shadow: 0 0 0 3px rgba(0, 200, 81, 0.12), 0 0 20px rgba(0, 200, 81, 0.06);
+  }
+
+  /* Bare search inputs - zero borders, zero box-shadows, zero outline on both blur and focus */
+  input.input-bare,
+  input.search-input-bare,
+  .input-bare,
+  .search-input-bare {
+    background-color: transparent !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+  }
+
+  input.input-bare:focus,
+  input.search-input-bare:focus,
+  .input-bare:focus,
+  .search-input-bare:focus,
+  input.input-bare:focus-visible,
+  input.search-input-bare:focus-visible {
+    background-color: transparent !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+    ring: 0 !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
   }
 }
 
@@ -306,8 +347,17 @@
     background-clip: text;
   }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar,
+  .scrollbar-none::-webkit-scrollbar { 
+    display: none !important; 
+    width: 0 !important; 
+    height: 0 !important; 
+  }
+  .no-scrollbar,
+  .scrollbar-none { 
+    -ms-overflow-style: none !important; 
+    scrollbar-width: none !important; 
+  }
 
   .glass {
     background: var(--glass-bg);

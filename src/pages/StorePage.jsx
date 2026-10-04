@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import LazyImage from '../components/common/LazyImage';
+import { getAppHomePath } from '../utils/platform';
 import { ArrowLeft, Search, Star, ShoppingBag, Zap, MapPin, Package, RefreshCw, WifiOff } from 'lucide-react';
 
 export default function StorePage() {
@@ -63,7 +64,7 @@ export default function StorePage() {
           <button onClick={() => retryFetch?.('stores')} className="btn-outline flex items-center gap-1.5">
             <RefreshCw size={14} /> Retry Sync
           </button>
-          <button onClick={() => navigate('/')} className="btn-primary">Browse All Stores</button>
+          <button onClick={() => navigate(getAppHomePath())} className="btn-primary">Browse All Stores</button>
         </div>
       </div>
     );

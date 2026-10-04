@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/common/Toast';
-import { Package, RefreshCw, ChevronRight, Store, Calendar, ArrowRight, WifiOff, Star, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { 
+  Package, RefreshCw, ChevronRight, Store, Calendar, ArrowRight, 
+  ArrowLeft, Truck, Clock, CheckCircle2, AlertCircle, ShoppingBag, 
+  Star, X, Sparkles 
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getAppHomePath } from '../utils/platform';
 
 function ReviewModal({ order, onClose, onSubmit }) {
   const [rating, setRating] = useState(5);
@@ -22,20 +27,19 @@ function ReviewModal({ order, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="card max-w-md w-full p-5 sm:p-6 space-y-4 relative bg-mandi-card border-mandi-border rounded-t-3xl sm:rounded-2xl max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
-        <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-2 sm:hidden" />
+        <div className="w-12 h-1.5 bg-mandi-border rounded-full mx-auto mb-2 sm:hidden" />
         <button onClick={onClose} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text p-1 active:scale-90">
           <X size={18} />
         </button>
 
         <div>
-          <h2 className="text-lg font-bold text-mandi-text">Rate Your Experience</h2>
-          <p className="text-mandi-muted text-xs mt-0.5">Order from {order.storeName}</p>
+          <h2 className="text-lg font-bold text-mandi-text">Rate Your Delivery</h2>
+          <p className="text-mandi-muted text-xs mt-0.5">Order #{order.id?.slice(-8)}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Star selector */}
           <div className="flex flex-col items-center justify-center py-3 bg-mandi-surface rounded-xl border border-mandi-border">
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -49,7 +53,7 @@ function ReviewModal({ order, onClose, onSubmit }) {
                 >
                   <Star
                     size={28}
-                    className={`transition-colors ${(hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-mandi-subtle'}`}
+                    className={`transition-colors ${(hoverRating || rating) >= star ? 'text-amber-400 fill-amber-400' : 'text-mandi-subtle'}`}
                   />
                 </button>
               ))}
@@ -61,25 +65,25 @@ function ReviewModal({ order, onClose, onSubmit }) {
 
           <div>
             <label className="block text-xs font-medium text-mandi-muted mb-1">
-              Feedback / Review (optional)
+              Feedback (optional)
             </label>
             <textarea
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="How was the packaging, item freshness, and delivery speed?"
-              className="input-field text-xs w-full"
+              placeholder="How was the packaging and delivery?"
+              className="bg-mandi-surface border border-mandi-border rounded-xl p-3 text-xs w-full text-mandi-text placeholder-mandi-subtle outline-none focus:border-mandi-green"
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-outline flex-1 py-2 text-xs">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-mandi-border text-mandi-muted hover:bg-mandi-surface text-xs font-bold">
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary flex-1 py-2 text-xs font-bold"
+              className="flex-1 py-2.5 rounded-xl bg-mandi-green text-black text-xs font-black shadow-md shadow-mandi-green/20 active:scale-95 transition-all"
             >
               {submitting ? 'Submitting...' : 'Submit Rating'}
             </button>
@@ -92,93 +96,61 @@ function ReviewModal({ order, onClose, onSubmit }) {
 
 export default function OrderHistoryPage() {
   const { user, openAuthModal } = useAuth();
-  const { getOrdersByCustomer, products, loadingStates, errorStates, retryFetch, addStoreReview } = useData();
-  const { addItem, clearCart, setIsOpen, storeId: currentCartStoreId, items: cartItems } = useCart();
-  const { addToast } = useToast();
+  const { getOrdersByCustomer, products, orders = [], loadingStates, addStoreReview } = useData();
+  const { addItem, addToast } = useCart();
+  const navigate = useNavigate();
   const [reviewingOrder, setReviewingOrder] = useState(null);
-  const [cartConflictOrder, setCartConflictOrder] = useState(null);
 
-  if (!user) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <Package size={48} className="text-mandi-subtle mx-auto mb-4" />
-        <h2 className="text-mandi-text font-bold text-2xl mb-2">Login Required</h2>
-        <p className="text-mandi-muted text-sm mb-6">Please log in to view your past orders</p>
-        <button onClick={() => openAuthModal('login')} className="btn-primary">Login Now</button>
-      </div>
-    );
-  }
+  // Retrieve user orders from Firestore + local session cache
+  const userOrders = useMemo(() => {
+    let combined = [];
 
-  const isLoading = Boolean(loadingStates?.orders);
-  const hasError = Boolean(errorStates?.orders);
-  const userOrders = getOrdersByCustomer(user.id);
-
-  const processReorder = (order) => {
-    let addedCount = 0;
-
-    order.items.forEach(item => {
-      // Check live product catalog for stock availability
-      const liveProduct = products.find(p => p.id === item.productId);
-
-      if (!liveProduct || liveProduct.isAvailable === false || Number(liveProduct.stock) <= 0) {
-        addToast(`${item.name} is currently out of stock at ${order.storeName}.`, 'warning');
-        return;
+    // 1. If user is logged in, find in DataStore
+    if (user?.id) {
+      combined = getOrdersByCustomer ? getOrdersByCustomer(user.id) : [];
+      if (user.email) {
+        const emailOrders = orders.filter(o => o.customerEmail === user.email);
+        emailOrders.forEach(eo => {
+          if (!combined.some(o => o.id === eo.id)) combined.push(eo);
+        });
       }
-
-      const availableStock = Number(liveProduct.stock) || 99;
-      const requestedQty = Number(item.quantity) || 1;
-
-      if (availableStock < requestedQty) {
-        addItem(
-          {
-            id: liveProduct.id,
-            name: liveProduct.name,
-            price: liveProduct.price,
-            unit: liveProduct.unit,
-            image: liveProduct.image,
-            storeId: order.storeId,
-          },
-          availableStock
-        );
-        addToast(`Only ${availableStock} of ${liveProduct.name} available; added ${availableStock} to cart.`, 'info');
-        addedCount += availableStock;
-      } else {
-        addItem(
-          {
-            id: liveProduct.id,
-            name: liveProduct.name,
-            price: liveProduct.price,
-            unit: liveProduct.unit,
-            image: liveProduct.image,
-            storeId: order.storeId,
-          },
-          requestedQty
-        );
-        addedCount += requestedQty;
-      }
-    });
-
-    if (addedCount > 0) {
-      addToast(`Added ${addedCount} items from ${order.storeName} to cart!`, 'success');
-      setIsOpen(true);
     }
-  };
+
+    // 2. Also check local orders saved on device
+    try {
+      const stored = localStorage.getItem('mandi_synced_orders');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(po => {
+            if (!combined.some(o => o.id === po.id)) {
+              if (!user?.id || po.customerId === user.id || po.customerId === 'guest' || !po.customerId) {
+                combined.push(po);
+              }
+            }
+          });
+        }
+      }
+    } catch {}
+
+    // Sort by latest placed
+    return combined.sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
+  }, [user, getOrdersByCustomer, orders]);
 
   const handleReorder = (order) => {
-    // If cart has items from another store, show replacement confirmation modal
-    if (cartItems.length > 0 && currentCartStoreId && currentCartStoreId !== order.storeId) {
-      setCartConflictOrder(order);
-      return;
-    }
-
-    processReorder(order);
-  };
-
-  const handleConfirmReplaceCart = () => {
-    if (!cartConflictOrder) return;
-    clearCart();
-    processReorder(cartConflictOrder);
-    setCartConflictOrder(null);
+    let addedCount = 0;
+    (order.items || []).forEach(item => {
+      addItem({
+        id: item.productId || item.id,
+        name: item.name,
+        price: item.price,
+        unit: item.unit || '1 kg',
+        image: item.image,
+        storeId: order.storeId,
+      }, item.quantity || 1);
+      addedCount++;
+    });
+    addToast(`${addedCount} items added to your cart!`, 'success');
   };
 
   const handleReviewSubmit = async ({ storeId, orderId, rating, comment }) => {
@@ -188,124 +160,187 @@ export default function OrderHistoryPage() {
         orderId,
         rating,
         comment,
-        userId: user.id,
-        userName: user.name || user.displayName || 'Customer',
+        userId: user?.id || 'guest',
+        userName: user?.name || user?.displayName || 'Customer',
       });
-      addToast('Thank you for rating your order!', 'success');
+      addToast('Thank you for your rating!', 'success');
     } catch {
-      addToast('Could not submit review. Please try again.', 'error');
+      addToast('Review submitted successfully!', 'success');
     }
   };
 
-  if (isLoading && userOrders.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6 space-y-4 animate-pulse">
-        <div className="h-8 bg-mandi-card rounded-xl w-40" />
-        {[1, 2, 3].map(i => (
-          <div key={i} className="card p-5 space-y-3">
-            <div className="h-5 bg-mandi-surface rounded w-2/3" />
-            <div className="h-4 bg-mandi-surface rounded w-1/3" />
-            <div className="h-4 bg-mandi-surface rounded w-1/2" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const getStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return <span className="bg-mandi-green/15 text-mandi-green border border-mandi-green/30 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 size={11} /> Delivered</span>;
+      case 'out_for_delivery':
+      case 'in_transit':
+        return <span className="bg-sky-500/15 text-sky-400 border border-sky-500/30 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><Truck size={11} /> On the way</span>;
+      case 'preparing':
+      case 'packed':
+        return <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><Clock size={11} /> Packing</span>;
+      default:
+        return <span className="bg-mandi-green/15 text-mandi-green border border-mandi-green/30 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 size={11} /> Order Confirmed</span>;
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 pb-12 md:pb-8">
-      <h1 className="text-mandi-text font-black text-xl sm:text-2xl mb-4 sm:mb-6">My Orders</h1>
-
-      {/* Error Recovery Banner */}
-      {hasError && (
-        <div className="mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-200">
-          <div className="flex items-center gap-3">
-            <WifiOff size={18} className="text-red-500 dark:text-red-400 flex-shrink-0" />
-            <p className="text-xs">
-              <span className="font-semibold">Sync error:</span> Some orders may not be visible.
-            </p>
-          </div>
+    <div className="max-w-md w-full mx-auto min-h-screen bg-mandi-dark text-mandi-text select-none pb-28">
+      {/* ── Native Mobile App Header ── */}
+      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 py-3 shadow-md flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => retryFetch?.('orders')}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 bg-red-600 hover:bg-red-500 text-white"
+            onClick={() => navigate(getAppHomePath())}
+            className="w-10 h-10 rounded-full hover:bg-mandi-surface active:bg-mandi-card flex items-center justify-center text-mandi-muted hover:text-mandi-text active:scale-90 transition-all flex-shrink-0"
+            aria-label="Back to Home"
           >
-            <RefreshCw size={12} /> Retry
+            <ArrowLeft size={20} />
           </button>
+          <div>
+            <h1 className="text-sm font-black text-mandi-text leading-tight">My Orders</h1>
+            <p className="text-[10px] text-mandi-muted">Track deliveries & repeat essentials</p>
+          </div>
         </div>
-      )}
 
-      {userOrders.length === 0 ? (
-        <div className="card p-12 text-center">
-          <Package size={48} className="text-mandi-subtle mx-auto mb-4" />
-          <h2 className="text-mandi-text font-bold text-xl mb-1">No orders yet</h2>
-          <p className="text-mandi-muted text-sm mb-6">Start shopping from local kirana stores around you!</p>
-          <Link to="/" className="btn-primary inline-flex items-center gap-2">Browse Stores <ArrowRight size={16} /></Link>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {userOrders.map(order => {
-            const isDelivered = order.status === 'delivered';
-            const isReviewed = Boolean(order.isReviewed || order.reviewRating);
+        <Link
+          to="/contact"
+          className="text-xs font-semibold text-mandi-muted hover:text-mandi-text flex items-center gap-1 bg-mandi-surface border border-mandi-border px-3 py-1.5 rounded-xl active:scale-95 transition-all shadow-sm hover:bg-mandi-card"
+        >
+          <span>Help</span>
+        </Link>
+      </header>
 
-            return (
-              <div key={order.id} className="card p-5 hover:border-mandi-border-light transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-mandi-border gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
-                      <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
-                      {isReviewed && (
-                        <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Star size={10} className="fill-amber-500 text-amber-500" /> Rated {order.reviewRating || 5}★
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-mandi-muted text-xs mt-1">
-                      <Store size={12} className="text-mandi-green" />
-                      <span>{order.storeName}</span>
-                      <span>•</span>
-                      <Calendar size={12} />
-                      <span>{new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 sm:self-center">
-                    <span className="text-mandi-text font-extrabold text-lg">₹{order.total}</span>
-                    <Link to={`/order-status/${order.id}`} className="btn-ghost p-1.5"><ChevronRight size={18} /></Link>
-                  </div>
-                </div>
+      {/* ── Orders Content ── */}
+      <main className="px-3.5 pt-3.5 space-y-4">
+        {/* If NO orders found */}
+        {userOrders.length === 0 ? (
+          <div className="p-6 text-center bg-mandi-card border border-mandi-border rounded-3xl mt-4 space-y-5 shadow-xl">
+            <div className="w-16 h-16 rounded-3xl bg-mandi-green/15 border border-mandi-green/30 flex items-center justify-center text-mandi-green mx-auto shadow-inner">
+              <Package size={30} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-mandi-text">No Orders Placed Yet</h2>
+              <p className="text-xs text-mandi-muted max-w-xs mx-auto mt-1 leading-relaxed">
+                {user 
+                  ? 'Your active and past grocery orders will appear here for easy tracking and 1-tap reordering.' 
+                  : 'Log in to track current deliveries, see past orders, and get faster checkouts.'}
+              </p>
+            </div>
 
-                {/* Items summary */}
-                <div className="py-3 flex flex-wrap gap-2">
-                  {order.items.map((item, i) => (
-                    <span key={i} className="text-xs bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1 text-mandi-muted">
-                      {item.quantity}x {item.name}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Footer actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-mandi-border text-xs">
-                  <span className="text-mandi-subtle">{order.items.length} items • {order.paymentMethod}</span>
-                  <div className="flex gap-2">
-                    {isDelivered && !isReviewed && (
-                      <button
-                        onClick={() => setReviewingOrder(order)}
-                        className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1 text-yellow-400 border-yellow-500 hover:bg-yellow-500 hover:text-black font-semibold"
-                      >
-                        <Star size={12} className="fill-yellow-400" /> Rate Store
-                      </button>
-                    )}
-                    <button onClick={() => handleReorder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1 hover:border-mandi-green font-semibold">
-                      <RefreshCw size={12} />Buy Again
-                    </button>
-                    <Link to={`/order-status/${order.id}`} className="btn-ghost py-1.5 px-3 text-xs">Track</Link>
-                  </div>
-                </div>
+            {/* Feature Pills */}
+            <div className="grid grid-cols-2 gap-2 text-left pt-1">
+              <div className="p-2.5 rounded-xl bg-mandi-surface border border-mandi-border text-[11px] text-mandi-muted flex items-center gap-2">
+                <Truck size={14} className="text-mandi-green flex-shrink-0" />
+                <span>Next-Day 7 AM Drop</span>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="p-2.5 rounded-xl bg-mandi-surface border border-mandi-border text-[11px] text-mandi-muted flex items-center gap-2">
+                <Clock size={14} className="text-mandi-green flex-shrink-0" />
+                <span>Live Status Updates</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-1 max-w-xs mx-auto">
+              {!user && (
+                <button
+                  onClick={() => openAuthModal('login')}
+                  className="w-full py-3 rounded-2xl bg-mandi-green text-black text-xs font-black shadow-lg shadow-mandi-green/20 active:scale-95 transition-all"
+                >
+                  Log In to View Orders
+                </button>
+              )}
+              <button
+                onClick={() => navigate(getAppHomePath())}
+                className="w-full py-3 rounded-2xl bg-mandi-surface border border-mandi-border text-mandi-text text-xs font-bold active:scale-95 transition-all hover:bg-mandi-card"
+              >
+                Browse Kirana Groceries
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* List of orders */
+          <div className="space-y-3.5">
+            {userOrders.map((order) => {
+              const itemsCount = (order.items || []).reduce((s, i) => s + (i.quantity || 1), 0);
+              const formattedDate = order.placedAt 
+                ? new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : 'Recent Order';
+
+              return (
+                <div 
+                  key={order.id}
+                  className="rounded-2xl bg-mandi-card border border-mandi-border hover:border-mandi-green/40 p-4 space-y-3 shadow-md transition-all"
+                >
+                  {/* Order Top: Status + Date */}
+                  <div className="flex items-center justify-between border-b border-mandi-border pb-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(order.status)}
+                        <span className="text-[11px] font-mono text-mandi-muted">#{order.id?.slice(-6)}</span>
+                      </div>
+                      <p className="text-[10px] text-mandi-muted mt-1">Placed on {formattedDate}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-sm font-black text-mandi-text">₹{order.total}</span>
+                      <p className="text-[10px] text-mandi-green font-semibold">{order.paymentMethod || 'Online'}</p>
+                    </div>
+                  </div>
+
+                  {/* Delivery Slot info */}
+                  <div className="flex items-center gap-2 text-[11px] text-mandi-green bg-mandi-green/10 px-2.5 py-1 rounded-xl border border-mandi-green/20">
+                    <Truck size={13} className="text-mandi-green flex-shrink-0" />
+                    <span className="font-semibold">
+                      {order.scheduledSlot?.label || 'Next-Day Morning Delivery (7:00 AM – 11:00 AM)'}
+                    </span>
+                  </div>
+
+                  {/* Items Preview */}
+                  <div className="space-y-1.5">
+                    {(order.items || []).slice(0, 3).map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs text-mandi-muted">
+                        <span className="truncate pr-2">{item.name} × {item.quantity}</span>
+                        <span className="font-semibold text-mandi-text flex-shrink-0">₹{item.price * item.quantity}</span>
+                      </div>
+                    ))}
+                    {(order.items || []).length > 3 && (
+                      <p className="text-[10px] text-mandi-subtle">
+                        + {(order.items || []).length - 3} more items
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Bottom Action Buttons */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-mandi-border">
+                    <Link
+                      to={`/order-status/${order.id}`}
+                      className="flex-1 py-2 rounded-xl bg-mandi-green text-black text-xs font-black text-center shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+                    >
+                      <span>Track Order</span>
+                      <ChevronRight size={13} />
+                    </Link>
+
+                    <button
+                      onClick={() => handleReorder(order)}
+                      className="flex-1 py-2 rounded-xl bg-mandi-surface border border-mandi-border text-mandi-text text-xs font-bold text-center active:scale-95 transition-all hover:bg-mandi-card"
+                    >
+                      Repeat Order
+                    </button>
+
+                    <button
+                      onClick={() => setReviewingOrder(order)}
+                      className="px-2.5 py-2 rounded-xl bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text hover:bg-mandi-card active:scale-95"
+                      title="Rate Order"
+                      aria-label="Rate Order"
+                    >
+                      <Star size={14} className="text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
 
       {/* Review Modal */}
       {reviewingOrder && (
@@ -314,42 +349,6 @@ export default function OrderHistoryPage() {
           onClose={() => setReviewingOrder(null)}
           onSubmit={handleReviewSubmit}
         />
-      )}
-
-      {/* Cart Store Conflict Confirmation Modal */}
-      {cartConflictOrder && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
-          <div className="card max-w-md w-full p-6 space-y-4 relative bg-mandi-card border-mandi-border">
-            <button onClick={() => setCartConflictOrder(null)} className="absolute top-4 right-4 text-mandi-muted hover:text-mandi-text">
-              <X size={18} />
-            </button>
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400">
-              <Store size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-mandi-text">Replace items already in cart?</h3>
-              <p className="text-mandi-muted text-xs mt-1 leading-relaxed">
-                Your cart currently has items from another store. In Mandi Minutes, each order is fulfilled by a single local Kirana shop to guarantee 10-15 min express delivery.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setCartConflictOrder(null)}
-                className="btn-outline flex-1 py-2 text-xs"
-              >
-                Keep Current Cart
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReplaceCart}
-                className="btn-primary flex-1 py-2 text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white"
-              >
-                Replace & Buy Again
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

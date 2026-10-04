@@ -567,6 +567,9 @@ export default function VendorDashboard() {
                   <div>
                     <p className="text-mandi-subtle mb-1">Payment & Total:</p>
                     <p className="text-mandi-text font-bold">{order.paymentMethod} • <span className="text-mandi-green">₹{order.total}</span></p>
+                    {order.paymentDetails?.utr && (
+                      <p className="text-mandi-green font-mono text-[11px] mt-0.5">UTR / Ref: {order.paymentDetails.utr}</p>
+                    )}
                   </div>
                 </div>
 

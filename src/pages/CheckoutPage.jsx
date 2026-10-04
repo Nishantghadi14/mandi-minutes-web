@@ -10,7 +10,8 @@ import LazyImage from '../components/common/LazyImage';
 import UPIPaymentModal from '../components/common/UPIPaymentModal';
 import { createSecureOrder } from '../services/orderService';
 import { validateAddress } from '../utils/validators';
-import { MapPin, Plus, Zap, Clock, Smartphone, Wallet, ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { isInAppMode, getAppHomePath } from '../utils/platform';
+import { MapPin, Plus, Zap, Clock, Smartphone, Wallet, ChevronRight, Check, AlertCircle, Loader2, Truck } from 'lucide-react';
 
 const PAYMENT_METHODS = [
   { id: 'upi', label: 'UPI / Online Gateway', icon: Smartphone, desc: 'Instant UPI, GPay, PhonePe, Cards' },
@@ -18,12 +19,9 @@ const PAYMENT_METHODS = [
 ];
 
 const SCHEDULED_WINDOWS = [
-  { id: 'today-aft', date: 'Today', timeWindow: '12:00 PM – 02:00 PM', label: 'Today (12PM–2PM)' },
-  { id: 'today-eve', date: 'Today', timeWindow: '04:00 PM – 06:00 PM', label: 'Today (4PM–6PM)' },
-  { id: 'today-night', date: 'Today', timeWindow: '07:00 PM – 09:00 PM', label: 'Today (7PM–9PM)' },
-  { id: 'tom-morn', date: 'Tomorrow', timeWindow: '08:00 AM – 10:00 AM', label: 'Tomorrow (8AM–10AM)' },
-  { id: 'tom-noon', date: 'Tomorrow', timeWindow: '11:00 AM – 01:00 PM', label: 'Tomorrow (11AM–1PM)' },
-  { id: 'tom-eve', date: 'Tomorrow', timeWindow: '04:00 PM – 06:00 PM', label: 'Tomorrow (4PM–6PM)' },
+  { id: 'tom-morn', date: 'Tomorrow', timeWindow: '07:00 AM – 11:00 AM', label: 'Tomorrow Morning (7AM–11AM)', badge: 'Recommended' },
+  { id: 'tom-noon', date: 'Tomorrow', timeWindow: '12:00 PM – 04:00 PM', label: 'Tomorrow Afternoon (12PM–4PM)' },
+  { id: 'tom-eve', date: 'Tomorrow', timeWindow: '05:00 PM – 08:30 PM', label: 'Tomorrow Evening (5PM–8:30PM)' },
 ];
 
 export default function CheckoutPage() {
@@ -35,13 +33,15 @@ export default function CheckoutPage() {
   const { notifyOrderPlaced } = useNotifications();
   const navigate = useNavigate();
 
+  const inApp = isInAppMode();
+
   const store = stores.find(s => s.id === storeId);
   const [selectedAddress, setSelectedAddress] = useState(user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0]);
   const [showAddressForm, setShowAddressForm] = useState(!user?.addresses?.length);
   const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', city: 'Virar, Palghar', pincode: '401305' });
   const [addressErrors, setAddressErrors] = useState({});
-  const [deliveryMode, setDeliveryMode] = useState('express'); // 'express' | 'scheduled'
-  const [selectedWindowId, setSelectedWindowId] = useState('today-aft');
+  const [deliveryMode, setDeliveryMode] = useState(inApp ? 'scheduled' : 'express'); // 'express' | 'scheduled'
+  const [selectedWindowId, setSelectedWindowId] = useState('tom-morn');
   const [selectedPayment, setSelectedPayment] = useState('upi');
   const [placing, setPlacing] = useState(false);
   const [step, setStep] = useState(1);
@@ -67,7 +67,7 @@ export default function CheckoutPage() {
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <AlertCircle size={48} className="text-mandi-subtle mx-auto mb-4" />
         <h2 className="text-mandi-text font-bold text-2xl mb-2">Cart is empty</h2>
-        <button onClick={() => navigate('/')} className="btn-primary mt-4">Go Shopping</button>
+        <button onClick={() => navigate(getAppHomePath())} className="btn-primary mt-4">Go Shopping</button>
       </div>
     );
   }
@@ -249,52 +249,97 @@ export default function CheckoutPage() {
           {step >= 2 && (
             <div className="card p-4 sm:p-5 space-y-4">
               <div>
-                <h3 className="text-mandi-text font-bold text-sm mb-3">Delivery Mode</h3>
-                
-                {/* Express vs Scheduled Toggle */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div
-                    onClick={() => setDeliveryMode('express')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'express' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-mandi-text text-xs font-semibold">⚡ Express Delivery</span>
-                      <span className="badge-green text-[10px]">10-15 Min</span>
+                {inApp ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-mandi-text font-bold text-sm">Delivery Slot</h3>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        <Truck size={12} /> Next-Day Delivery
+                      </span>
                     </div>
-                    <p className="text-mandi-muted text-xs">Direct hyperlocal fulfillment</p>
-                  </div>
+                    <p className="text-xs text-mandi-muted mb-3">Freshly packed tonight. Delivered tomorrow right to your door.</p>
 
-                  <div
-                    onClick={() => setDeliveryMode('scheduled')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'scheduled' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-mandi-text text-xs font-semibold">📅 Scheduled Slot</span>
-                      <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] px-1.5 py-0.5 rounded font-bold">Choose Time</span>
-                    </div>
-                    <p className="text-mandi-muted text-xs">2-hour delivery window</p>
-                  </div>
-                </div>
-
-                {/* Scheduled 2-Hour Windows Grid */}
-                {deliveryMode === 'scheduled' && (
-                  <div className="space-y-2 pt-1 pb-2">
-                    <p className="text-xs font-medium text-mandi-subtle">Select preferred 2-hour slot:</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="space-y-2">
                       {SCHEDULED_WINDOWS.map(w => (
                         <div
                           key={w.id}
-                          onClick={() => setSelectedWindowId(w.id)}
-                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${selectedWindowId === w.id ? 'border-mandi-green bg-mandi-surface ring-1 ring-mandi-green' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                          onClick={() => {
+                            setDeliveryMode('scheduled');
+                            setSelectedWindowId(w.id);
+                          }}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            selectedWindowId === w.id 
+                              ? 'border-mandi-green bg-mandi-green-muted ring-1 ring-mandi-green' 
+                              : 'border-mandi-border hover:border-mandi-border-light bg-mandi-surface/50'
+                          }`}
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-mandi-text">{w.date}</span>
-                            <Clock size={12} className="text-mandi-green" />
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedWindowId === w.id ? 'border-mandi-green bg-mandi-green' : 'border-mandi-border'}`} />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-mandi-text">{w.label}</span>
+                                {w.badge && <span className="bg-emerald-500 text-black text-[10px] font-black px-1.5 py-0.2 rounded">{w.badge}</span>}
+                              </div>
+                              <span className="text-mandi-muted text-[11px] flex items-center gap-1 mt-0.5">
+                                <Clock size={11} className="text-mandi-green" /> {w.timeWindow}
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-mandi-muted text-[11px] font-mono">{w.timeWindow}</span>
+                          <span className="text-[11px] font-bold text-mandi-green">FREE</span>
                         </div>
                       ))}
                     </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="text-mandi-text font-bold text-sm mb-3">Delivery Mode</h3>
+                    
+                    {/* Express vs Scheduled Toggle */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div
+                        onClick={() => setDeliveryMode('express')}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'express' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-mandi-text text-xs font-semibold">⚡ Express Delivery</span>
+                          <span className="badge-green text-[10px]">10-15 Min</span>
+                        </div>
+                        <p className="text-mandi-muted text-xs">Direct hyperlocal fulfillment</p>
+                      </div>
+
+                      <div
+                        onClick={() => setDeliveryMode('scheduled')}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${deliveryMode === 'scheduled' ? 'border-mandi-green bg-mandi-green-muted' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-mandi-text text-xs font-semibold">📅 Next-Day Slot</span>
+                          <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[10px] px-1.5 py-0.5 rounded font-bold">Choose Time</span>
+                        </div>
+                        <p className="text-mandi-muted text-xs">Morning / Evening slot</p>
+                      </div>
+                    </div>
+
+                    {/* Scheduled Windows Grid */}
+                    {deliveryMode === 'scheduled' && (
+                      <div className="space-y-2 pt-1 pb-2">
+                        <p className="text-xs font-medium text-mandi-subtle">Select preferred delivery slot:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {SCHEDULED_WINDOWS.map(w => (
+                            <div
+                              key={w.id}
+                              onClick={() => setSelectedWindowId(w.id)}
+                              className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${selectedWindowId === w.id ? 'border-mandi-green bg-mandi-surface ring-1 ring-mandi-green' : 'border-mandi-border hover:border-mandi-border-light'}`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-bold text-mandi-text">{w.date}</span>
+                                <Clock size={12} className="text-mandi-green" />
+                              </div>
+                              <span className="text-mandi-muted text-[11px] font-mono">{w.timeWindow}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -384,10 +429,18 @@ export default function CheckoutPage() {
 
           <div className="bg-mandi-surface rounded-xl p-3 text-[11px] text-mandi-muted space-y-1">
             <div className="flex items-center gap-1 text-mandi-green font-semibold">
-              <Zap size={12} />
-              <span>{t('common.express', '10-15 min delivery')}</span>
+              {deliveryMode === 'scheduled' ? <Truck size={13} /> : <Zap size={13} />}
+              <span>
+                {deliveryMode === 'scheduled'
+                  ? `Next-Day Delivery • ${SCHEDULED_WINDOWS.find(w => w.id === selectedWindowId)?.label || 'Tomorrow'}`
+                  : t('common.express', '10-15 min delivery')}
+              </span>
             </div>
-            <p>Direct from store. No price markup.</p>
+            <p>
+              {deliveryMode === 'scheduled'
+                ? 'Freshly picked tonight. Delivered tomorrow right to your door.'
+                : 'Direct from store. No price markup.'}
+            </p>
           </div>
         </div>
       </div>

@@ -1,10 +1,11 @@
-import { ShoppingCart, X, Minus, Plus, Trash2, Tag, ArrowRight, Package, Zap } from 'lucide-react';
+import { ShoppingCart, X, Minus, Plus, Trash2, Tag, ArrowRight, Package, Zap, Truck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './Toast';
 import { useState } from 'react';
 import LazyImage from './LazyImage';
+import { getAppHomePath } from '../../utils/platform';
 
 export default function CartDrawer() {
   const { items, isOpen, setIsOpen, updateQuantity, clearCart, subtotal, discount, deliveryCharge, total, itemCount, coupon, applyCoupon, removeCoupon } = useCart();
@@ -72,15 +73,18 @@ export default function CartDrawer() {
               <p className="text-mandi-text font-semibold text-lg">Your cart is empty</p>
               <p className="text-mandi-muted text-sm mt-1">Add items from a store to get started</p>
             </div>
-            <button onClick={() => setIsOpen(false)} className="btn-primary">Browse Stores</button>
+            <button onClick={() => { setIsOpen(false); navigate(getAppHomePath()); }} className="btn-primary">Browse Stores</button>
           </div>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto">
               {/* Delivery badge */}
-              <div className="mx-4 mt-3 flex items-center gap-2 bg-mandi-green-muted border border-mandi-green border-opacity-20 rounded-xl p-3">
-                <Zap size={16} className="text-mandi-green" />
-                <span className="text-mandi-green text-sm font-medium">Express Delivery in 15-20 mins</span>
+              <div className="mx-4 mt-3 flex items-center gap-2.5 bg-mandi-green/10 border border-mandi-green/30 rounded-xl p-3">
+                <Truck size={18} className="text-mandi-green flex-shrink-0" />
+                <div>
+                  <p className="text-mandi-green text-xs font-bold uppercase tracking-wider">Next-Day Delivery Guaranteed</p>
+                  <p className="text-mandi-muted text-xs">Delivered Tomorrow • 7:00 AM – 11:00 AM</p>
+                </div>
               </div>
 
               {/* Items */}

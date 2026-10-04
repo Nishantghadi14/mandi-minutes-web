@@ -346,6 +346,16 @@ export default function AuthModal() {
             {mode === 'login' ? 'Sign Up' : 'Log In'}
           </button>
         </p>
+
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={closeAuthModal}
+            className="text-xs text-mandi-subtle hover:text-mandi-muted underline transition-colors"
+          >
+            Continue as Guest for now
+          </button>
+        </div>
       </div>
     </div>
   );

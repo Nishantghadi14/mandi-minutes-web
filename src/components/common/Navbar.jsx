@@ -89,8 +89,7 @@ export default function Navbar() {
   const isAdmin = user && (
     user.role === 'admin' ||
     user.email?.toLowerCase() === 'admin@mandiminutes.com' ||
-    user.email?.toLowerCase() === 'admin@mandi.in' ||
-    user.email?.toLowerCase() === 'test3@gmail.com'
+    user.email?.toLowerCase() === 'admin@mandi.in'
   );
 
   const isVendor = user && user.role === 'vendor';
@@ -359,6 +358,16 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            {/* Quick App View Switcher for Desktop */}
+            <Link
+              to="/app"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-mandi-surface hover:bg-mandi-card border border-mandi-border hover:border-mandi-green text-xs font-bold text-mandi-muted hover:text-mandi-green transition-all active:scale-95 shadow-sm"
+              title="Switch to Mobile App View"
+            >
+              <span>📱</span>
+              <span className="hidden xl:inline">App View</span>
+            </Link>
+
             <LanguageSwitcher />
 
             {/* Theme toggle */}

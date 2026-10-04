@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import { Heart, Package, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getAppHomePath } from '../utils/platform';
 
 export default function WishlistPage() {
   const { user, openAuthModal } = useAuth();
@@ -33,7 +34,7 @@ export default function WishlistPage() {
           <Heart size={40} className="text-mandi-subtle mx-auto mb-3" />
           <h2 className="text-mandi-text font-bold text-lg mb-1">No wishlist items</h2>
           <p className="text-mandi-muted text-sm mb-6">Save your favorite grocery items by tapping the heart icon!</p>
-          <Link to="/" className="btn-primary inline-flex items-center gap-2">Explore Products <ArrowRight size={16} /></Link>
+          <Link to={getAppHomePath()} className="btn-primary inline-flex items-center gap-2">Explore Products <ArrowRight size={16} /></Link>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

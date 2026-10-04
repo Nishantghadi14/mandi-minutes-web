@@ -5,7 +5,8 @@ import { useLocation } from '../context/LocationContext';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 import StoreCard from '../components/common/StoreCard';
-import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff, Clock, ShieldCheck } from 'lucide-react';
+import ProductCard from '../components/common/ProductCard';
+import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff, Clock, ShieldCheck, Shuffle, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function PromoBanner({ banners }) {
@@ -87,7 +88,7 @@ export default function HomePage() {
   const { t } = useTranslation();
   const { isDark } = useTheme();
   const { location, setLocationModal } = useLocation();
-  const { stores: allStores, getStoresByPincode, categories, banners, loadingStates, errorStates, retryFetch } = useData();
+  const { stores: allStores, getStoresByPincode, categories, banners, products: allProducts, loadingStates, errorStates, retryFetch } = useData();
 
   // Reactively compute stores list whenever allStores or location updates
   const stores = useMemo(() => {
@@ -100,6 +101,48 @@ export default function HomePage() {
 
   const INITIAL_STORE_LIMIT = 3;
   const visibleStores = stores.slice(0, INITIAL_STORE_LIMIT);
+
+  // Filter products belonging to stores serving the user's location
+  const vendorStoreIds = useMemo(() => new Set(stores.map(s => s.id)), [stores]);
+
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState('all');
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [isShuffling, setIsShuffling] = useState(false);
+
+  // Available products from local vendors
+  const localVendorProducts = useMemo(() => {
+    if (!allProducts || allProducts.length === 0) return [];
+    // Prioritize products belonging to the stores serving the current location
+    const matched = allProducts.filter(p => p.isAvailable && vendorStoreIds.has(p.storeId));
+    if (matched.length > 0) return matched;
+    // Fallback: available products from all active stores
+    return allProducts.filter(p => p.isAvailable);
+  }, [allProducts, vendorStoreIds]);
+
+  // Shuffled random products selection (deterministic per shuffleSeed so cart updates don't jumble cards)
+  const randomVendorProducts = useMemo(() => {
+    const pool = selectedVendorFilter === 'all'
+      ? localVendorProducts
+      : localVendorProducts.filter(p => p.storeId === selectedVendorFilter);
+    if (!pool || pool.length === 0) return [];
+    if (pool.length <= 10) return pool;
+
+    const shuffled = [...pool];
+    let s = (shuffleSeed * 17 + 1337) % 233280;
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      s = (s * 9301 + 49297) % 233280;
+      const rnd = s / 233280;
+      const j = Math.floor(rnd * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, 10);
+  }, [localVendorProducts, selectedVendorFilter, shuffleSeed]);
+
+  const handleShuffle = () => {
+    setIsShuffling(true);
+    setShuffleSeed(prev => prev + 1);
+    setTimeout(() => setIsShuffling(false), 400);
+  };
 
   const hasStoreError = Boolean(errorStates?.stores);
   const isStoresLoading = Boolean(loadingStates?.stores);
@@ -337,6 +380,101 @@ export default function HomePage() {
           </>
         )}
       </section>
+
+      {/* ── Products Sold by Vendors in Location ── */}
+      {randomVendorProducts.length > 0 && (
+        <section className="mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="section-title mb-0 text-lg sm:text-xl">
+                  {location ? `${t('sections.productsIn')} ${location.area.split(',')[0]}` : t('sections.vendorProducts')}
+                </h2>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <Sparkles size={11} className="text-amber-500" />
+                  {t('sections.vendorProducts')}
+                </span>
+              </div>
+              <p className="text-mandi-muted text-xs sm:text-sm mt-0.5">
+                {t('sections.vendorProductsSub')}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+              {/* Shuffle button */}
+              {localVendorProducts.length > 6 && (
+                <button
+                  onClick={handleShuffle}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-mandi-surface hover:bg-mandi-card border border-mandi-border text-mandi-text transition-all active:scale-95 shadow-sm group"
+                  title="Randomize and discover more products from local vendors"
+                >
+                  <Shuffle size={13} className={`text-mandi-green transition-transform duration-300 ${isShuffling ? 'rotate-180 text-amber-400' : 'group-hover:rotate-45'}`} />
+                  <span>{t('sections.shuffleProducts')}</span>
+                </button>
+              )}
+
+              {/* View all link */}
+              <Link
+                to="/search?tab=products"
+                className="flex items-center gap-1 text-mandi-green text-xs sm:text-sm font-bold hover:text-mandi-green-light transition-colors group"
+              >
+                <span>{t('common.viewAll', 'View All')} ({localVendorProducts.length})</span>
+                <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Store Filter Tabs (if more than 1 store is available in this location) */}
+          {stores.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-3.5 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+              <button
+                onClick={() => setSelectedVendorFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${
+                  selectedVendorFilter === 'all'
+                    ? 'bg-mandi-green text-black shadow-sm'
+                    : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
+                }`}
+              >
+                <Store size={12} />
+                <span>{t('sections.allStores')} ({localVendorProducts.length})</span>
+              </button>
+
+              {stores.map(s => {
+                const count = allProducts ? allProducts.filter(p => p.storeId === s.id && p.isAvailable).length : 0;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedVendorFilter(s.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${
+                      selectedVendorFilter === s.id
+                        ? 'bg-mandi-green text-black shadow-sm'
+                        : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    {count > 0 && <span className="opacity-75 text-[10px]">({count})</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Product Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+            {randomVendorProducts.map(product => (
+              <ProductCard key={product.id} product={product} showStore={true} />
+            ))}
+          </div>
+
+          {/* Bottom quick discovery hint */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-mandi-subtle px-1">
+            <span>✨ Showing {randomVendorProducts.length} random products from neighborhood vendors</span>
+            <Link to="/search?tab=products" className="text-mandi-green hover:underline font-medium flex items-center gap-1">
+              Browse complete catalog <ArrowRight size={11} />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ── Why Mandi Minutes ── */}
       <section className="mb-10">

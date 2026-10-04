@@ -86,9 +86,14 @@ export async function requestNotificationPermission() {
 
   if (!messaging) return null; // FCM not configured — browser-only notifications still work
 
+  const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+  if (!vapidKey || vapidKey === 'your_vapid_key_here' || vapidKey.length < 20) {
+    return null;
+  }
+
   try {
     const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      vapidKey,
       serviceWorkerRegistration: await navigator.serviceWorker.ready,
     });
     console.log('FCM registration token:', token);

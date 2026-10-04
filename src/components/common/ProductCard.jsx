@@ -1,13 +1,18 @@
-import { Plus, Minus, Heart, Zap } from 'lucide-react';
+import { Plus, Minus, Heart, Zap, Store } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { useToast } from './Toast';
 import LazyImage from './LazyImage';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, showStore = false }) {
   const { items, addItem, updateQuantity, storeId } = useCart();
   const { user, updateUser } = useAuth();
+  const { stores } = useData();
   const { addToast } = useToast();
+
+  const store = stores?.find(s => s.id === product.storeId);
+  const storeName = store?.name;
 
   const cartItem = items.find(i => i.id === product.id);
   const quantity = cartItem ? cartItem.quantity : 0;
@@ -70,7 +75,15 @@ export default function ProductCard({ product }) {
 
       {/* Content */}
       <div className="p-2.5 sm:p-3 flex flex-col flex-1">
-        <p className="text-mandi-subtle text-[10px] sm:text-[11px] font-medium mb-0.5 uppercase tracking-wide truncate">{product.brand}</p>
+        <div className="flex items-center justify-between gap-1 mb-0.5 min-w-0">
+          <p className="text-mandi-subtle text-[10px] sm:text-[11px] font-medium uppercase tracking-wide truncate">{product.brand}</p>
+          {showStore && storeName && (
+            <span className="text-[10px] text-mandi-green bg-mandi-green/10 border border-mandi-green/20 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 truncate max-w-[110px] flex-shrink-0" title={`Sold by ${storeName}`}>
+              <Store size={9} className="flex-shrink-0" />
+              <span className="truncate">{storeName}</span>
+            </span>
+          )}
+        </div>
         <h3 className="text-mandi-text text-xs sm:text-sm font-semibold leading-snug mb-1 line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]">{product.name}</h3>
         <p className="text-mandi-subtle text-[11px] sm:text-xs mb-1.5">{product.unit}</p>
 

@@ -1,11 +1,25 @@
+import { useMemo } from 'react';
 import { Star, MapPin, ShoppingBag, Zap, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../../context/LocationContext';
+import { useData } from '../../context/DataContext';
 import LazyImage from './LazyImage';
 
 export default function StoreCard({ store }) {
   const navigate = useNavigate();
   const { setSelectedStore } = useLocation();
+  const { getProductsByStore } = useData();
+
+  const storeProducts = useMemo(() => {
+    if (!getProductsByStore) return [];
+    const list = getProductsByStore(store.id) || [];
+    return list.filter(p => p.isAvailable);
+  }, [store.id, getProductsByStore]);
+
+  const previewProducts = useMemo(() => {
+    if (!storeProducts || storeProducts.length === 0) return [];
+    return storeProducts.slice(0, 3);
+  }, [storeProducts]);
 
   const handleClick = () => {
     setSelectedStore(store);
@@ -91,6 +105,24 @@ export default function StoreCard({ store }) {
           </div>
         </div>
       </div>
+
+      {/* Quick product preview strip */}
+      {previewProducts.length > 0 && (
+        <div className="px-3 sm:px-4 py-1.5 bg-mandi-surface/50 border-t border-mandi-border/60 flex items-center gap-1.5 text-xs overflow-hidden">
+          <span className="text-[10px] font-bold text-mandi-muted uppercase tracking-wider flex-shrink-0">In Stock:</span>
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            {previewProducts.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1 bg-mandi-card border border-mandi-border/80 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] text-mandi-text truncate max-w-[110px]"
+              >
+                <span className="truncate">{p.name}</span>
+                <span className="text-mandi-green font-bold text-[10px]">₹{p.price}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bottom info strip */}
       <div className="px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">

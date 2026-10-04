@@ -133,10 +133,6 @@ export const useDataStore = create((set, get) => ({
           const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           const storeMap = new Map();
           initialStores.forEach(s => storeMap.set(s.id, s));
-          try {
-            const cached = JSON.parse(localStorage.getItem('mandi_synced_stores') || '[]');
-            cached.forEach(s => storeMap.set(s.id, s));
-          } catch {}
           list.forEach(s => storeMap.set(s.id, s));
 
           const mergedStores = Array.from(storeMap.values()).map(sanitizeStoreRatings);

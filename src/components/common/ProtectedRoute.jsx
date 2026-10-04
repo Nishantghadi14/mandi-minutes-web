@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Store } from 'lucide-react';
+import { getAppHomePath } from '../../utils/platform';
 
 /**
  * ProtectedRoute guards routes based on authentication status and user roles.
@@ -29,7 +30,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
 
   // Not authenticated -> redirect to home, preserving intended destination
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to={getAppHomePath()} state={{ from: location }} replace />;
   }
 
   const roles = allowedRoles
@@ -38,7 +39,7 @@ export default function ProtectedRoute({ children, allowedRoles, requireStore = 
 
   // Role check -> redirect
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getAppHomePath()} replace />;
   }
 
   // Vendor store check

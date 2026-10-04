@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 
 /** Smoothly scrolls to the top of the page on every route change */
@@ -10,7 +10,7 @@ function ScrollToTop() {
   return null;
 }
 import { HelmetProvider } from 'react-helmet-async';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LocationProvider } from './context/LocationContext';
 import { DataProvider } from './context/DataContext';
@@ -21,12 +21,15 @@ import Navbar from './components/common/Navbar';
 import BottomNav from './components/common/BottomNav';
 import Footer from './components/common/Footer';
 import CartDrawer from './components/common/CartDrawer';
+import FloatingCartBar from './components/common/FloatingCartBar';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { isNativeApp, isInAppMode } from './utils/platform';
 
 // Lazy load pages for chunk splitting & mobile optimization
 const HomePage = lazy(() => import('./pages/HomePage'));
+const MobileAppHome = lazy(() => import('./pages/MobileAppHome'));
 const StorePage = lazy(() => import('./pages/StorePage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const WishlistPage = lazy(() => import('./pages/WishlistPage'));
@@ -72,21 +75,38 @@ function PageLoader() {
 
 function AppContent() {
   const { pathname } = useLocation();
-  const isNoBottomNav = ['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status');
+  const inAppMode = isInAppMode(pathname);
+  const isNoBottomNav = !inAppMode && (['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status'));
+  const hideNavbar = inAppMode;
+
+  const { user, loading, openAuthModal } = useAuth();
+  const hasPromptedLoginRef = useRef(false);
+
+  // Whenever the user opens the native app or /app and there is no account logged in, ask to login first
+  useEffect(() => {
+    if (inAppMode && (pathname === '/app' || isNativeApp()) && !loading && !user && !hasPromptedLoginRef.current) {
+      hasPromptedLoginRef.current = true;
+      const timer = setTimeout(() => {
+        openAuthModal('login');
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [inAppMode, pathname, loading, user, openAuthModal]);
 
   return (
     <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
-      <Navbar />
-      <main className={`flex-1 ${isNoBottomNav ? 'pb-safe' : 'pb-20 md:pb-0'}`}>
+      {!hideNavbar && <Navbar />}
+      <main className={`flex-1 ${inAppMode ? 'pb-24' : (isNoBottomNav ? 'pb-safe' : 'pb-24 md:pb-0')}`}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={isNativeApp() ? <MobileAppHome /> : <HomePage />} />
+            <Route path="/app" element={<MobileAppHome />} />
             <Route path="/store/:storeId" element={<StorePage />} />
             <Route path="/search" element={<SearchPage />} />
-            <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
-            <Route path="/orders" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
             <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
@@ -99,8 +119,9 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      <Footer />
-      <BottomNav />
+      {!inAppMode && <Footer />}
+      <FloatingCartBar />
+      <BottomNav inAppMode={inAppMode} />
       <CartDrawer />
       <LocationModal />
       <AuthModal />

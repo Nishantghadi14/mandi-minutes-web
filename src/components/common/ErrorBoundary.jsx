@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { getAppHomePath } from '../../utils/platform';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -21,7 +22,7 @@ export default class ErrorBoundary extends React.Component {
 
   handleReset = () => {
     this.setState({ hasError: false, error: null });
-    window.location.href = '/';
+    window.location.href = getAppHomePath();
   };
 
   render() {

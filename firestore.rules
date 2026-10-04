@@ -9,8 +9,7 @@ service cloud.firestore {
     function isAdminEmail() {
       return request.auth.token.email != null && (
         request.auth.token.email == 'admin@mandiminutes.com' ||
-        request.auth.token.email == 'admin@mandi.in' ||
-        request.auth.token.email == 'test3@gmail.com'
+        request.auth.token.email == 'admin@mandi.in'
       );
     }
 
@@ -48,7 +47,18 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
-      allow update: if signedIn() && (own(resource.data.customerId) || admin() || vendorFor(resource.data.storeId) || riderFor(resource.data));
+      // Allow updates by admin, vendor for the store, rider for delivery,
+      // or customer strictly cancelling their own order if still in 'placed' state
+      allow update: if signedIn() && (
+        admin() || 
+        vendorFor(resource.data.storeId) || 
+        riderFor(resource.data) ||
+        (own(resource.data.customerId) && 
+         resource.data.status == 'placed' && 
+         request.resource.data.status == 'cancelled' &&
+         request.resource.data.total == resource.data.total &&
+         request.resource.data.paymentStatus == resource.data.paymentStatus)
+      );
       allow delete: if admin();
     }
 
@@ -61,6 +71,6 @@ service cloud.firestore {
 
     match /banners/{id} { allow read: if true; allow write: if admin(); }
     match /categories/{id} { allow read: if true; allow write: if admin(); }
-    match /paymentEvents/{id} { allow read, write: if signedIn(); }
+    match /paymentEvents/{id} { allow read, write: if admin(); }
   }
 }

@@ -13,8 +13,9 @@ import {
   User, Package, Heart, ShoppingCart, MapPin, Gift,
   Moon, Sun, Globe, Shield, Store, Bike, Phone,
   MessageCircle, HelpCircle, FileText, Lock, ChevronRight,
-  LogOut, Zap, Check, ArrowRight, Sparkles, ExternalLink
+  LogOut, Zap, Check, ArrowRight, ArrowLeft, Sparkles, ExternalLink
 } from 'lucide-react';
+import { getAppHomePath } from '../utils/platform';
 
 export default function ProfilePage() {
   const { user, logout, openAuthModal } = useAuth();
@@ -38,7 +39,7 @@ export default function ProfilePage() {
   const handleLogout = () => {
     logout();
     addToast('Logged out successfully', 'info');
-    navigate('/');
+    navigate(getAppHomePath());
   };
 
   const changeLanguage = (lang) => {
@@ -53,18 +54,29 @@ export default function ProfilePage() {
   const isAdmin = user && (
     user.role === 'admin' ||
     user.email?.toLowerCase() === 'admin@mandiminutes.com' ||
-    user.email?.toLowerCase() === 'admin@mandi.in' ||
-    user.email?.toLowerCase() === 'test3@gmail.com'
+    user.email?.toLowerCase() === 'admin@mandi.in'
   );
 
   const isVendor = user && (user.role === 'vendor' || isAdmin);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-5 pb-24 md:pb-12">
+    <div className="max-w-md w-full mx-auto px-3.5 py-3 pb-28 text-mandi-text select-none">
       <Helmet>
         <title>Account & Settings — Mandi Minutes</title>
         <meta name="description" content="Manage your Mandi Minutes account, view orders, wishlist, delivery address, and app preferences." />
       </Helmet>
+
+      {/* ─── Mobile Top Header ─── */}
+      <div className="flex items-center gap-2 mb-3.5">
+        <button
+          onClick={() => navigate(getAppHomePath())}
+          className="w-10 h-10 rounded-full hover:bg-mandi-surface active:bg-mandi-card flex items-center justify-center text-mandi-muted hover:text-mandi-text active:scale-90 transition-all flex-shrink-0"
+          aria-label="Back to Home"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-base font-black text-mandi-text">My Account</h1>
+      </div>
 
       {/* ─── Profile Header / Authentication Card ─── */}
       {user ? (

@@ -17,8 +17,22 @@ import { useDataStore } from './useDataStore';
 const getInitialLocalUser = () => {
   if (typeof window === 'undefined') return null;
   try {
+    // Security hygiene: scrub any legacy plaintext passwords stored in localStorage
+    const storedReg = localStorage.getItem('mandi_registered_users');
+    if (storedReg) {
+      const parsed = JSON.parse(storedReg);
+      if (Array.isArray(parsed) && parsed.some(u => 'password' in u)) {
+        const sanitized = parsed.map(({ password: _p, ...safe }) => safe);
+        localStorage.setItem('mandi_registered_users', JSON.stringify(sanitized));
+      }
+    }
+
     const localUser = localStorage.getItem('mandi_local_user');
-    return localUser ? JSON.parse(localUser) : null;
+    if (localUser) {
+      const { password: _p, ...safeUser } = JSON.parse(localUser);
+      return safeUser;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -98,7 +112,7 @@ export const useAuthStore = create((set, get) => ({
 
     const isAdminEmail = (email) => {
       if (!email) return false;
-      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com,admin@mandi.in,test3@gmail.com')
+      const configuredAdmins = (import.meta.env.VITE_ADMIN_EMAILS || 'admin@mandiminutes.com,admin@mandi.in')
         .toLowerCase()
         .split(',')
         .map(e => e.trim())
@@ -519,10 +533,9 @@ export const useAuthStore = create((set, get) => ({
         createdAt: new Date().toISOString(),
       };
 
-      registeredUsers.push(newUser);
-      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
-
       const { password: _p, ...safeUser } = newUser;
+      registeredUsers.push(safeUser);
+      localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
       localStorage.setItem('mandi_local_user', JSON.stringify(safeUser));
       set({ user: safeUser, loading: false });
       useCartStore.getState().switchUser(safeUser.id);
@@ -693,7 +706,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
       const existingIdx = registeredUsers.findIndex(u => u.email?.toLowerCase() === cleanEmail);
-      const record = { ...vendorUser, password: cleanPassword };
+      const record = { ...vendorUser };
       if (existingIdx >= 0) {
         registeredUsers[existingIdx] = { ...registeredUsers[existingIdx], ...record };
       } else {
