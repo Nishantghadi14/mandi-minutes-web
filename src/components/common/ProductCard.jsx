@@ -44,7 +44,7 @@ export default function ProductCard({ product, showStore = false }) {
       {/* Wishlist button — visible on mobile, hover on desktop */}
       <button
         onClick={handleWishlist}
-        className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/90 dark:bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 shadow-sm"
+        className="absolute top-2 right-2 z-10 w-8 h-8 bg-white/95 dark:bg-[#1c2230]/90 backdrop-blur-md rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-90 shadow-clay-pill border border-white/30 dark:border-white/10"
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
         <Heart size={14} className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-slate-700 dark:text-white'} />
@@ -52,14 +52,14 @@ export default function ProductCard({ product, showStore = false }) {
 
       {/* Discount badge */}
       {discountPct > 0 && !isOOS && (
-        <div className="absolute top-2 left-2 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full text-black shadow-sm"
+        <div className="absolute top-2 left-2 z-10 text-[10px] font-black px-2.5 py-0.5 rounded-full text-black shadow-clay-badge border border-white/40"
           style={{ background: 'linear-gradient(135deg, #00C851, #00E65C)' }}>
           {discountPct}% off
         </div>
       )}
 
       {/* Image */}
-      <div className="relative h-32 sm:h-40 overflow-hidden bg-mandi-surface flex-shrink-0">
+      <div className="relative h-32 sm:h-40 overflow-hidden bg-mandi-surface flex-shrink-0 rounded-t-[1.35rem]">
         <LazyImage
           src={product.image}
           alt={product.name}
@@ -78,7 +78,7 @@ export default function ProductCard({ product, showStore = false }) {
         <div className="flex items-center justify-between gap-1 mb-0.5 min-w-0">
           <p className="text-mandi-subtle text-[10px] sm:text-[11px] font-medium uppercase tracking-wide truncate">{product.brand}</p>
           {showStore && storeName && (
-            <span className="text-[10px] text-mandi-green bg-mandi-green/10 border border-mandi-green/20 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 truncate max-w-[110px] flex-shrink-0" title={`Sold by ${storeName}`}>
+            <span className="text-[10px] text-mandi-green bg-mandi-green/10 border border-mandi-green/20 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 truncate max-w-[110px] flex-shrink-0 shadow-clay-badge" title={`Sold by ${storeName}`}>
               <Store size={9} className="flex-shrink-0" />
               <span className="truncate">{storeName}</span>
             </span>
@@ -88,7 +88,7 @@ export default function ProductCard({ product, showStore = false }) {
         <p className="text-mandi-subtle text-[11px] sm:text-xs mb-1.5">{product.unit}</p>
 
         {product.stock <= 5 && product.isAvailable && (
-          <div className="flex items-center gap-1 mb-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg px-1.5 py-0.5 w-fit">
+          <div className="flex items-center gap-1 mb-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg px-1.5 py-0.5 w-fit shadow-clay-badge">
             <Zap size={9} className="text-orange-400" />
             <span className="text-orange-400 text-[9px] sm:text-[10px] font-semibold">Only {product.stock} left</span>
           </div>
@@ -109,28 +109,27 @@ export default function ProductCard({ product, showStore = false }) {
           ) : quantity === 0 ? (
             <button
               onClick={handleAdd}
-              className="w-full py-2 sm:py-2.5 min-h-[36px] sm:min-h-[38px] text-xs sm:text-sm rounded-xl bg-mandi-green text-black font-bold hover:bg-mandi-green-light active:scale-95 transition-all duration-200 flex items-center justify-center gap-1.5 btn-ripple shadow-sm"
-              style={{ boxShadow: '0 2px 12px rgba(0,200,81,0.25)' }}
+              className="w-full py-2 sm:py-2.5 min-h-[36px] sm:min-h-[38px] text-xs sm:text-sm rounded-2xl bg-mandi-green text-black font-extrabold hover:bg-mandi-green-light active:scale-95 transition-all duration-200 flex items-center justify-center gap-1.5 btn-ripple clay-btn-green"
             >
               <Plus size={14} />
               Add
             </button>
           ) : (
-            <div className="flex items-center justify-between bg-mandi-green rounded-xl overflow-hidden min-h-[36px] sm:min-h-[38px]" style={{ boxShadow: '0 2px 12px rgba(0,200,81,0.3)' }}>
+            <div className="flex items-center justify-between bg-mandi-green rounded-2xl overflow-hidden min-h-[36px] sm:min-h-[38px] clay-counter">
               <button
                 onClick={() => updateQuantity(product.id, quantity - 1)}
-                className="px-3 py-2 h-full flex items-center justify-center hover:bg-mandi-green-dark active:scale-95 transition-all duration-150"
+                className="px-3 py-2 h-full flex items-center justify-center hover:bg-mandi-green-dark active:scale-90 transition-all duration-150"
                 aria-label="Decrease quantity"
               >
-                <Minus size={14} className="text-black" />
+                <Minus size={14} className="text-black stroke-[2.5]" />
               </button>
               <span className="text-black font-black text-xs sm:text-sm">{quantity}</span>
               <button
                 onClick={() => updateQuantity(product.id, quantity + 1)}
-                className="px-3 py-2 h-full flex items-center justify-center hover:bg-mandi-green-dark active:scale-95 transition-all duration-150"
+                className="px-3 py-2 h-full flex items-center justify-center hover:bg-mandi-green-dark active:scale-90 transition-all duration-150"
                 aria-label="Increase quantity"
               >
-                <Plus size={14} className="text-black" />
+                <Plus size={14} className="text-black stroke-[2.5]" />
               </button>
             </div>
           )}

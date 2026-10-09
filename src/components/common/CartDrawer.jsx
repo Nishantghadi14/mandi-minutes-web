@@ -41,7 +41,7 @@ export default function CartDrawer() {
   return (
     <>
       {isOpen && <div className="overlay" onClick={() => setIsOpen(false)} />}
-      <div className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-mandi-card border-l border-mandi-border z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-mandi-card border-l border-mandi-border z-50 transform transition-transform duration-300 flex flex-col shadow-clay-floating ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-mandi-border">
           <div className="flex items-center gap-2">
@@ -53,24 +53,24 @@ export default function CartDrawer() {
             {items.length > 0 && (
               <button 
                 onClick={clearCart} 
-                className="text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+                className="text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 px-2.5 py-1 rounded-full hover:bg-red-500/10 transition-colors shadow-clay-badge"
                 title="Clear all items"
               >
                 Clear
               </button>
             )}
-            <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-mandi-surface transition-colors text-mandi-muted hover:text-mandi-text"><X size={20} /></button>
+            <button onClick={() => setIsOpen(false)} className="p-2 rounded-2xl hover:bg-mandi-surface transition-colors text-mandi-muted hover:text-mandi-text shadow-clay-pill"><X size={20} /></button>
           </div>
         </div>
 
         {/* Content */}
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-            <div className="w-20 h-20 bg-mandi-surface rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-mandi-surface rounded-3xl flex items-center justify-center shadow-clay-card">
               <Package size={36} className="text-mandi-subtle" />
             </div>
             <div className="text-center">
-              <p className="text-mandi-text font-semibold text-lg">Your cart is empty</p>
+              <p className="text-mandi-text font-bold text-lg">Your cart is empty</p>
               <p className="text-mandi-muted text-sm mt-1">Add items from a store to get started</p>
             </div>
             <button onClick={() => { setIsOpen(false); navigate(getAppHomePath()); }} className="btn-primary">Browse Stores</button>
@@ -79,7 +79,7 @@ export default function CartDrawer() {
           <>
             <div className="flex-1 overflow-y-auto">
               {/* Delivery badge */}
-              <div className="mx-4 mt-3 flex items-center gap-2.5 bg-mandi-green/10 border border-mandi-green/30 rounded-xl p-3">
+              <div className="mx-4 mt-3 flex items-center gap-2.5 bg-mandi-green/10 border border-mandi-green/30 rounded-2xl p-3.5 shadow-clay-card">
                 <Truck size={18} className="text-mandi-green flex-shrink-0" />
                 <div>
                   <p className="text-mandi-green text-xs font-bold uppercase tracking-wider">Next-Day Delivery Guaranteed</p>
@@ -90,20 +90,20 @@ export default function CartDrawer() {
               {/* Items */}
               <div className="p-4 space-y-3">
                 {items.map(item => (
-                  <div key={item.id} className="flex items-center gap-3">
+                  <div key={item.id} className="flex items-center gap-3 p-2 rounded-2xl bg-mandi-surface/40 border border-mandi-border/60 shadow-clay-badge">
                     <LazyImage src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl" containerClass="w-14 h-14 rounded-xl flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-mandi-text text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-mandi-text text-sm font-semibold truncate">{item.name}</p>
                       <p className="text-mandi-muted text-xs">{item.unit}</p>
-                      <p className="text-mandi-green font-semibold text-sm mt-0.5">₹{item.price}</p>
+                      <p className="text-mandi-green font-bold text-sm mt-0.5">₹{item.price}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-lg bg-mandi-surface border border-mandi-border flex items-center justify-center hover:border-mandi-green transition-colors">
-                        {item.quantity === 1 ? <Trash2 size={14} className="text-red-400" /> : <Minus size={14} className="text-mandi-text" />}
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-xl bg-mandi-surface border border-mandi-border flex items-center justify-center hover:border-mandi-green transition-all shadow-clay-pill active:scale-90">
+                        {item.quantity === 1 ? <Trash2 size={14} className="text-red-400" /> : <Minus size={14} className="text-mandi-text stroke-[2.5]" />}
                       </button>
-                      <span className="w-6 text-center text-mandi-text font-bold text-sm">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 rounded-lg bg-mandi-green flex items-center justify-center hover:bg-mandi-green-dark transition-colors">
-                        <Plus size={14} className="text-black" />
+                      <span className="w-6 text-center text-mandi-text font-black text-sm">{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 rounded-xl bg-mandi-green flex items-center justify-center transition-all clay-btn-green active:scale-90">
+                        <Plus size={14} className="text-black stroke-[2.5]" />
                       </button>
                     </div>
                   </div>
@@ -113,7 +113,7 @@ export default function CartDrawer() {
               {/* Coupon */}
               <div className="mx-4 mb-4">
                 {coupon ? (
-                  <div className="flex items-center justify-between bg-mandi-green-muted border border-mandi-green border-opacity-30 rounded-xl px-3 py-2">
+                  <div className="flex items-center justify-between bg-mandi-green-muted border border-mandi-green border-opacity-30 rounded-2xl px-3.5 py-2.5 shadow-clay-badge">
                     <div className="flex items-center gap-2"><Tag size={14} className="text-mandi-green" /><span className="text-mandi-green text-sm font-semibold">{coupon.code}</span><span className="text-mandi-muted text-xs">{coupon.label}</span></div>
                     <button onClick={removeCoupon} className="text-red-400 hover:text-red-300"><X size={14} /></button>
                   </div>
@@ -127,20 +127,20 @@ export default function CartDrawer() {
               </div>
 
               {/* Bill Summary */}
-              <div className="mx-4 mb-4 bg-mandi-surface rounded-xl p-4 space-y-2">
-                <p className="text-mandi-text font-semibold text-sm mb-3">Bill Summary</p>
-                <div className="flex justify-between text-sm"><span className="text-mandi-muted">Item Total</span><span className="text-mandi-text">₹{subtotal}</span></div>
-                {discount > 0 && <div className="flex justify-between text-sm"><span className="text-mandi-muted">Coupon Discount</span><span className="text-mandi-green">- ₹{discount}</span></div>}
-                <div className="flex justify-between text-sm"><span className="text-mandi-muted">Delivery Charge</span><span className={deliveryCharge === 0 ? 'text-mandi-green' : 'text-mandi-text'}>{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
-                <div className="border-t border-mandi-border pt-2 flex justify-between font-bold"><span className="text-mandi-text">Total</span><span className="text-mandi-text">₹{total}</span></div>
+              <div className="mx-4 mb-4 bg-mandi-surface rounded-2xl p-4 space-y-2 shadow-clay-card">
+                <p className="text-mandi-text font-bold text-sm mb-3">Bill Summary</p>
+                <div className="flex justify-between text-sm"><span className="text-mandi-muted">Item Total</span><span className="text-mandi-text font-semibold">₹{subtotal}</span></div>
+                {discount > 0 && <div className="flex justify-between text-sm"><span className="text-mandi-muted">Coupon Discount</span><span className="text-mandi-green font-semibold">- ₹{discount}</span></div>}
+                <div className="flex justify-between text-sm"><span className="text-mandi-muted">Delivery Charge</span><span className={deliveryCharge === 0 ? 'text-mandi-green font-semibold' : 'text-mandi-text font-semibold'}>{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                <div className="border-t border-mandi-border pt-2 flex justify-between font-black"><span className="text-mandi-text">Total</span><span className="text-mandi-text">₹{total}</span></div>
               </div>
             </div>
 
             {/* Checkout Button */}
             <div className="p-4 border-t border-mandi-border pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-mandi-card">
-              <button onClick={handleCheckout} className="btn-primary w-full flex items-center justify-between text-sm sm:text-base py-3 shadow-md active:scale-95">
-                <span className="font-bold">₹{total} to pay</span>
-                <div className="flex items-center gap-1 font-bold"><span>Proceed to Checkout</span><ArrowRight size={16} /></div>
+              <button onClick={handleCheckout} className="btn-primary w-full flex items-center justify-between text-sm sm:text-base py-3">
+                <span className="font-black">₹{total} to pay</span>
+                <div className="flex items-center gap-1 font-extrabold"><span>Proceed to Checkout</span><ArrowRight size={16} /></div>
               </button>
             </div>
           </>

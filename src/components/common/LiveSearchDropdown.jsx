@@ -126,10 +126,7 @@ export default function LiveSearchDropdown({
   return (
     <div
       id="live-search-dropdown"
-      className="absolute top-full left-0 right-0 mt-2 bg-mandi-card/95 dark:bg-[#121815]/95 backdrop-blur-xl border border-mandi-border rounded-2xl shadow-2xl overflow-hidden z-50 animate-scale-in"
-      style={{
-        boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 200, 81, 0.1)',
-      }}
+      className="absolute top-full left-0 right-0 mt-2 bg-mandi-card/95 backdrop-blur-xl border border-mandi-border rounded-3xl shadow-clay-floating overflow-hidden z-50 animate-scale-in"
       role="listbox"
       aria-label="Live search suggestions"
     >
@@ -147,7 +144,7 @@ export default function LiveSearchDropdown({
                   key={item.label}
                   type="button"
                   onClick={() => handleSuggestionClick(item.label)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-mandi-surface hover:bg-mandi-green/10 hover:border-mandi-green border border-mandi-border rounded-full text-xs font-medium text-mandi-text transition-all group"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-mandi-surface hover:bg-mandi-green/10 hover:border-mandi-green border border-mandi-border rounded-full text-xs font-semibold text-mandi-text transition-all shadow-clay-badge active:scale-95 group"
                 >
                   <span>{item.icon}</span>
                   <span className="group-hover:text-mandi-green transition-colors">{item.label}</span>

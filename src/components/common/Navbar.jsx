@@ -155,13 +155,13 @@ export default function Navbar() {
           <div className="flex items-center justify-between px-3.5 sm:px-5 pt-2.5 sm:pt-3 pb-1.5 gap-2">
             {/* Left: Brand Logo & Live Badge */}
             <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group" aria-label="Mandi Minutes Home">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-mandi-green rounded-xl flex items-center justify-center shadow-green glow-green-sm">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-mandi-green rounded-2xl flex items-center justify-center clay-btn-green">
                 <Zap size={18} className="text-black drop-shadow" fill="black" />
               </div>
               <div className="flex items-center leading-none">
                 <span className="text-base sm:text-lg font-black text-gradient-green">Mandi</span>
                 <span className="text-base sm:text-lg font-black text-mandi-text ml-0.5">Minutes</span>
-                <div className="hidden sm:flex items-center gap-1 ml-1.5 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5">
+                <div className="hidden sm:flex items-center gap-1 ml-1.5 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5 shadow-clay-badge">
                   <div className="glow-dot" />
                   <span className="text-mandi-green text-[9px] font-bold tracking-wide uppercase">Live</span>
                 </div>
@@ -173,10 +173,10 @@ export default function Navbar() {
               {/* Location Selector Button — premium 2-tier quick commerce delivery chip */}
               <button
                 onClick={() => setLocationModal(true)}
-                className="flex items-center gap-1.5 bg-mandi-surface/90 hover:bg-mandi-card border border-mandi-border hover:border-mandi-green/50 px-2.5 py-1 sm:py-1.5 rounded-xl transition-all active:scale-95 shadow-sm min-w-0 max-w-[170px] sm:max-w-[220px] text-left group"
+                className="flex items-center gap-1.5 bg-mandi-surface/90 hover:bg-mandi-card border border-mandi-border hover:border-mandi-green/50 px-2.5 py-1 sm:py-1.5 rounded-2xl transition-all active:scale-95 shadow-clay-pill min-w-0 max-w-[170px] sm:max-w-[220px] text-left group"
                 aria-label="Select Delivery Location"
               >
-                <div className="w-5 h-5 rounded-lg bg-mandi-green/15 flex items-center justify-center flex-shrink-0 group-hover:bg-mandi-green/25 transition-colors">
+                <div className="w-5 h-5 rounded-xl bg-mandi-green/15 flex items-center justify-center flex-shrink-0 group-hover:bg-mandi-green/25 transition-colors">
                   <MapPin size={11} className="text-mandi-green drop-shadow-green" />
                 </div>
                 <div className="flex flex-col min-w-0 leading-tight">
@@ -191,12 +191,12 @@ export default function Navbar() {
               {/* Cart Button — visible on Tablet (sm:flex), on Phone it's in BottomNav */}
               <button
                 onClick={() => setIsOpen(true)}
-                className="hidden sm:flex relative p-2 bg-mandi-green rounded-xl hover:bg-mandi-green-light active:scale-95 transition-all duration-200 btn-ripple glow-green-sm"
+                className="hidden sm:flex relative p-2 bg-mandi-green rounded-2xl hover:bg-mandi-green-light active:scale-95 transition-all duration-200 clay-btn-green"
                 aria-label="Shopping Cart"
               >
                 <ShoppingCart size={17} className="text-black" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-mandi-dark text-mandi-green text-[10px] font-bold rounded-full flex items-center justify-center border border-mandi-green">
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-mandi-dark text-mandi-green text-[10px] font-bold rounded-full flex items-center justify-center border border-mandi-green shadow-clay-badge">
                     {itemCount > 9 ? '9+' : itemCount}
                   </span>
                 )}
@@ -205,15 +205,15 @@ export default function Navbar() {
               {/* User Profile — visible on Tablet (sm:flex), on Phone it's in BottomNav */}
               <div className="hidden sm:block relative">
                 {loading ? (
-                  <div className="w-8 h-8 rounded-xl bg-mandi-surface border border-mandi-border animate-pulse" />
+                  <div className="w-8 h-8 rounded-2xl bg-mandi-surface border border-mandi-border animate-pulse" />
                 ) : user ? (
                   <>
                     <button
                       onClick={() => setTabletUserMenuOpen(!tabletUserMenuOpen)}
-                      className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-2.5 py-1.5 rounded-xl hover:border-mandi-green transition-all"
+                      className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-2.5 py-1.5 rounded-2xl hover:border-mandi-green transition-all shadow-clay-pill"
                       aria-label="User Account"
                     >
-                      <div className="w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black ring-1 ring-mandi-green ring-opacity-30">
+                      <div className="w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black ring-1 ring-mandi-green ring-opacity-30 shadow-clay-badge">
                         {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
                       </div>
                       <span className="text-mandi-text text-xs font-medium max-w-[70px] truncate">
@@ -222,7 +222,7 @@ export default function Navbar() {
                       <ChevronDown size={11} className={`text-mandi-muted transition-transform duration-200 ${tabletUserMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {tabletUserMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-56 card-glass border border-mandi-border rounded-xl shadow-card-hover z-50 animate-scale-in">
+                      <div className="absolute right-0 top-full mt-2 w-56 card-glass border border-mandi-border rounded-2xl shadow-clay-floating z-50 animate-scale-in">
                         {userDropdownMenu(() => setTabletUserMenuOpen(false))}
                       </div>
                     )}
@@ -287,7 +287,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="relative">
-              <div className="w-9 h-9 bg-mandi-green rounded-xl flex items-center justify-center shadow-green glow-green-sm transition-all duration-300 group-hover:shadow-green-lg">
+              <div className="w-9 h-9 bg-mandi-green rounded-2xl flex items-center justify-center clay-btn-green transition-all duration-300">
                 <Zap size={20} className="text-black drop-shadow" fill="black" />
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function Navbar() {
               <div className="flex items-center gap-1.5">
                 <span className="text-xl font-black text-gradient-green leading-none">Mandi</span>
                 <span className="text-xl font-black text-mandi-text leading-none">Minutes</span>
-                <div className="flex items-center gap-1 ml-1 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5">
+                <div className="flex items-center gap-1 ml-1 bg-mandi-green bg-opacity-10 border border-mandi-green border-opacity-30 rounded-full px-1.5 py-0.5 shadow-clay-badge">
                   <div className="glow-dot" />
                   <span className="text-mandi-green text-[9px] font-bold tracking-wide uppercase">Live</span>
                 </div>
@@ -306,7 +306,7 @@ export default function Navbar() {
           {/* Location selector */}
           <button
             onClick={() => setLocationModal(true)}
-            className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-3 py-2 rounded-xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 min-w-0 max-w-[200px] group"
+            className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-3.5 py-2 rounded-2xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 min-w-0 max-w-[200px] shadow-clay-pill group"
           >
             <MapPin size={13} className="text-mandi-green flex-shrink-0 group-hover:drop-shadow-[0_0_6px_rgba(0,200,81,0.8)]" />
             <span className="text-mandi-text text-sm font-medium truncate">{location ? location.area.split(',')[0] : t('nav.setLocation')}</span>
@@ -358,16 +358,6 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Quick App View Switcher for Desktop */}
-            <Link
-              to="/app"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-mandi-surface hover:bg-mandi-card border border-mandi-border hover:border-mandi-green text-xs font-bold text-mandi-muted hover:text-mandi-green transition-all active:scale-95 shadow-sm"
-              title="Switch to Mobile App View"
-            >
-              <span>📱</span>
-              <span className="hidden xl:inline">App View</span>
-            </Link>
-
             <LanguageSwitcher />
 
             {/* Theme toggle */}
@@ -375,7 +365,7 @@ export default function Navbar() {
               id="theme-toggle-btn"
               onClick={toggleTheme}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2.5 rounded-xl border border-mandi-border bg-mandi-surface hover:border-mandi-green transition-all duration-300 active:scale-90 group relative overflow-hidden"
+              className="p-2.5 rounded-2xl border border-mandi-border bg-mandi-surface hover:border-mandi-green transition-all duration-300 active:scale-90 shadow-clay-pill group relative overflow-hidden"
             >
               <div key={isDark ? 'sun' : 'moon'} className="transition-transform duration-300 transform group-hover:rotate-45 active:scale-75">
                 {isDark
@@ -388,12 +378,12 @@ export default function Navbar() {
             {/* Cart button */}
             <button
               onClick={() => setIsOpen(true)}
-              className="relative p-2.5 bg-mandi-green rounded-xl hover:bg-mandi-green-light active:scale-95 transition-all duration-200 btn-ripple glow-green-sm hover:glow-green"
+              className="relative p-2.5 bg-mandi-green rounded-2xl hover:bg-mandi-green-light active:scale-95 transition-all duration-200 clay-btn-green"
               aria-label="Shopping Cart"
             >
               <ShoppingCart size={18} className="text-black" />
               {itemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-mandi-dark text-mandi-green text-xs font-bold rounded-full flex items-center justify-center border border-mandi-green animate-scale-in">
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-mandi-dark text-mandi-green text-xs font-bold rounded-full flex items-center justify-center border border-mandi-green shadow-clay-badge animate-scale-in">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
               )}
@@ -401,14 +391,14 @@ export default function Navbar() {
 
             {/* User Dropdown */}
             {loading ? (
-              <div className="w-20 h-9 rounded-xl bg-mandi-surface border border-mandi-border animate-pulse" />
+              <div className="w-20 h-9 rounded-2xl bg-mandi-surface border border-mandi-border animate-pulse" />
             ) : user ? (
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-3 py-2 rounded-xl hover:border-mandi-green transition-all duration-200"
+                  className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-3.5 py-2 rounded-2xl hover:border-mandi-green transition-all duration-200 shadow-clay-pill"
                 >
-                  <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black ring-2 ring-mandi-green ring-opacity-30">
+                  <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black ring-2 ring-mandi-green ring-opacity-30 shadow-clay-badge">
                     {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
                   </div>
                   <span className="text-mandi-text text-sm font-medium max-w-[90px] truncate">
@@ -417,7 +407,7 @@ export default function Navbar() {
                   <ChevronDown size={12} className={`text-mandi-muted transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 card-glass border border-mandi-border rounded-xl shadow-card-hover z-50 animate-scale-in">
+                  <div className="absolute right-0 top-full mt-2 w-56 card-glass border border-mandi-border rounded-2xl shadow-clay-floating z-50 animate-scale-in">
                     {userDropdownMenu(() => setUserMenuOpen(false))}
                   </div>
                 )}

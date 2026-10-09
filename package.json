@@ -1,7 +1,7 @@
 {
   "name": "mandi-minutes-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "cap:sync": "vite build && cap sync android",
-    "build:apk": "vite build && cap sync android && powershell -ExecutionPolicy Bypass -Command \"Set-Location android; .\\gradlew.bat assembleDebug; Set-Location ..; Copy-Item android/app/build/outputs/apk/debug/app-debug.apk mandi-minutes.apk -Force\""
+    "build:apk": "vite build && cap sync android && powershell -ExecutionPolicy Bypass -Command \"Set-Location android; .\\gradlew.bat assembleRelease; Set-Location ..; Copy-Item android/app/build/outputs/apk/release/app-release-unsigned.apk mandi-minutes.apk -Force\"",
+    "build:apk:debug": "vite build && cap sync android && powershell -ExecutionPolicy Bypass -Command \"Set-Location android; .\\gradlew.bat assembleDebug; Set-Location ..; Copy-Item android/app/build/outputs/apk/debug/app-debug.apk mandi-minutes-debug.apk -Force\""
   },
   "dependencies": {
     "firebase": "^12.17.1",

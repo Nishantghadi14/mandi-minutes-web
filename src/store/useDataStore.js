@@ -402,7 +402,6 @@ export const useDataStore = create((set, get) => ({
   submitVendorApplication: async (application) => {
     const id = application.id || `store-${Date.now()}`;
     const newStore = {
-      id,
       status: 'approved',
       isOpen: true,
       rating: 0,

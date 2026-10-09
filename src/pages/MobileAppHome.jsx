@@ -148,7 +148,7 @@ export default function MobileAppHome() {
       </Helmet>
 
       {/* ── Native App Header ── */}
-      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-2.5 pb-2.5 shadow-md">
+      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-2.5 pb-2.5 shadow-clay-nav rounded-b-3xl">
         {/* Top Row: Next-Day Delivery Badge + Location + Profile Avatar */}
         <div className="flex items-center justify-between gap-2.5 mb-2.5">
           {/* Location button */}
@@ -157,7 +157,7 @@ export default function MobileAppHome() {
             className="flex items-center gap-2 flex-1 min-w-0 text-left active:scale-[0.98] transition-transform"
             aria-label="Select delivery address"
           >
-            <div className="w-8 h-8 rounded-full bg-mandi-green/15 flex items-center justify-center flex-shrink-0 border border-mandi-green/30">
+            <div className="w-8 h-8 rounded-full bg-mandi-green/15 flex items-center justify-center flex-shrink-0 border border-mandi-green/30 shadow-clay-badge">
               <MapPin size={16} className="text-mandi-green" />
             </div>
             <div className="min-w-0 flex-1">
@@ -176,7 +176,7 @@ export default function MobileAppHome() {
           {/* Profile Button */}
           <button
             onClick={() => (user ? navigate(getNavPath('/profile')) : openAuthModal('login'))}
-            className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform"
+            className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform shadow-clay-pill"
             aria-label="User Account"
           >
             {user ? (
@@ -192,7 +192,7 @@ export default function MobileAppHome() {
         {/* Live Search Bar Capsule with Rotating Placeholder */}
         <div 
           onClick={() => navigate(getNavPath('/search'))}
-          className="relative flex items-center bg-mandi-surface border border-mandi-border hover:border-mandi-green/50 rounded-2xl h-12 px-3.5 cursor-pointer shadow-sm active:scale-[0.99] transition-all group"
+          className="relative flex items-center bg-mandi-surface border border-mandi-border hover:border-mandi-green/50 rounded-2xl h-12 px-3.5 cursor-pointer shadow-clay-inset active:scale-[0.99] transition-all group"
         >
           <Search size={18} className="text-mandi-green flex-shrink-0 mr-2.5 group-hover:scale-105 transition-transform" />
           <div className="flex-1 overflow-hidden h-6 relative flex items-center">
@@ -216,16 +216,16 @@ export default function MobileAppHome() {
             {PROMO_BANNERS.map((banner) => (
               <div 
                 key={banner.id}
-                className={`snap-center flex-shrink-0 w-full rounded-2xl bg-gradient-to-r ${banner.bgGradient} border ${banner.borderColor} p-4 relative overflow-hidden shadow-lg`}
+                className={`snap-center flex-shrink-0 w-full rounded-3xl bg-gradient-to-r ${banner.bgGradient} border ${banner.borderColor} p-4 relative overflow-hidden shadow-clay-card`}
               >
                 <div className="relative z-10 pr-12">
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mb-1.5 shadow-sm ${banner.badgeColor}`}>
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-1.5 shadow-clay-badge ${banner.badgeColor}`}>
                     {banner.badge}
                   </span>
                   <h2 className="text-sm font-black text-mandi-text leading-tight">
                     {banner.title}
                   </h2>
-                  <p className="text-[11px] text-mandi-muted mt-1 line-clamp-1">
+                  <p className="text-[11px] text-mandi-muted mt-1 line-clamp-1 font-medium">
                     {banner.subtitle}
                   </p>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-mandi-green">
@@ -245,8 +245,8 @@ export default function MobileAppHome() {
             {PROMO_BANNERS.map((_, i) => (
               <div 
                 key={i} 
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  activeBannerIdx === i ? 'w-5 bg-mandi-green' : 'w-1.5 bg-mandi-border'
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  activeBannerIdx === i ? 'w-5 bg-mandi-green shadow-clay-badge' : 'w-1.5 bg-mandi-border'
                 }`} 
               />
             ))}
@@ -276,9 +276,9 @@ export default function MobileAppHome() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(isSelected ? 'all' : cat.id)}
-                  className={`flex flex-col items-center justify-center p-2 rounded-2xl border text-center transition-all duration-200 active:scale-95 ${
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-center transition-all duration-200 active:scale-95 shadow-clay-card ${
                     isSelected 
-                      ? 'bg-mandi-green/20 border-mandi-green shadow-md ring-1 ring-mandi-green' 
+                      ? 'bg-mandi-green/20 border-mandi-green ring-2 ring-mandi-green/50' 
                       : 'bg-mandi-card border-mandi-border hover:border-mandi-border-light'
                   }`}
                 >

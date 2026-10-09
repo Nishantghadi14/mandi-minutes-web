@@ -25,20 +25,18 @@ import {
   ArrowUpRight,
   Search,
   Filter,
-  Check,
-  Minus,
   Sparkles,
   Settings,
   Save,
-  MapPin
+  Minus
 } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
-  const { user, setVendorStore } = useAuth();
-  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateOrderStatus, updateStore, addStore } = useData();
+  const { user } = useAuth();
+  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateStore } = useData();
   const { addToast } = useToast();
 
   // Resolve store dynamically matching logged-in vendor user email, storeId, or uid

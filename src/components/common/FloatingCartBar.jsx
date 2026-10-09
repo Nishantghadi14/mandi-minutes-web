@@ -23,7 +23,7 @@ export default function FloatingCartBar() {
     >
       <button
         onClick={() => setIsOpen(true)}
-        className="pointer-events-auto w-full bg-gradient-to-r from-emerald-500 via-mandi-green to-emerald-400 text-black px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center justify-between font-bold border border-white/20 active:scale-[0.98] transition-all glow-green-sm animate-slide-in-up"
+        className="pointer-events-auto w-full bg-gradient-to-r from-emerald-500 via-mandi-green to-emerald-400 text-black px-4 py-3 rounded-3xl clay-btn-green flex items-center justify-between font-bold border border-white/40 active:scale-[0.98] transition-all animate-slide-in-up"
       >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-black/15 flex items-center justify-center">
@@ -39,7 +39,7 @@ export default function FloatingCartBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 bg-black text-white text-xs px-3 py-1.5 rounded-xl font-black group">
+        <div className="flex items-center gap-1 bg-black text-white text-xs px-3.5 py-2 rounded-2xl font-black shadow-clay-badge group">
           <span>View Cart</span>
           <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
         </div>

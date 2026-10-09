@@ -352,7 +352,7 @@ export default function AdminPanel() {
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4"><TrendingUp size={18} className="text-mandi-green" /><h3 className="text-mandi-text font-bold text-base">Daily Orders — Last 30 Days</h3></div>
             {orders.length === 0 ? (
-              <p className="text-mandi-muted text-xs py-8 text-center">No orders yet — place a test order to populate the chart.</p>
+              <p className="text-mandi-muted text-xs py-8 text-center">No orders yet — incoming orders will populate the chart.</p>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={dailyOrderChart} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>

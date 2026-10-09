@@ -7,7 +7,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-> ⚡ **Mandi Minutes** connects neighborhood Kirana stores with local households across Virar, Bolinj, Nallasopara, and Vasai (Palghar District, Maharashtra) for lightning-fast grocery delivery in **10–15 minutes**.
+> ⚡ **Mandi Minutes** connects neighborhood Kirana stores with local households across Virar, Bolinj, Nallasopara, and Vasai (Palghar District, Maharashtra) for lightning-fast grocery delivery in **10–15 minutes** and scheduled **7:00 AM morning deliveries**.
 
 ---
 
@@ -20,8 +20,9 @@
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
 - [Android APK (Native Mobile App)](#-android-apk-native-mobile-app)
-- [Firebase Setup](#-firebase-setup)
+- [Firebase Setup & Production Rules](#-firebase-setup--production-rules)
 - [Available Scripts](#-available-scripts)
+- [Production Deployment](#-production-deployment)
 - [Project Structure](#-project-structure)
 - [Contributing & License](#-contributing--license)
 
@@ -31,8 +32,8 @@
 
 - 📍 **Hyperlocal Pincode Engine** — Dynamic detection and store filtering for Virar West (`401305`), Virar East (`401303`), Nallasopara (`401301`), Arnala (`401309`), and Vasai (`401208`, `401209`).
 - 🏪 **Store Discovery with Live Stock** — In-stock previews on Kirana store cards showing available products and pricing at a glance.
-- 🎲 **Randomized Local Vendor Showcase** — Dynamic *"Products in (Location)"* section featuring randomized staple items sold by verified local vendors, complete with store tags, category filters, and an interactive **Shuffle** button.
-- 💳 **Direct UPI Payments & COD** — Native intent triggers for Google Pay, PhonePe, Paytm, and BHIM (`upi://pay`), interactive dynamic QR codes, and Cash on Delivery.
+- 🎲 **Local Vendor Catalog Showcase** — Curated staples sold by verified local vendors, complete with store tags, category filters, and seamless search.
+- 💳 **Direct UPI Payments & COD** — Native intent triggers for Google Pay, PhonePe, Paytm, and BHIM (`upi://pay`), dynamic QR codes, and Cash on Delivery with zero client trust verification.
 - 🗺️ **Live Rider GPS Tracking** — Real-time interactive Leaflet map tracking the rider’s route from Kirana store to customer doorstep.
 - 🌐 **Trilingual Localization (i18n)** — Full native support for **English**, **Hindi (हिंदी)**, and **Marathi (मराठी)**.
 - 📱 **Cross-Platform Native Experience** — High-performance Web App (PWA) + fully packaged **Android APK** with native splash screen, custom adaptive launcher icon, and hardware back-button navigation.
@@ -44,10 +45,10 @@
 | Role | Portal / Route | Capabilities |
 |---|---|---|
 | **Customer** | `/` & `/store/:id` | Browse local Kiranas, add items to cart, order via UPI/COD, track rider live, manage profile & address book. |
-| **Vendor** | `/vendor-dashboard` | Store inventory management, product pricing/stock toggle, incoming order acceptance, real-time analytics. |
-| **Vendor Onboarding** | `/vendor-onboarding` | Free Kirana store self-registration, license/address verification, instant catalogue initialization. |
-| **Rider** | `/rider-portal` | Accept delivery runs, broadcast real-time GPS coordinates, call customers/stores, update delivery status. |
-| **Admin** | `/admin-panel` | Master control panel: manage approved/pending stores, review tickets, view system-wide revenue & orders. |
+| **Vendor** | `/vendor` | Store inventory management, product pricing/stock toggle, incoming order acceptance, real-time analytics. |
+| **Vendor Onboarding** | `/vendor-onboarding` | Kirana store self-registration, license/address verification, instant catalogue initialization. |
+| **Rider** | `/rider` | Accept delivery runs, broadcast real-time GPS coordinates, call customers/stores, update delivery status. |
+| **Admin** | `/admin` | Master control panel: manage approved/pending stores, review tickets, view system-wide revenue & orders. |
 
 ---
 
@@ -63,7 +64,7 @@
 | **Push Notifications** | Firebase Cloud Messaging (FCM) + Service Workers |
 | **Maps & Geo** | Leaflet, React Leaflet (OpenStreetMap / CartoDB tiles) |
 | **Data Visualization** | Recharts (Vendor & Admin performance analytics) |
-| **Quality & Tests** | Oxlint (ultra-fast linting), Vitest |
+| **Quality & Tests** | Oxlint (fast linter), Vitest (25 unit tests) |
 
 ---
 
@@ -91,7 +92,7 @@ npm install
 ```
 
 ### 3. Configure environment variables
-Create a `.env` or `.env.local` file in the root directory (see [Environment Variables](#-environment-variables) below).
+Create a `.env` file in the root directory (see [Environment Variables](#-environment-variables) below).
 
 ### 4. Run the development server
 ```bash
@@ -116,9 +117,10 @@ VITE_FIREBASE_APP_ID=your_app_id_here
 
 # Firebase Cloud Messaging (Web Push Notifications)
 VITE_FIREBASE_VAPID_KEY=your_vapid_key_here
-```
 
-> **Note:** If Firebase credentials are not provided, the application automatically runs in demo mode using cached and locally seeded catalogue data.
+# Optional: Default Merchant UPI Handle
+VITE_MERCHANT_UPI_ID=mahalaxmi.kirana@okicici
+```
 
 ---
 
@@ -128,40 +130,37 @@ Mandi Minutes is packaged as a standalone Android application using **Capacitor*
 
 ### Android Configurations Included:
 - **Branding Assets**: High-resolution 3D emerald green grocery bag launcher icon generated across all densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) including adaptive foreground and round icons.
-- **Native Splash Screen**: Deep emerald black (`#0D1410`) splash screen with glowing Mandi Minutes branding and smooth 1.5s auto-hide transition.
+- **Native Splash Screen**: Deep emerald black (`#121212`) splash screen with glowing Mandi Minutes branding and smooth 1.5s auto-hide transition.
 - **Native Hardware Back Navigation**: [`MainActivity.java`](android/app/src/main/java/com/mandiminutes/app/MainActivity.java) overrides `onBackPressed()` so pressing the Android back button walks back through app navigation history rather than closing the app.
-- **Android 11+ `<queries>` & Permissions**: Declared in [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml) for UPI payment intents (`upi://pay`), phone dialer (`tel:`), GPS (`ACCESS_FINE_LOCATION`), and Android 13+ push notifications (`POST_NOTIFICATIONS`).
+- **Security & Permissions**: Production-hardened with `usesCleartextTraffic="false"` and declared `<queries>` in [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml) for UPI payment intents (`upi://pay`), phone dialer (`tel:`), GPS (`ACCESS_FINE_LOCATION`), and Android 13+ push notifications (`POST_NOTIFICATIONS`).
 
 ### Building the APK:
 
 ```bash
-# Option A: One-command build (compiles web assets, syncs Capacitor, builds APK)
+# Production Release APK (Builds web assets, syncs Capacitor, and generates release APK):
 npm run build:apk
 
-# Option B: Manual step-by-step build
-npm run build
-npx cap sync android
-cd android && ./gradlew assembleDebug && cd ..
+# Debug APK (for quick local USB testing):
+npm run build:apk:debug
 ```
 
-The compiled APK will be output directly to the project root:
+The compiled APK will be output to the project root:
 ```
 mandi-minutes.apk
 ```
-You can transfer and install `mandi-minutes.apk` on any Android smartphone.
 
 ---
 
-## 🔥 Firebase Setup
+## 🔥 Firebase Setup & Production Rules
 
 1. Go to [Firebase Console](https://console.firebase.google.com/) and create a project.
 2. Enable **Firestore Database** in production mode.
-3. Enable **Authentication** (Email/Password, Phone).
+3. Enable **Authentication** (Email/Password, Phone OTP with reCAPTCHA).
 4. Deploy Firestore security rules:
    ```bash
    firebase deploy --only firestore:rules
    ```
-5. *(Optional)* Deploy Cloud Functions:
+5. Deploy Cloud Functions:
    ```bash
    cd functions && npm install
    firebase deploy --only functions
@@ -177,9 +176,26 @@ You can transfer and install `mandi-minutes.apk` on any Android smartphone.
 | `npm run build` | Builds optimized production static web bundle into `/dist`. |
 | `npm run preview` | Previews the production build locally. |
 | `npm run lint` | Runs Oxlint for code quality and syntax validation. |
-| `npm test` | Runs the Vitest test suite. |
+| `npm test` | Runs the Vitest test suite (pricing and search unit tests). |
 | `npm run cap:sync` | Builds web assets and synchronizes Capacitor Android plugins & assets. |
-| `npm run build:apk` | Complete build pipeline: compiles web, syncs Capacitor, and outputs `mandi-minutes.apk`. |
+| `npm run build:apk` | Complete production pipeline: builds web, syncs Capacitor, outputs release APK. |
+| `npm run build:apk:debug` | Debug pipeline: builds web, syncs Capacitor, outputs debug APK. |
+
+---
+
+## 🚀 Production Deployment
+
+### Web Hosting (Vercel)
+Deploy with the preconfigured [vercel.json](vercel.json):
+```bash
+npx vercel --prod
+```
+
+### Web Hosting (Firebase Hosting)
+Deploy with the preconfigured [firebase.json](firebase.json):
+```bash
+firebase deploy --only hosting
+```
 
 ---
 
@@ -195,10 +211,13 @@ mandi-minutes-web/
 │   │   │   └── res/                 # Custom app icons (mipmap-*) & splash drawables
 │   │   └── build.gradle
 │   └── build.gradle
+├── functions/                       # Secure Firebase Cloud Functions (pricing, orders, Razorpay)
 ├── public/                          # Static assets, PWA manifest, service worker
-│   ├── products/                    # Product imagery
+│   ├── products/                    # Local grocery product imagery
 │   ├── favicon.svg
-│   └── manifest.json
+│   ├── manifest.json
+│   ├── robots.txt
+│   └── sitemap.xml
 ├── src/
 │   ├── components/
 │   │   ├── common/                  # Navbar, StoreCard, ProductCard, BottomNav, CartDrawer
@@ -207,27 +226,18 @@ mandi-minutes-web/
 │   ├── config/                      # Firebase client configuration & database seeders
 │   ├── context/                     # React contexts (Auth, Cart, Location, Data, Theme)
 │   ├── data/                        # Initial store, category, and Virar coordinate datasets
-│   ├── pages/                       # Route views (HomePage, StorePage, SearchPage, Checkouts...)
+│   ├── pages/                       # Route views (HomePage, StorePage, SearchPage, Checkout...)
+│   ├── services/                    # Order service & transaction handlers
 │   ├── store/                       # Zustand global stores (useDataStore, useCartStore, useLocationStore)
 │   ├── utils/                       # Search, filter, debounce, and coordinate helpers
 │   ├── i18n.js                      # Trilingual translation resources (EN, HI, MR)
 │   ├── App.jsx                      # Route definitions and layout shell
 │   └── index.css                    # Tailwind CSS directives and custom design tokens
+├── tests/                           # Vitest automated unit test suites
 ├── capacitor.config.json            # Capacitor app ID, scheme, and splash configuration
 ├── tailwind.config.js               # Mandi Minutes custom color palette and typography
 ├── vite.config.js                   # Build configuration and manual chunk splitting
-├── mandi-minutes.apk                # Ready-to-install Android Debug APK
 └── package.json
-```
-
----
-
-## 🌐 Remote Testing via Cloudflare Tunnel
-
-To test the web app or mobile payments on physical mobile devices without local network limitations:
-
-```bash
-cloudflared tunnel --url http://localhost:5173
 ```
 
 ---

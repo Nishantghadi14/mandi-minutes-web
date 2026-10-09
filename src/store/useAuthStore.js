@@ -9,8 +9,8 @@ import {
   setPersistence,
   browserLocalPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, limit, getDocs } from 'firebase/firestore';
-import { auth, db, isFirebaseConfigured, requestNotificationPermission } from '../config/firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { auth, db, isFirebaseConfigured } from '../config/firebase';
 import { useCartStore } from './useCartStore';
 import { useDataStore } from './useDataStore';
 
@@ -201,8 +201,6 @@ export const useAuthStore = create((set, get) => ({
       phone: firebaseUser.phoneNumber || userData?.phone || '',
       displayName: firebaseUser.displayName || fallbackName,
       name: userData?.name || firebaseUser.displayName || fallbackName,
-      role: resolvedRole,
-      storeId: resolvedStoreId,
       addresses: userData?.addresses || [],
       wishlist: userData?.wishlist || [],
       avatar: userData?.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fallbackName)}`,
@@ -429,6 +427,9 @@ export const useAuthStore = create((set, get) => ({
   // Real Phone Authentication with Recaptcha
   sendPhoneOtp: async (phoneNumber, appVerifier) => {
     if (!isFirebaseConfigured || !auth) {
+      if (import.meta.env.PROD) {
+        throw new Error('Firebase Authentication is required in production. Please configure Firebase keys in .env.');
+      }
       return { verificationId: 'mock-session-id', phone: phoneNumber };
     }
     try {
@@ -450,6 +451,9 @@ export const useAuthStore = create((set, get) => ({
 
   confirmPhoneOtp: async (confirmationResult, otp) => {
     if (!isFirebaseConfigured || !auth) {
+      if (import.meta.env.PROD) {
+        throw new Error('Firebase Authentication is required in production.');
+      }
       const phone = confirmationResult?.phone || '9820098200';
       const uid = 'local-phone-' + phone.slice(-6);
       const localUser = {
@@ -596,38 +600,6 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Fast Demo Login Shortcut (Customer, Vendor, Admin)
-  loginAsDemoRole: async (targetRole = 'vendor') => {
-    const storeId = targetRole === 'vendor' ? 'store-mahalaxmi-1' : null;
-    const demoUser = {
-      id: `demo-${targetRole}-1`,
-      uid: `demo-${targetRole}-1`,
-      name: targetRole === 'vendor' ? 'Mahalaxmi Kirana Store' : targetRole === 'admin' ? 'System Administrator' : 'Mandi Customer',
-      email: targetRole === 'vendor' ? 'vendor@mandiminutes.com' : targetRole === 'admin' ? 'admin@mandiminutes.com' : 'customer@mandiminutes.com',
-      phone: '9920941603',
-      role: targetRole,
-      storeId: storeId,
-      addresses: [
-        { id: 'addr-1', label: 'Home', line1: 'Virar West, Maharashtra, 401303', city: 'Virar West', pincode: '401303', isDefault: true }
-      ],
-      wishlist: [],
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(targetRole)}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (db && isFirebaseConfigured) {
-      try {
-        await setDoc(doc(db, 'users', demoUser.uid), demoUser, { merge: true });
-      } catch (e) {
-        console.warn('Demo user doc sync:', e?.message);
-      }
-    }
-
-    localStorage.setItem('mandi_local_user', JSON.stringify(demoUser));
-    set({ user: demoUser, loading: false });
-    useCartStore.getState().switchUser(demoUser.id);
-    return demoUser;
-  },
 
   // Real Sign Out
   logout: async () => {

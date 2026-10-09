@@ -25,9 +25,8 @@ function PromoBanner({ banners }) {
   const gradient = isDark ? (b.colorDark || b.color || 'from-green-900 to-emerald-950') : (b.colorLight || 'from-green-50 to-emerald-100');
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
-      <div className={`bg-gradient-to-br ${gradient} border border-mandi-border rounded-2xl p-5 transition-all duration-500`}
-        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
+    <div className="relative overflow-hidden rounded-3xl shadow-clay-card">
+      <div className={`bg-gradient-to-br ${gradient} border border-mandi-border rounded-3xl p-5 sm:p-6 transition-all duration-500 shadow-clay-card`}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-mandi-text font-black text-lg mb-1">{b.title}</h2>
@@ -42,7 +41,7 @@ function PromoBanner({ banners }) {
             <button
               key={i}
               onClick={() => setIdx(i)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'bg-mandi-green w-5' : 'bg-mandi-border w-1.5'}`}
+              className={`h-2 rounded-full transition-all duration-300 ${i === idx ? 'bg-mandi-green w-6 shadow-clay-badge' : 'bg-mandi-border w-2'}`}
             />
           ))}
         </div>
@@ -79,7 +78,7 @@ function StatCard({ stat, delay = 0 }) {
         <Icon size={20} className="text-mandi-green drop-shadow-green" />
       </div>
       <div className="text-2xl font-black text-gradient-green">{stat.value}</div>
-      <div className="text-mandi-muted text-xs font-medium">{stat.label}</div>
+      <div className="text-mandi-muted text-xs font-semibold">{stat.label}</div>
     </div>
   );
 }
@@ -186,7 +185,7 @@ export default function HomePage() {
 
       {/* Network Error Banner */}
       {hasStoreError && (
-        <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-200 animate-slide-up-fade">
+        <div className="mb-6 p-4 rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-200 shadow-clay-card animate-slide-up-fade">
           <div className="flex items-center gap-3">
             <WifiOff size={18} className="text-red-400 flex-shrink-0" />
             <div>
@@ -196,7 +195,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={() => retryFetch?.('stores')}
-            className="text-xs py-1.5 px-3 flex items-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 rounded-lg font-semibold transition-all"
+            className="text-xs py-1.5 px-3 flex items-center gap-1.5 bg-red-600 hover:bg-red-500 active:scale-95 rounded-xl font-bold transition-all shadow-clay-badge"
           >
             <RefreshCw size={11} /> {t('common.retry')}
           </button>
@@ -205,7 +204,7 @@ export default function HomePage() {
 
       {/* ── Hero ── */}
       <section className="mb-8">
-        <div className="relative overflow-hidden rounded-3xl border border-mandi-border bg-mandi-card">
+        <div className="relative overflow-hidden rounded-3xl border border-mandi-border bg-mandi-card shadow-clay-card">
           {/* Mesh background */}
           <div className="absolute inset-0 bg-hero-mesh" />
           {/* Decorative orbs */}
@@ -217,31 +216,31 @@ export default function HomePage() {
               <div className="flex-1">
                 {/* Pills row */}
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                  <span className="flex items-center gap-1.5 bg-mandi-green text-black text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                  <span className="flex items-center gap-1.5 bg-mandi-green text-black text-xs font-black px-3.5 py-1.5 rounded-full shadow-clay-badge border border-white/30">
                     <Zap size={11} fill="black" /> {t('hero.badge')}
                   </span>
-                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full">
+                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-bold px-3 py-1.5 rounded-full shadow-clay-badge">
                     <Clock size={11} className="text-mandi-green" /> 10-15 mins
                   </span>
-                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full">
+                  <span className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border text-mandi-muted text-xs font-bold px-3 py-1.5 rounded-full shadow-clay-badge">
                     <ShieldCheck size={11} className="text-mandi-green" /> {t('hero.trustedKiranas')}
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-mandi-text mb-2.5 sm:mb-3 leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-mandi-text mb-2.5 sm:mb-3 leading-tight tracking-tight">
                   {t('hero.headline')}
                 </h1>
-                <p className="text-mandi-muted text-sm sm:text-base md:text-lg mb-5 sm:mb-7 max-w-lg leading-relaxed">
+                <p className="text-mandi-muted text-sm sm:text-base md:text-lg mb-5 sm:mb-7 max-w-lg leading-relaxed font-medium">
                   {t('hero.subheadline')}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                   <button
                     onClick={() => setLocationModal(true)}
-                    className="flex items-center justify-center sm:justify-start gap-2 bg-mandi-surface border border-mandi-border px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 w-full sm:w-auto sm:max-w-xs group active:scale-95"
+                    className="flex items-center justify-center sm:justify-start gap-2 bg-mandi-surface border border-mandi-border px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl hover:border-mandi-green hover:bg-mandi-card transition-all duration-200 w-full sm:w-auto sm:max-w-xs group active:scale-95 shadow-clay-pill"
                   >
                     <MapPin size={16} className="text-mandi-green group-hover:drop-shadow-green flex-shrink-0" />
-                    <span className="text-mandi-text text-sm font-medium truncate">
+                    <span className="text-mandi-text text-sm font-semibold truncate">
                       {location ? `📍 ${location.area}` : t('hero.setLocation')}
                     </span>
                   </button>
@@ -258,15 +257,15 @@ export default function HomePage() {
               {/* Hero illustration */}
               <div className="hidden md:flex items-center justify-center w-48 flex-shrink-0">
                 <div className="relative">
-                  <div className="w-44 h-44 rounded-3xl bg-mandi-green/10 border border-mandi-green/20 flex items-center justify-center animate-float">
+                  <div className="w-44 h-44 rounded-3xl bg-mandi-green/10 border border-mandi-green/20 flex items-center justify-center animate-float shadow-clay-card">
                     <span className="text-8xl">🛒</span>
                   </div>
                   {/* Floating chips */}
-                  <div className="absolute -top-3 -right-4 bg-mandi-card border border-mandi-border rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-card animate-float" style={{ animationDelay: '1s' }}>
+                  <div className="absolute -top-3 -right-4 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '1s' }}>
                     <Zap size={12} className="text-mandi-green" />
                     <span className="text-xs font-bold text-mandi-text">10 mins</span>
                   </div>
-                  <div className="absolute -bottom-3 -left-4 bg-mandi-card border border-mandi-border rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-card animate-float" style={{ animationDelay: '2s' }}>
+                  <div className="absolute -bottom-3 -left-4 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '2s' }}>
                     <Star size={12} className="text-mandi-amber fill-mandi-amber" />
                     <span className="text-xs font-bold text-mandi-text">4.7 rating</span>
                   </div>

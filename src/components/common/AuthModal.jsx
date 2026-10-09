@@ -9,7 +9,7 @@ import { useToast } from './Toast';
 import { validateIndianPhone, validateEmail, sanitizeText } from '../../utils/validators';
 
 export default function AuthModal() {
-  const { authModal, closeAuthModal, login, register, sendPhoneOtp, confirmPhoneOtp, loginAsDemoRole } = useAuth();
+  const { authModal, closeAuthModal, login, register, sendPhoneOtp, confirmPhoneOtp } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -181,7 +181,7 @@ export default function AuthModal() {
 
   return (
     <div className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
+      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-clay-floating">
         {/* Mobile drag handle indicator */}
         <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-4 sm:hidden" />
 
@@ -194,18 +194,18 @@ export default function AuthModal() {
         </div>
 
         {/* Security badge */}
-        <div className="flex items-center gap-2 bg-mandi-surface border border-mandi-border rounded-xl px-3 py-2 mb-4 text-xs text-mandi-muted">
+        <div className="flex items-center gap-2 bg-mandi-surface border border-mandi-border rounded-2xl px-3.5 py-2 mb-4 text-xs text-mandi-muted shadow-clay-badge">
           <ShieldCheck size={14} className="text-mandi-green flex-shrink-0" />
-          <span>{isFirebaseConfigured ? 'Secured by Firebase Authentication (Zero-Trust RBAC)' : '⚡ Instant Local Demo Mode (No Setup Required)'}</span>
+          <span>100% Secure &amp; Verified Authentication</span>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-mandi-surface rounded-xl p-1 mb-4">
+        <div className="flex bg-mandi-surface rounded-2xl p-1 mb-4 shadow-clay-inset">
           {[{id:'email',label:'Email & Password'},{id:'phone',label:'Phone OTP'}].map(t=>(
             <button 
               key={t.id} 
               onClick={() => { setTab(t.id); setError(''); }} 
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === t.id ? 'bg-mandi-green text-black font-semibold' : 'text-mandi-muted hover:text-mandi-text'}`}
+              className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${tab === t.id ? 'bg-mandi-green text-black clay-btn-green' : 'text-mandi-muted hover:text-mandi-text'}`}
             >
               {t.label}
             </button>

@@ -54,14 +54,14 @@ export default function StoreCard({ store }) {
 
         {/* Badge - top left */}
         {store.badge && (
-          <div className={`absolute top-2.5 left-2.5 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badgeColors[store.badge] || 'bg-mandi-green text-black'}`}>
+          <div className={`absolute top-2.5 left-2.5 text-[11px] font-black px-2.5 py-1 rounded-full shadow-clay-badge border border-white/25 ${badgeColors[store.badge] || 'bg-mandi-green text-black'}`}>
             {store.badge}
           </div>
         )}
 
         {/* Rating - top right: show rating if reviewed, otherwise show New / Unrated */}
         {store.totalRatings > 0 && store.rating > 0 ? (
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm">
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full shadow-clay-badge border border-white/20">
             <Star size={11} className="text-mandi-amber fill-mandi-amber" />
             <span className="text-white text-xs font-bold">{Number(store.rating).toFixed(1)}</span>
             {store.totalRatings && (
@@ -69,7 +69,7 @@ export default function StoreCard({ store }) {
             )}
           </div>
         ) : (
-          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full shadow-sm border border-emerald-500/25">
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-full shadow-clay-badge border border-emerald-500/35">
             <span className="w-1.5 h-1.5 rounded-full bg-mandi-green animate-pulse" />
             <span className="text-mandi-green text-[10px] font-extrabold uppercase tracking-wider">New</span>
             <span className="text-white/80 text-[10px] font-medium">• Unrated</span>
@@ -79,7 +79,7 @@ export default function StoreCard({ store }) {
         {/* Closed overlay */}
         {(store.isOpen === false || store.status === 'closed') && (
           <div className="absolute inset-0 bg-black/65 flex items-center justify-center backdrop-blur-[1px]">
-            <span className="bg-mandi-card/90 text-mandi-muted text-xs sm:text-sm font-semibold px-3 py-1 rounded-full border border-mandi-border">
+            <span className="bg-mandi-card/90 text-mandi-muted text-xs sm:text-sm font-semibold px-3 py-1 rounded-full border border-mandi-border shadow-clay-badge">
               Currently Closed
             </span>
           </div>
@@ -87,7 +87,7 @@ export default function StoreCard({ store }) {
 
         {/* Store name & store picture overlaid at bottom of image */}
         <div className="absolute bottom-0 left-0 right-0 px-3.5 sm:px-4 pb-2.5 sm:pb-3 flex items-center gap-2.5">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-white/20 bg-mandi-surface shadow-md flex-shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border border-white/30 bg-mandi-surface shadow-clay-pill flex-shrink-0">
             <LazyImage
               src={store.image}
               alt={store.name}
@@ -114,7 +114,7 @@ export default function StoreCard({ store }) {
             {previewProducts.map((p) => (
               <span
                 key={p.id}
-                className="inline-flex items-center gap-1 bg-mandi-card border border-mandi-border/80 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] text-mandi-text truncate max-w-[110px]"
+                className="inline-flex items-center gap-1 bg-mandi-card border border-mandi-border/80 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] text-mandi-text truncate max-w-[110px] shadow-clay-badge"
               >
                 <span className="truncate">{p.name}</span>
                 <span className="text-mandi-green font-bold text-[10px]">₹{p.price}</span>
@@ -127,11 +127,11 @@ export default function StoreCard({ store }) {
       {/* Bottom info strip */}
       <div className="px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1 bg-mandi-green/10 border border-mandi-green/20 px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-mandi-green/10 border border-mandi-green/20 px-2 py-1 rounded-full shadow-clay-badge">
             <Clock size={11} className="text-mandi-green" />
             <span className="text-mandi-green text-[11px] sm:text-xs font-semibold">{store.deliveryTime}</span>
           </div>
-          <div className="flex items-center gap-1 bg-mandi-surface px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-mandi-surface px-2 py-1 rounded-full border border-mandi-border/60 shadow-clay-badge">
             <ShoppingBag size={11} className="text-mandi-muted" />
             <span className="text-mandi-muted text-[11px] sm:text-xs">Min ₹{store.minOrder}</span>
           </div>
