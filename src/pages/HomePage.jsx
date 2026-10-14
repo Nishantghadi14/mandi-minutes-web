@@ -255,19 +255,29 @@ export default function HomePage() {
               </div>
 
               {/* Hero illustration */}
-              <div className="hidden md:flex items-center justify-center w-48 flex-shrink-0">
+              <div className="hidden md:flex items-center justify-center w-52 flex-shrink-0">
                 <div className="relative">
-                  <div className="w-44 h-44 rounded-3xl bg-mandi-green/10 border border-mandi-green/20 flex items-center justify-center animate-float shadow-clay-card">
-                    <span className="text-8xl">🛒</span>
+                  <div className="w-48 h-48 rounded-3xl bg-gradient-to-br from-mandi-green/20 via-mandi-green/10 to-transparent border border-mandi-green/30 flex flex-col items-center justify-center shadow-clay-card relative overflow-hidden group">
+                    <div className="w-28 h-28 rounded-full bg-mandi-green/20 absolute -top-8 -right-8 blur-xl pointer-events-none" />
+                    <span className="text-7xl select-none filter drop-shadow-[0_12px_16px_rgba(0,200,81,0.25)] group-hover:scale-110 transition-transform duration-300">🛒</span>
+                    <div className="mt-2 text-center">
+                      <span className="text-[11px] font-black text-mandi-green uppercase tracking-widest bg-mandi-green/15 px-2.5 py-0.5 rounded-full border border-mandi-green/30">
+                        Express Mandi
+                      </span>
+                    </div>
                   </div>
                   {/* Floating chips */}
-                  <div className="absolute -top-3 -right-4 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '1s' }}>
-                    <Zap size={12} className="text-mandi-green" />
-                    <span className="text-xs font-bold text-mandi-text">10 mins</span>
+                  <div className="absolute -top-3.5 -right-5 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '0.8s' }}>
+                    <div className="w-5 h-5 rounded-full bg-mandi-green/20 flex items-center justify-center">
+                      <Zap size={11} className="text-mandi-green" fill="#00C851" />
+                    </div>
+                    <span className="text-xs font-black text-mandi-text">10-15 Mins</span>
                   </div>
-                  <div className="absolute -bottom-3 -left-4 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '2s' }}>
-                    <Star size={12} className="text-mandi-amber fill-mandi-amber" />
-                    <span className="text-xs font-bold text-mandi-text">4.7 rating</span>
+                  <div className="absolute -bottom-3.5 -left-5 bg-mandi-card border border-mandi-border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-clay-floating animate-float" style={{ animationDelay: '2.2s' }}>
+                    <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
+                      <Star size={11} className="text-mandi-amber fill-mandi-amber" />
+                    </div>
+                    <span className="text-xs font-black text-mandi-text">4.9 • Top Rated</span>
                   </div>
                 </div>
               </div>
@@ -289,16 +299,20 @@ export default function HomePage() {
             {t('common.viewAll')} <ChevronRight size={14} />
           </Link>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3.5">
           {categories.map(cat => (
             <Link
               key={cat.id}
               to={`/search?category=${cat.id}`}
-              className="category-card flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-2xl border border-mandi-border transition-all duration-200 group active:scale-95"
-              style={{ background: isDark ? cat.colorDark : (cat.colorLight || cat.colorDark) }}
+              className="category-card flex flex-col items-center gap-2 p-2 sm:p-2.5 rounded-2xl group active:scale-95"
+              style={{ background: isDark ? (cat.colorDark || 'var(--color-surface)') : (cat.colorLight || 'var(--color-surface)') }}
             >
-              <span className="text-2xl sm:text-3xl group-hover:scale-125 transition-transform duration-200 ease-out">{cat.icon}</span>
-              <span className="text-mandi-text text-[11px] sm:text-xs font-semibold text-center leading-tight truncate w-full px-0.5">{t(`categories.${cat.id}`, cat.name)}</span>
+              <div className="category-icon-bubble">
+                <span className="text-2xl sm:text-3xl select-none filter drop-shadow-sm">{cat.icon}</span>
+              </div>
+              <span className="text-mandi-text text-[11px] sm:text-xs font-bold text-center leading-tight truncate w-full px-0.5 group-hover:text-mandi-green transition-colors">
+                {t(`categories.${cat.id}`, cat.name)}
+              </span>
             </Link>
           ))}
         </div>

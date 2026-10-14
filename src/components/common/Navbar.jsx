@@ -255,7 +255,7 @@ export default function Navbar() {
                       if (e.key === 'Escape') setIsSearchFocused(false);
                     }}
                     placeholder="Search milk, veggies, atta, snacks, kirana..."
-                    className="input-field pl-10 sm:pl-11 pr-9 py-2 sm:py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light focus:border-mandi-green transition-all shadow-sm"
+                    className="input-field pl-10 sm:pl-11 pr-9 py-2 sm:py-2.5 text-sm w-full rounded-2xl transition-all"
                     autoComplete="off"
                   />
                   {searchQuery && (
@@ -331,7 +331,7 @@ export default function Navbar() {
                     if (e.key === 'Escape') setIsSearchFocused(false);
                   }}
                   placeholder={t('common.search')}
-                  className="input-field pl-10 pr-9 py-2.5 text-sm w-full rounded-full !border-mandi-border bg-mandi-surface hover:bg-mandi-card hover:border-mandi-border-light focus:border-mandi-green transition-all"
+                  className="input-field pl-10 pr-9 py-2.5 text-sm w-full rounded-2xl transition-all"
                   autoComplete="off"
                 />
                 {searchQuery && (

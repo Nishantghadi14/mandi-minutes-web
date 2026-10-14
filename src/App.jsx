@@ -79,20 +79,6 @@ function AppContent() {
   const isNoBottomNav = !inAppMode && (['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status'));
   const hideNavbar = inAppMode;
 
-  const { user, loading, openAuthModal } = useAuth();
-  const hasPromptedLoginRef = useRef(false);
-
-  // Whenever the user opens the native app or /app and there is no account logged in, ask to login first
-  useEffect(() => {
-    if (inAppMode && (pathname === '/app' || isNativeApp()) && !loading && !user && !hasPromptedLoginRef.current) {
-      hasPromptedLoginRef.current = true;
-      const timer = setTimeout(() => {
-        openAuthModal('login');
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [inAppMode, pathname, loading, user, openAuthModal]);
-
   return (
     <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
       {!hideNavbar && <Navbar />}

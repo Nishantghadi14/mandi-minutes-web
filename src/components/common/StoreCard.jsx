@@ -38,10 +38,10 @@ export default function StoreCard({ store }) {
   return (
     <div
       onClick={handleClick}
-      className="card overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card-hover hover:border-mandi-green/50"
+      className="card overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-card-hover rounded-3xl"
     >
       {/* Cover image — taller, with overlaid info */}
-      <div className="relative h-36 sm:h-44 overflow-hidden">
+      <div className="relative h-36 sm:h-44 overflow-hidden rounded-t-[1.45rem]">
         <LazyImage
           src={store.coverImage}
           alt={store.name}

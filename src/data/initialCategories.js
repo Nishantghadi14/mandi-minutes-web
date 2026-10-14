@@ -1,14 +1,14 @@
-// Each category has dark & light color variants so the UI adapts to the active theme.
+// Each category has curated dark & light color variants with rich gradients for sculpted clay pods.
 export const initialCategories = [
-  { id: 'cat-rice',   name: 'Rice & Basmati',       icon: '🍚', slug: 'rice-basmati',       colorDark: '#2a221a', colorLight: '#FFF3E0' },
-  { id: 'cat-daal',   name: 'Dals & Pulses',         icon: '🥣', slug: 'dals-pulses',         colorDark: '#1a2a1a', colorLight: '#E8F5E9' },
-  { id: 'cat-grains', name: 'Grains & Essentials',   icon: '🥜', slug: 'grains-essentials',   colorDark: '#2a1a2a', colorLight: '#F3E5F5' },
-  { id: 'cat-3',      name: 'Groceries & Staples',   icon: '🌾', slug: 'groceries-staples',   colorDark: '#2a1a1a', colorLight: '#FBE9E7' },
-  { id: 'cat-1',      name: 'Vegetables & Fruits',   icon: '🥦', slug: 'vegetables-fruits',   colorDark: '#1a3a1a', colorLight: '#DCEDC8' },
-  { id: 'cat-2',      name: 'Dairy & Eggs',          icon: '🥛', slug: 'dairy-eggs',          colorDark: '#1a2a3a', colorLight: '#E3F2FD' },
-  { id: 'cat-4',      name: 'Snacks & Beverages',    icon: '🍟', slug: 'snacks-beverages',    colorDark: '#2a2a1a', colorLight: '#FFFDE7' },
-  { id: 'cat-5',      name: 'Personal Care',         icon: '🧴', slug: 'personal-care',       colorDark: '#1a1a2a', colorLight: '#EDE7F6' },
-  { id: 'cat-6',      name: 'Household',             icon: '🧹', slug: 'household',           colorDark: '#1a2a2a', colorLight: '#E0F7FA' },
-  { id: 'cat-7',      name: 'Bakery & Sweets',       icon: '🍰', slug: 'bakery-sweets',       colorDark: '#2a1a2a', colorLight: '#FCE4EC' },
-  { id: 'cat-8',      name: 'Meat & Seafood',        icon: '🐟', slug: 'meat-seafood',        colorDark: '#3a1a1a', colorLight: '#FFEBEE' },
+  { id: 'cat-rice',   name: 'Rice & Basmati',       icon: '🍚', slug: 'rice-basmati',       colorDark: 'linear-gradient(145deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.05))', colorLight: 'linear-gradient(145deg, #FFF8ED, #FFEDD5)', accent: '#F59E0B' },
+  { id: 'cat-daal',   name: 'Dals & Pulses',         icon: '🥣', slug: 'dals-pulses',         colorDark: 'linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.05))', colorLight: 'linear-gradient(145deg, #F0FDF4, #DCFCE7)', accent: '#10B981' },
+  { id: 'cat-grains', name: 'Grains & Essentials',   icon: '🥜', slug: 'grains-essentials',   colorDark: 'linear-gradient(145deg, rgba(168, 85, 247, 0.16), rgba(168, 85, 247, 0.05))', colorLight: 'linear-gradient(145deg, #FAF5FF, #F3E8FF)', accent: '#A855F7' },
+  { id: 'cat-3',      name: 'Groceries & Staples',   icon: '🌾', slug: 'groceries-staples',   colorDark: 'linear-gradient(145deg, rgba(249, 115, 22, 0.16), rgba(249, 115, 22, 0.05))', colorLight: 'linear-gradient(145deg, #FFF7ED, #FFEDD5)', accent: '#F97316' },
+  { id: 'cat-1',      name: 'Vegetables & Fruits',   icon: '🥦', slug: 'vegetables-fruits',   colorDark: 'linear-gradient(145deg, rgba(34, 197, 94, 0.16), rgba(34, 197, 94, 0.05))', colorLight: 'linear-gradient(145deg, #F0FDF4, #DCFCE7)', accent: '#22C55E' },
+  { id: 'cat-2',      name: 'Dairy & Eggs',          icon: '🥛', slug: 'dairy-eggs',          colorDark: 'linear-gradient(145deg, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0.05))', colorLight: 'linear-gradient(145deg, #EFF6FF, #DBEAFE)', accent: '#3B82F6' },
+  { id: 'cat-4',      name: 'Snacks & Beverages',    icon: '🍟', slug: 'snacks-beverages',    colorDark: 'linear-gradient(145deg, rgba(234, 179, 8, 0.16), rgba(234, 179, 8, 0.05))', colorLight: 'linear-gradient(145deg, #FEFCE8, #FEF08A)', accent: '#EAB308' },
+  { id: 'cat-5',      name: 'Personal Care',         icon: '🧴', slug: 'personal-care',       colorDark: 'linear-gradient(145deg, rgba(236, 72, 153, 0.16), rgba(236, 72, 153, 0.05))', colorLight: 'linear-gradient(145deg, #FDF2F8, #FCE7F3)', accent: '#EC4899' },
+  { id: 'cat-6',      name: 'Household',             icon: '🧹', slug: 'household',           colorDark: 'linear-gradient(145deg, rgba(6, 182, 212, 0.16), rgba(6, 182, 212, 0.05))', colorLight: 'linear-gradient(145deg, #ECFEFF, #CFFAFE)', accent: '#06B6D4' },
+  { id: 'cat-7',      name: 'Bakery & Sweets',       icon: '🍰', slug: 'bakery-sweets',       colorDark: 'linear-gradient(145deg, rgba(244, 63, 94, 0.16), rgba(244, 63, 94, 0.05))', colorLight: 'linear-gradient(145deg, #FFF1F2, #FFE4E6)', accent: '#F43F5E' },
+  { id: 'cat-8',      name: 'Meat & Seafood',        icon: '🐟', slug: 'meat-seafood',        colorDark: 'linear-gradient(145deg, rgba(99, 102, 241, 0.16), rgba(99, 102, 241, 0.05))', colorLight: 'linear-gradient(145deg, #EEF2FF, #E0E7FF)', accent: '#6366F1' },
 ];

@@ -128,7 +128,7 @@ export default function SearchPage() {
           </button>
 
           {/* Search Input Box Capsule (Single border, zero inner borders) */}
-          <div className="flex-1 relative flex items-center bg-mandi-surface border border-mandi-border focus-within:border-mandi-green focus-within:ring-2 focus-within:ring-mandi-green/20 focus-within:shadow-[0_4px_16px_rgba(0,200,81,0.12)] rounded-2xl h-12 px-3.5 transition-all">
+          <div className="flex-1 relative flex items-center bg-mandi-surface border border-mandi-border focus-within:border-mandi-green focus-within:ring-2 focus-within:ring-mandi-green/20 focus-within:shadow-[0_4px_16px_rgba(0,200,81,0.12)] rounded-2xl h-12 px-3.5 transition-all shadow-clay-inset">
             <Search size={18} className="text-mandi-green mr-2.5 flex-shrink-0" />
             <input
               ref={inputRef}
