@@ -81,7 +81,7 @@ function MapViewport({ position, useLivePosition }) {
   return null;
 }
 
-function LeafletMapInner({ storeLatLng, customerLatLng, currentRiderLatLng, routePolyline, storePos, targetLoc, orderStatus, progress, isLiveGps }) {
+function LeafletMapInner({ storeLatLng, customerLatLng, currentRiderLatLng, routePolyline, storePos, targetLoc, _orderStatus, progress, isLiveGps }) {
   const storeIcon = useMemo(() => {
     try {
       return L.divIcon({

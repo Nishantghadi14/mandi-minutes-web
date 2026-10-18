@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 import { useData } from '../context/DataContext';
 import ProductCard from '../components/common/ProductCard';
 import { searchProducts, useDebounce } from '../utils/searchProducts';
 import { 
-  Search, ArrowLeft, X, Flame, Sparkles, Package, ChevronRight, 
-  Tag, Clock, Truck, TrendingUp 
+  Search, ArrowLeft, X, Flame, Sparkles, Truck 
 } from 'lucide-react';
+
 
 const TRENDING_KEYWORDS = [
   { term: 'Kolam Rice', emoji: '🍚', tag: 'Popular' },
@@ -35,7 +34,6 @@ const SEARCH_CATEGORIES = [
 ];
 
 export default function SearchPage() {
-  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, stores } = useData();
   const navigate = useNavigate();

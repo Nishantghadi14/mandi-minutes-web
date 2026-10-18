@@ -27,43 +27,72 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if own(uid) || admin();
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if admin() || own(uid);
+      // Regular users can only register as customers; role and storeId cannot be initialized by regular users
+      allow create: if signedIn() && request.auth.uid == uid
+        && (!('role' in request.resource.data) || request.resource.data.role == 'customer')
+        && (!('storeId' in request.resource.data) || request.resource.data.storeId == null);
+      // Prevent privilege escalation: users cannot update role, storeId, or admin flags
+      allow update: if admin() || (
+        own(uid) 
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'storeId', 'emailVerified'])
+      );
       allow delete: if admin();
     }
 
     match /stores/{storeId} {
       allow read: if true;
       allow create, delete: if admin();
-      allow update: if admin() || vendorFor(storeId);
-      match /reviews/{reviewId} { allow read: if true; allow write: if signedIn(); }
+      // Vendors can update operational details, but cannot alter approval status, rating, or totalRatings
+      allow update: if admin() || (
+        vendorFor(storeId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'rating', 'totalRatings'])
+      );
+      match /reviews/{reviewId} { 
+        allow read: if true; 
+        allow write: if admin(); // Submitted via submitStoreReview Cloud Function
+      }
     }
 
     match /products/{productId} {
       allow read: if true;
-      allow create, update, delete: if admin() || vendorFor(request.resource.data.storeId);
+      allow create: if admin() || vendorFor(request.resource.data.storeId);
+      allow update: if admin() || (vendorFor(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId);
+      allow delete: if admin() || vendorFor(resource.data.storeId);
     }
 
     match /orders/{orderId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
-      // Allow updates by admin, vendor for the store, rider for delivery,
-      // or customer strictly cancelling their own order if still in 'placed' state
+      // Prevent IDOR: orders only readable by their customer, assigned vendor, assigned rider, or admin
+      allow read: if signedIn() && (
+        admin() || 
+        own(resource.data.customerId) || 
+        vendorFor(resource.data.storeId) || 
+        riderFor(resource.data)
+      );
+      // Direct client creation disabled to prevent price tampering (created via createOrder Cloud Function)
+      allow create: if admin();
       allow update: if signedIn() && (
         admin() || 
         vendorFor(resource.data.storeId) || 
         riderFor(resource.data) ||
+        // Customer strictly cancelling their own order if still in 'placed' state
         (own(resource.data.customerId) && 
          resource.data.status == 'placed' && 
          request.resource.data.status == 'cancelled' &&
          request.resource.data.total == resource.data.total &&
-         request.resource.data.paymentStatus == resource.data.paymentStatus)
+         request.resource.data.paymentStatus == resource.data.paymentStatus) ||
+        // Customer submitting direct UPI verification reference (UTR)
+        (own(resource.data.customerId) &&
+         resource.data.status == 'placed' &&
+         resource.data.paymentStatus == 'pending' &&
+         request.resource.data.status == 'placed' &&
+         request.resource.data.paymentStatus == 'upi_verification_pending' &&
+         request.resource.data.total == resource.data.total)
       );
       allow delete: if admin();
     }
 
     match /tickets/{ticketId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (own(resource.data.customerId) || admin());
       allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
       allow update: if signedIn() && (own(resource.data.customerId) || admin());
       allow delete: if admin();
@@ -72,5 +101,7 @@ service cloud.firestore {
     match /banners/{id} { allow read: if true; allow write: if admin(); }
     match /categories/{id} { allow read: if true; allow write: if admin(); }
     match /paymentEvents/{id} { allow read, write: if admin(); }
+    match /vendorApplications/{id} { allow read, write: if admin(); }
   }
 }
+

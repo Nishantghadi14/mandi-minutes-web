@@ -13,6 +13,15 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('leaflet')) {
+              return 'vendor-maps';
+            }
+            if (id.includes('qrcode')) {
+              return 'vendor-qrcode';
+            }
             if (id.includes('recharts') || id.includes('d3')) {
               return 'vendor-analytics';
             }

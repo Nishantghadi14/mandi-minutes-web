@@ -9,7 +9,7 @@ import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanit
 
 export default function VendorOnboarding() {
   const { submitVendorApplication } = useData();
-  const { user, openAuthModal, registerVendor } = useAuth();
+  const { registerVendor } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 

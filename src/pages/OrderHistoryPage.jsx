@@ -96,7 +96,7 @@ function ReviewModal({ order, onClose, onSubmit }) {
 
 export default function OrderHistoryPage() {
   const { user, openAuthModal } = useAuth();
-  const { getOrdersByCustomer, products, orders = [], loadingStates, addStoreReview } = useData();
+  const { getOrdersByCustomer, orders = [], addStoreReview } = useData();
   const { addItem, addToast } = useCart();
   const navigate = useNavigate();
   const [reviewingOrder, setReviewingOrder] = useState(null);
@@ -260,7 +260,6 @@ export default function OrderHistoryPage() {
           /* List of orders */
           <div className="space-y-3.5">
             {userOrders.map((order) => {
-              const itemsCount = (order.items || []).reduce((s, i) => s + (i.quantity || 1), 0);
               const formattedDate = order.placedAt 
                 ? new Date(order.placedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                 : 'Recent Order';

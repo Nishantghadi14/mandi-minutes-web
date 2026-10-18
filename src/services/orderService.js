@@ -1,5 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
-import { db, isFirebaseConfigured, auth } from '../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions, isFirebaseConfigured, auth } from '../config/firebase';
 import { validateAddress } from '../utils/validators';
 
 const SERVER_COUPONS = {
@@ -65,36 +65,61 @@ export async function createSecureOrder({
     throw new Error(firstErr || 'Invalid delivery address');
   }
 
-  // 1. Verify User Authentication
+  const isCod = paymentMethod === 'Cash on Delivery';
+
+  // 1. Production Mode: Transactional Zero-Trust Order Placement via Cloud Functions
+  if (isFirebaseConfigured && functions && auth?.currentUser) {
+    const customerId = auth.currentUser.uid;
+    const idempotencyKey = generateIdempotencyKey(customerId, storeId, items);
+
+    try {
+      const createOrderFn = httpsCallable(functions, 'createOrder');
+      const result = await createOrderFn({
+        items: items.map(i => ({
+          productId: i.productId || i.id,
+          quantity: i.quantity || 1,
+        })),
+        storeId,
+        address: addrValidation.sanitized,
+        deliveryType,
+        scheduledSlot,
+        couponCode: couponCode || null,
+        paymentMethod: isCod ? 'Cash on Delivery' : 'UPI / Online Gateway',
+        idempotencyKey,
+      });
+
+      const backendOrder = result?.data?.order;
+      if (backendOrder) {
+        try {
+          const existing = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+          localStorage.setItem('mandi_synced_orders', JSON.stringify([backendOrder, ...existing.filter(o => o.id !== backendOrder.id)].slice(0, 100)));
+        } catch {}
+        return backendOrder;
+      }
+    } catch (fnErr) {
+      console.error('Secure Cloud Function createOrder error:', fnErr);
+      throw new Error(fnErr.message || 'Could not place order. Please try again.');
+    }
+  }
+
+  // 2. Offline / Local Development Fallback Mode
   let customerId = 'guest';
   let customerName = 'Customer';
   let customerEmail = '';
   let customerPhone = '';
 
-  if (isFirebaseConfigured) {
-    const currentUser = auth?.currentUser;
-    if (!currentUser) {
-      throw new Error('Please log in to place your order.');
+  try {
+    const localUser = JSON.parse(localStorage.getItem('mandi_local_user') || 'null');
+    if (localUser) {
+      customerId = localUser.id || localUser.uid || 'local-guest';
+      customerName = localUser.name || 'Customer';
+      customerEmail = localUser.email || '';
+      customerPhone = localUser.phone || '';
     }
-    customerId = currentUser.uid;
-    customerName = currentUser.displayName || 'Customer';
-    customerEmail = currentUser.email || '';
-    customerPhone = currentUser.phoneNumber || '';
-  } else {
-    try {
-      const localUser = JSON.parse(localStorage.getItem('mandi_local_user') || 'null');
-      if (localUser) {
-        customerId = localUser.id || localUser.uid || 'local-guest';
-        customerName = localUser.name || 'Customer';
-        customerEmail = localUser.email || '';
-        customerPhone = localUser.phone || '';
-      }
-    } catch {
-      // ignore
-    }
+  } catch {
+    // ignore
   }
 
-  // 2. Calculate prices, discounts & charges
   let computedSubtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0);
   if (computedSubtotal < MIN_ORDER_AMOUNT) {
     throw new Error(`Minimum order amount is ₹${MIN_ORDER_AMOUNT}.`);
@@ -115,7 +140,6 @@ export async function createSecureOrder({
 
   const deliveryCharge = computedSubtotal > 199 ? 0 : 20;
   const computedTotal = Math.max(0, computedSubtotal - computedDiscount + deliveryCharge);
-  const isCod = paymentMethod === 'Cash on Delivery';
 
   if (isCod && computedTotal > MAX_COD_AMOUNT) {
     throw new Error(`Cash on Delivery is limited to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please choose UPI / Online Gateway.`);
@@ -155,19 +179,10 @@ export async function createSecureOrder({
     ],
     deliveryType,
     scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null,
+    deliveryOtp: Math.floor(1000 + Math.random() * 9000).toString(),
     placedAt,
   };
 
-  // 3. Save directly to Firestore if configured
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, 'orders', orderId), newOrder);
-    } catch (dbErr) {
-      console.warn('Firestore direct write notice:', dbErr.message);
-    }
-  }
-
-  // 4. Persist to local cache and update in-memory state immediately
   try {
     const existing = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
     localStorage.setItem('mandi_synced_orders', JSON.stringify([newOrder, ...existing.filter(o => o.id !== orderId)].slice(0, 100)));
@@ -175,3 +190,4 @@ export async function createSecureOrder({
 
   return newOrder;
 }
+

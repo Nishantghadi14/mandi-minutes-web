@@ -58,7 +58,7 @@ const isVendorEmailCheck = (email) => {
   if (!email) return false;
   const e = email.toLowerCase().trim();
   const vendorEmails = ['vendor@mandiminutes.com', 'vendor@mandi.in', 'mahalaxmi.kirana@mandiminutes.com'];
-  if (vendorEmails.includes(e) || e.startsWith('vendor')) return true;
+  if (vendorEmails.includes(e)) return true;
 
   try {
     const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
@@ -133,8 +133,7 @@ export const useAuthStore = create((set, get) => ({
         } else {
           // Initialize user profile document in Firestore for existing or new Auth user
           const genReferral = `MANDI-${firebaseUser.uid.slice(0, 4).toUpperCase()}-${firebaseUser.uid.slice(-4).toUpperCase()}`;
-          const initialRole = isAdminEmail(firebaseUser.email) ? 'admin' : isVendorEmailCheck(firebaseUser.email) ? 'vendor' : 'customer';
-          const initialStoreId = initialRole === 'vendor' ? getVendorStoreIdCheck(firebaseUser.email) : null;
+          const initialRole = isAdminEmail(firebaseUser.email) ? 'admin' : 'customer';
           userData = {
             uid: firebaseUser.uid,
             id: firebaseUser.uid,
@@ -142,7 +141,7 @@ export const useAuthStore = create((set, get) => ({
             email: firebaseUser.email || '',
             phone: firebaseUser.phoneNumber || '',
             role: initialRole,
-            storeId: initialStoreId,
+            storeId: null,
             addresses: [],
             wishlist: [],
             referralCode: genReferral,
@@ -163,36 +162,11 @@ export const useAuthStore = create((set, get) => ({
     let resolvedRole = userData?.role;
     if (isAdminEmail(firebaseUser.email)) {
       resolvedRole = 'admin';
-    } else if (isVendorEmailCheck(firebaseUser.email)) {
-      resolvedRole = 'vendor';
     } else {
       resolvedRole = userData?.role || 'customer';
     }
 
-    let resolvedStoreId = userData?.storeId;
-    if (resolvedRole === 'vendor' && !resolvedStoreId) {
-      resolvedStoreId = getVendorStoreIdCheck(firebaseUser.email);
-    }
-
-    // Persist admin or vendor role updates to Firestore if matched
-    if (resolvedRole === 'admin' && userData?.role !== 'admin' && db) {
-      try {
-        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'admin' }, { merge: true });
-        if (userData) userData.role = 'admin';
-      } catch (e) {
-        console.warn('Could not persist admin role to Firestore:', e?.message);
-      }
-    } else if (resolvedRole === 'vendor' && (userData?.role !== 'vendor' || userData?.storeId !== resolvedStoreId) && db) {
-      try {
-        await setDoc(doc(db, 'users', firebaseUser.uid), { role: 'vendor', storeId: resolvedStoreId }, { merge: true });
-        if (userData) {
-          userData.role = 'vendor';
-          userData.storeId = resolvedStoreId;
-        }
-      } catch (e) {
-        console.warn('Could not persist vendor role to Firestore:', e?.message);
-      }
-    }
+    const resolvedStoreId = userData?.storeId || null;
 
     const profileUser = {
       id: firebaseUser.uid,
@@ -515,8 +489,8 @@ export const useAuthStore = create((set, get) => ({
       const cleanEmail = (email || '').trim().toLowerCase();
       const stores = useDataStore.getState()?.stores || [];
       const matchedStore = stores.find(s => s.ownerEmail?.toLowerCase() === cleanEmail);
-      const isVendor = cleanEmail.includes('vendor') || Boolean(matchedStore);
-      const targetStoreId = matchedStore ? matchedStore.id : isVendor ? 'store-mahalaxmi-1' : null;
+      const isVendor = isVendorEmailCheck(cleanEmail) || Boolean(matchedStore);
+      const targetStoreId = matchedStore ? matchedStore.id : (isVendor ? 'store-mahalaxmi-1' : null);
 
       const newUser = {
         id: uid,
@@ -746,5 +720,43 @@ export const useAuthStore = create((set, get) => ({
         throw new Error('Could not save your profile changes. Please try again.');
       }
     }
+  },
+
+  // Activate Delivery Partner profile for an authenticated user
+  becomeDeliveryPartner: async ({ vehicle = 'Hero Splendor Plus', hub = 'Virar West Hub (Zone 1)' } = {}) => {
+    const currentUser = get().user;
+    if (!currentUser?.uid && !currentUser?.id) return null;
+
+    const updates = {
+      role: 'rider',
+      vehicle,
+      hub,
+      rating: '4.95',
+      trips: 0,
+    };
+
+    const updated = { ...currentUser, ...updates };
+
+    if (db && isFirebaseConfigured && currentUser.uid) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userDocRef, updates);
+      } catch (err) {
+        console.warn('Could not sync rider role to Firestore:', err);
+      }
+    }
+
+    try {
+      localStorage.setItem('mandi_local_user', JSON.stringify(updated));
+      const registeredUsers = JSON.parse(localStorage.getItem('mandi_registered_users') || '[]');
+      const idx = registeredUsers.findIndex(u => u.email?.toLowerCase() === updated.email?.toLowerCase());
+      if (idx >= 0) {
+        registeredUsers[idx] = { ...registeredUsers[idx], ...updates };
+        localStorage.setItem('mandi_registered_users', JSON.stringify(registeredUsers));
+      }
+    } catch {}
+
+    set({ user: updated });
+    return updated;
   },
 }));

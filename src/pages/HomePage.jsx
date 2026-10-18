@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from '../context/LocationContext';
@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 import StoreCard from '../components/common/StoreCard';
 import ProductCard from '../components/common/ProductCard';
-import { MapPin, Zap, ChevronRight, Star, Package, ArrowRight, Store, RefreshCw, WifiOff, Clock, ShieldCheck, Shuffle, Sparkles } from 'lucide-react';
+import { MapPin, Zap, ChevronRight, Star, ArrowRight, Store, RefreshCw, WifiOff, Clock, ShieldCheck, Shuffle, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function PromoBanner({ banners }) {
@@ -46,39 +46,6 @@ function PromoBanner({ banners }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({ stat, delay = 0 }) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  const Icon = stat.icon;
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
-      { threshold: 0.2 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className="stat-card"
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(20px)',
-        transition: `opacity 0.5s ease ${delay}ms, transform 0.5s ease ${delay}ms, box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease`,
-      }}
-    >
-      <div className="icon-circle">
-        <Icon size={20} className="text-mandi-green drop-shadow-green" />
-      </div>
-      <div className="text-2xl font-black text-gradient-green">{stat.value}</div>
-      <div className="text-mandi-muted text-xs font-semibold">{stat.label}</div>
     </div>
   );
 }

@@ -36,9 +36,9 @@ if (isFirebaseConfigured) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
     db = getFirestore(app);
     auth = getAuth(app);
-  setPersistence(auth, browserLocalPersistence)
-  .then(() => {console.log('✅ Firebase Auth persistence: LOCAL');})
-  .catch((err) => {console.error('❌ Failed to enable Firebase Auth persistence:', err);});
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn('Firebase Auth persistence notice:', err?.message);
+    });
     functions = getFunctions(app);
 
     // Initialize Firebase Cloud Messaging (browser only)
@@ -58,8 +58,6 @@ if (isFirebaseConfigured) {
             });
           }
         });
-
-        console.log('🔥 Firebase + FCM initialized successfully for Virar Region');
       } catch (msgErr) {
         console.warn('Firebase Messaging init failed (non-fatal):', msgErr);
       }
@@ -96,7 +94,6 @@ export async function requestNotificationPermission() {
       vapidKey,
       serviceWorkerRegistration: await navigator.serviceWorker.ready,
     });
-    console.log('FCM registration token:', token);
     return token;
   } catch (err) {
     console.warn('Could not retrieve FCM token:', err);

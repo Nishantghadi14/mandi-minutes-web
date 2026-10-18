@@ -10,6 +10,10 @@
       ],
       "rewrites": [
         {
+          "source": "/api/health",
+          "function": "health"
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }
@@ -24,6 +28,10 @@
         "**/node_modules/**"
       ],
       "rewrites": [
+        {
+          "source": "/api/health",
+          "function": "health"
+        },
         {
           "source": "**",
           "destination": "/index.html"

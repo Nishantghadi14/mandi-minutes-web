@@ -73,7 +73,7 @@ export default function VendorDashboard() {
     return found || (user.role === 'vendor' ? null : stores[0]);
   }, [stores, user]);
 
-  const products = useMemo(() => store?.id ? getProductsByStore(store.id, true) : [], [store?.id, getProductsByStore, allProducts]);
+  const products = useMemo(() => store?.id ? allProducts.filter(p => p.storeId === store.id) : [], [store?.id, allProducts]);
   const storeOrders = useMemo(() => store?.id ? getOrdersByStore(store.id) : [], [store?.id, getOrdersByStore]);
 
   const [activeTab, setActiveTab] = useState('orders');

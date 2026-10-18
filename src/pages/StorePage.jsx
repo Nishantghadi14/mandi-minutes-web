@@ -13,7 +13,7 @@ export default function StorePage() {
   const navigate = useNavigate();
 
   const store = stores.find(s => s.id === storeId);
-  const allProducts = useMemo(() => getProductsByStore(storeId), [storeId, products, getProductsByStore]);
+  const allProducts = useMemo(() => products.filter(p => p.storeId === storeId), [storeId, products]);
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');

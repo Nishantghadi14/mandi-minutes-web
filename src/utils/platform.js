@@ -10,16 +10,44 @@ export const isNativeApp = () => {
 };
 
 /**
+ * Returns true if the build or runtime target is the dedicated Mandi Rider APK.
+ */
+export const isRiderApp = () => {
+  if (typeof window === 'undefined') return false;
+  // 1. Vite environment flag (build-time target)
+  if (import.meta.env.VITE_APP_TARGET === 'rider') return true;
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('target') === 'rider' || params.get('app') === 'rider') {
+      sessionStorage.setItem('mandi_app_target', 'rider');
+      return true;
+    }
+    if (params.get('target') === 'consumer' || params.get('app') === 'consumer') {
+      sessionStorage.removeItem('mandi_app_target');
+      return false;
+    }
+    if (sessionStorage.getItem('mandi_app_target') === 'rider') {
+      return true;
+    }
+  } catch {}
+
+  return false;
+};
+
+/**
  * Returns true if the user is in App View.
  * Active if:
- * 1. Inside Capacitor native Android APK runtime
- * 2. URL query param has ?mode=app or ?app=true
- * 3. Currently on a route starting with /app
- * 4. Active tab session has app mode enabled and NOT currently visiting root '/'
+ * 1. Dedicated Mandi Rider APK runtime or target
+ * 2. Inside Capacitor native Android APK runtime
+ * 3. URL query param has ?mode=app or ?app=true
+ * 4. Currently on a route starting with /app
+ * 5. Active tab session has app mode enabled and NOT currently visiting root '/'
  * Explicitly disabled if URL is '/' or query param has ?mode=web / ?mode=desktop
  */
 export const isInAppMode = (currentPath) => {
   if (typeof window === 'undefined') return false;
+  if (isRiderApp()) return true;
 
   // 1. Capacitor native Android APK runtime is always in app mode
   if (Capacitor.isNativePlatform()) return true;
@@ -67,9 +95,10 @@ export const isInAppMode = (currentPath) => {
 };
 
 /**
- * Returns the correct home path: '/app' for app mode, '/' for desktop website.
+ * Returns the correct home path: '/rider' for rider app, '/app' for app mode, '/' for desktop website.
  */
 export const getAppHomePath = () => {
+  if (isRiderApp()) return '/rider';
   return isInAppMode() ? '/app' : '/';
 };
 

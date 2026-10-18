@@ -25,7 +25,7 @@ import FloatingCartBar from './components/common/FloatingCartBar';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { isNativeApp, isInAppMode } from './utils/platform';
+import { isNativeApp, isInAppMode, isRiderApp } from './utils/platform';
 
 // Lazy load pages for chunk splitting & mobile optimization
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -43,6 +43,7 @@ const RiderPortal = lazy(() => import('./pages/RiderPortal'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 
@@ -75,41 +76,53 @@ function PageLoader() {
 
 function AppContent() {
   const { pathname } = useLocation();
-  const inAppMode = isInAppMode(pathname);
-  const isNoBottomNav = !inAppMode && (['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status'));
-  const hideNavbar = inAppMode;
+  const isRider = isRiderApp() || pathname.startsWith('/rider');
+  const inAppMode = isInAppMode(pathname) || isRider;
+  const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status')));
+  const hideNavbar = isRider || inAppMode;
 
   return (
     <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
-      {!hideNavbar && <Navbar />}
+      {!isRider && !hideNavbar && <Navbar />}
       <main className={`flex-1 ${inAppMode ? 'pb-24' : (isNoBottomNav ? 'pb-safe' : 'pb-24 md:pb-0')}`}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={isNativeApp() ? <MobileAppHome /> : <HomePage />} />
-            <Route path="/app" element={<MobileAppHome />} />
-            <Route path="/store/:storeId" element={<StorePage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-            <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
-            <Route path="/orders" element={<OrderHistoryPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
-            <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
-            <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
+            {isRider ? (
+              <>
+                <Route path="/" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+                <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+                <Route path="*" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+              </>
+            ) : (
+              <>
+                <Route path="/" element={isNativeApp() ? <MobileAppHome /> : <HomePage />} />
+                <Route path="/app" element={<MobileAppHome />} />
+                <Route path="/store/:storeId" element={<StorePage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
+                <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
+                <Route path="/orders" element={<OrderHistoryPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
+                <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+                <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
+                <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </>
+            )}
           </Routes>
         </Suspense>
       </main>
-      {!inAppMode && <Footer />}
-      <FloatingCartBar />
-      <BottomNav inAppMode={inAppMode} />
-      <CartDrawer />
-      <LocationModal />
+      {!isRider && !inAppMode && <Footer />}
+      {!isRider && <FloatingCartBar />}
+      {!isRider && <BottomNav inAppMode={inAppMode} />}
+      {!isRider && <CartDrawer />}
+      {!isRider && <LocationModal />}
       <AuthModal />
     </div>
   );

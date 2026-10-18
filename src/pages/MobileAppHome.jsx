@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 import { useLocation } from '../context/LocationContext';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +9,7 @@ import { useToast } from '../components/common/Toast';
 import ProductCard from '../components/common/ProductCard';
 import { 
   MapPin, Search, ChevronDown, Clock, ShieldCheck, Sparkles, 
-  ArrowRight, Truck, Zap, User, Flame, CheckCircle2,
+  Truck, User, Flame, CheckCircle2,
   ChevronRight, BadgePercent, Tag, ArrowUpDown,
   Copy, Check
 } from 'lucide-react';
@@ -97,12 +96,11 @@ const QUICK_CATEGORIES = [
 ];
 
 export default function MobileAppHome() {
-  const { t } = useTranslation();
   const { isDark } = useTheme();
   const { location, setLocationModal } = useLocation();
   const { user, openAuthModal } = useAuth();
   const { products: allProducts } = useData();
-  const { itemCount, total } = useCart();
+  const { total } = useCart();
   const { addToast } = useToast();
   const navigate = useNavigate();
 

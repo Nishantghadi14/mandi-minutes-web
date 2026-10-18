@@ -92,6 +92,59 @@ export default function OrderStatusPage() {
         </div>
       </div>
 
+      {/* Doorstep Delivery Verification PIN (Anti-Fraud Protection) */}
+      {order.status !== 'delivered' && order.status !== 'cancelled' && (
+        <div className="card p-4 mb-6 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-mandi-card border border-emerald-500/40 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base border border-emerald-500/40">
+                🔐
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-mandi-text">Doorstep Delivery PIN</h3>
+                <p className="text-[11px] text-mandi-muted">Share with rider only after receiving your grocery bag</p>
+              </div>
+            </div>
+            <span className="badge-green text-[10px] font-bold">Secure Delivery</span>
+          </div>
+
+          {/* 4-Digit PIN Display */}
+          {(() => {
+            const displayOtp = String(
+              order.deliveryOtp || 
+              (order.id ? Math.abs(String(order.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 9000) + 1000 : '4821')
+            );
+            return (
+              <>
+                <div className="flex items-center justify-center gap-2.5 py-1">
+                  {displayOtp.split('').map((digit, i) => (
+                    <div 
+                      key={i} 
+                      className="w-12 h-14 rounded-2xl bg-mandi-surface/90 border-2 border-emerald-500/50 flex items-center justify-center text-2xl font-black text-mandi-green shadow-inner font-mono tracking-wider"
+                    >
+                      {digit}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-mandi-subtle pt-1 border-t border-mandi-border/60">
+                  <span>🛡️ Prevents wrong-address and premature delivery</span>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard?.writeText(displayOtp);
+                      addToast('Delivery PIN copied to clipboard!', 'info');
+                    }}
+                    className="text-mandi-green font-bold hover:underline"
+                  >
+                    Copy PIN
+                  </button>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
       {/* WhatsApp Kirana Direct Action Card */}
       <div className="card p-4 mb-6 bg-gradient-to-r from-emerald-500/10 to-mandi-card border-mandi-green border-opacity-40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">

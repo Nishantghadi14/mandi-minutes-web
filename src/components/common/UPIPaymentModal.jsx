@@ -78,24 +78,20 @@ export default function UPIPaymentModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const markOrderPaid = useCallback(async (referenceId) => {
+  const submitUpiPayment = useCallback(async (referenceId) => {
     if (db && isFirebaseConfigured && orderId) {
       try {
         await updateDoc(doc(db, 'orders', orderId), {
-          paymentStatus: 'paid',
-          status: 'placed',
+          paymentStatus: 'upi_verification_pending',
           paymentDetails: {
             gateway: 'upi_direct',
             upiId: effectiveUpiId,
             utr: referenceId || null,
-            paidAt: new Date().toISOString(),
+            submittedAt: new Date().toISOString(),
           },
-          statusHistory: [
-            { status: 'placed', time: new Date().toISOString(), note: `Direct UPI payment confirmed (${referenceId ? `UTR: ${referenceId}` : 'Instant transfer'})` }
-          ]
         });
       } catch (err) {
-        console.warn('Firestore payment update notice:', err.message);
+        console.warn('Firestore payment status notice:', err.message);
       }
     }
     setStatus('success');
@@ -103,8 +99,8 @@ export default function UPIPaymentModal({
 
   const handleConfirmPayment = async () => {
     setStatus('verifying');
-    await markOrderPaid(utrNumber.trim());
-    addToast('Payment confirmed! Your order is being prepared 🎉', 'success');
+    await submitUpiPayment(utrNumber.trim());
+    addToast('Payment reference submitted! Order is being processed 🎉', 'success');
   };
 
   if (!isOpen) return null;

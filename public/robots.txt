@@ -4,5 +4,10 @@ Disallow: /admin
 Disallow: /vendor
 Disallow: /rider
 Disallow: /checkout
+Disallow: /profile
+Disallow: /orders
+Disallow: /order-status/
+Disallow: /api/
 
 Sitemap: https://mandiminutes.com/sitemap.xml
+

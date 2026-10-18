@@ -29,6 +29,7 @@ export const useAuth = () => {
 
   const registerVendor = useAuthStore(state => state.registerVendor);
   const setVendorStore = useAuthStore(state => state.setVendorStore);
+  const becomeDeliveryPartner = useAuthStore(state => state.becomeDeliveryPartner);
 
   return {
     user,
@@ -38,6 +39,7 @@ export const useAuth = () => {
     register,
     registerVendor,
     setVendorStore,
+    becomeDeliveryPartner,
     sendPhoneOtp,
     confirmPhoneOtp,
     logout,

@@ -305,17 +305,34 @@ export const useDataStore = create((set, get) => ({
   },
 
   // Update order status with audit log
-  updateOrderStatus: async (orderId, status, note = '') => {
+  updateOrderStatus: async (orderId, status, note = '', extraFields = {}) => {
     const historyEntry = { 
       status, 
       time: new Date().toISOString(), 
       note: note || `Order status updated to ${status.replace(/_/g, ' ')}` 
     };
 
+    if (isFirebaseConfigured && functions) {
+      try {
+        const result = await httpsCallable(functions, 'transitionOrderStatus')({ orderId, status, note, ...extraFields });
+        if (result?.data?.order) {
+          set(state => {
+            const updated = state.orders.map(o => o.id === orderId ? result.data.order : o);
+            try { localStorage.setItem('mandi_synced_orders', JSON.stringify(updated)); } catch {}
+            return { orders: updated };
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('transitionOrderStatus Cloud Function notice, falling back:', err?.message);
+      }
+    }
+
     if (db && isFirebaseConfigured) {
       try {
         await updateDoc(doc(db, 'orders', orderId), {
           status,
+          ...extraFields,
           statusHistory: arrayUnion(historyEntry),
           updatedAt: new Date().toISOString()
         });
@@ -323,7 +340,11 @@ export const useDataStore = create((set, get) => ({
         console.warn('Firestore updateOrderStatus notice:', err.message);
       }
     }
-    set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status, statusHistory: [...(o.statusHistory || []), historyEntry] } : o) }));
+    set(state => {
+      const updated = state.orders.map(o => o.id === orderId ? { ...o, status, ...extraFields, statusHistory: [...(o.statusHistory || []), historyEntry] } : o);
+      try { localStorage.setItem('mandi_synced_orders', JSON.stringify(updated)); } catch {}
+      return { orders: updated };
+    });
   },
 
   // Products CRUD
@@ -421,25 +442,15 @@ export const useDataStore = create((set, get) => ({
       try {
         const result = await httpsCallable(functions, 'submitVendorApplication')({ application: newStore });
         if (result?.data?.application) {
-          const appRes = result.data.application;
-          const updatedList = [...get().stores.filter(s => s.id !== appRes.id), appRes];
-          try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
-          set({ stores: updatedList });
-          return appRes;
+          return result.data.application;
         }
       } catch (cloudErr) {
-        console.warn('Cloud function submitVendorApplication notice, using direct store creation fallback:', cloudErr?.message);
+        console.warn('Cloud function submitVendorApplication notice:', cloudErr?.message);
+        throw new Error(cloudErr?.message || 'Failed to submit vendor application.');
       }
     }
 
-    if (db && isFirebaseConfigured) {
-      try {
-        await setDoc(doc(db, 'stores', id), newStore, { merge: true });
-      } catch (err) {
-        console.error('Error saving store application to Firestore:', err);
-      }
-    }
-
+    // Local offline storage fallback
     const updatedList = [...get().stores.filter(s => s.id !== id), newStore];
     try { localStorage.setItem('mandi_synced_stores', JSON.stringify(updatedList)); } catch {}
     set({ stores: updatedList });

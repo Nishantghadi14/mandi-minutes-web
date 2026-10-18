@@ -121,3 +121,31 @@ exports.razorpayWebhook = functions.https.onRequest(async (req, res) => {
   try { await db.runTransaction(async tx => { const [eventSnap, orderSnap] = await Promise.all([tx.get(eventRef), tx.get(orderRef)]); if (eventSnap.exists) return; const order = orderSnap.data(); if (!orderSnap.exists || order.razorpayOrderId !== payment.order_id || Number(payment.amount) !== Math.round(Number(order.total) * 100) || payment.status !== 'captured') throw new Error('Payment mismatch'); tx.create(eventRef, { orderId: orderRef.id, paymentId: payment.id, receivedAt: new Date().toISOString() }); if (order.paymentStatus !== 'paid') tx.update(orderRef, { paymentStatus: 'paid', paymentDetails: { gateway: 'razorpay', paymentId: payment.id, method: payment.method || 'unknown', paidAt: new Date().toISOString() } }); }); } catch (err) { console.error('Razorpay webhook rejected:', err.message); return res.status(400).send('Payment rejected'); }
   return res.status(200).json({ received: true });
 });
+
+exports.health = functions.https.onRequest(async (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).send('Method Not Allowed');
+  }
+  try {
+    const start = Date.now();
+    await db.collection('stores').limit(1).get();
+    const dbLatencyMs = Date.now() - start;
+    return res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'mandi-minutes-api',
+      checks: {
+        database: { status: 'up', latencyMs: dbLatencyMs },
+        functions: { status: 'up' },
+      },
+    });
+  } catch (err) {
+    return res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: err.message,
+    });
+  }
+});
+
