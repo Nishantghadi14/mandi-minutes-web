@@ -78,7 +78,7 @@ function AppContent() {
   const { pathname } = useLocation();
   const isRider = isRiderApp() || pathname.startsWith('/rider');
   const inAppMode = isInAppMode(pathname) || isRider;
-  const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/vendor', '/rider'].includes(pathname) || pathname.startsWith('/order-status')));
+  const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/rider'].includes(pathname) || pathname.startsWith('/order-status') || pathname.startsWith('/vendor')));
   const hideNavbar = isRider || inAppMode;
 
   return (
@@ -104,7 +104,8 @@ function AppContent() {
                 <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
                 <Route path="/orders" element={<OrderHistoryPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']} requireStore={true}><VendorDashboard /></ProtectedRoute>} />
+                <Route path="/vendor" element={<ProtectedRoute allowedRoles={['vendor', 'admin']}><VendorDashboard /></ProtectedRoute>} />
+                <Route path="/vendor/:storeId" element={<ProtectedRoute allowedRoles={['vendor', 'admin']}><VendorDashboard /></ProtectedRoute>} />
                 <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
                 <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
                 <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider', 'admin']}><RiderPortal /></ProtectedRoute>} />

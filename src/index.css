@@ -9,89 +9,86 @@
 
 /* ── Dark theme (default) ─────────────────────────────────────── */
 :root,
-[data-theme="dark"] {
+[data-theme="dark"],
+.dark {
   color-scheme: dark;
   --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
   --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --x: 90%;
   --y: 40px;
 
-  /* Tailwind color aliases - Sleek tactile dark clay */
-  --color-dark:         #0d1117;   /* rich midnight matte clay slate page background */
-  --color-card:         #161c27;   /* sculpted inflated clay card surface */
-  --color-surface:      #10141d;   /* recessed clay trough surface */
-  --color-border:       rgba(255, 255, 255, 0.08); /* soft clay seam */
-  --color-border-light: rgba(255, 255, 255, 0.04);
-  --color-text:         #F3F4F6;
-  --color-muted:        #9CA3AF;
-  --color-subtle:       #6B7280;
+  /* Tailwind color aliases - Sleek tactile obsidian slate clay */
+  --color-dark:         #0a0e17;   /* ultra-rich deep obsidian midnight page background */
+  --color-card:         #131B28;   /* sculpted inflated clay card surface */
+  --color-surface:      #192333;   /* tactile trough surface for inputs/chips/badges */
+  --color-border:       rgba(255, 255, 255, 0.12); /* clean luminous clay seam */
+  --color-border-light: rgba(255, 255, 255, 0.06);
+  --color-text:         #F8FAFC;   /* crisp Slate-50 high contrast text */
+  --color-muted:        #94A3B8;   /* clear Slate-400 secondary text */
+  --color-subtle:       #64748B;   /* legible Slate-500 metadata & placeholders */
 
-  /* Volumetric Claymorphism Shadow Engine - Dark Theme */
-  --clay-card-shadow:       0 12px 28px -4px rgba(0, 0, 0, 0.55),
-                            0 4px 10px rgba(0, 0, 0, 0.35),
-                            inset 1px 1px 1.5px rgba(255, 255, 255, 0.16),
-                            inset 5px 5px 12px rgba(255, 255, 255, 0.06),
-                            inset -5px -5px 12px rgba(0, 0, 0, 0.55);
+  /* Volumetric Claymorphism Shadow Engine - Refined Dark Theme */
+  --clay-card-shadow:       0 16px 36px -6px rgba(0, 0, 0, 0.72),
+                            0 4px 12px rgba(0, 0, 0, 0.42),
+                            inset 0 1px 1px rgba(255, 255, 255, 0.15),
+                            inset 0 0 20px rgba(0, 200, 81, 0.02),
+                            inset 0 -1px 2px rgba(0, 0, 0, 0.55);
 
-  --clay-card-hover:        0 18px 36px -4px rgba(0, 0, 0, 0.65),
-                            0 6px 14px rgba(0, 0, 0, 0.4),
-                            inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.22),
-                            inset 6px 6px 14px rgba(255, 255, 255, 0.09),
-                            inset -6px -6px 14px rgba(0, 0, 0, 0.65);
+  --clay-card-hover:        0 22px 48px -6px rgba(0, 0, 0, 0.82),
+                            0 8px 18px rgba(0, 0, 0, 0.52),
+                            inset 0 1px 1.5px rgba(255, 255, 255, 0.22),
+                            inset 0 0 24px rgba(0, 200, 81, 0.04),
+                            inset 0 -2px 4px rgba(0, 0, 0, 0.65);
 
-  --clay-inset:             inset 3px 3px 7px rgba(0, 0, 0, 0.6),
-                            inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+  --clay-inset:             inset 2px 2px 6px rgba(0, 0, 0, 0.55),
+                            inset -1px -1px 3px rgba(255, 255, 255, 0.05);
 
-  --clay-inset-focus:       inset 3px 3px 6px rgba(0, 0, 0, 0.5),
-                            inset -2px -2px 4px rgba(0, 200, 81, 0.15),
-                            0 0 0 3px rgba(0, 200, 81, 0.25);
+  --clay-inset-focus:       inset 2px 2px 5px rgba(0, 0, 0, 0.45),
+                            0 0 0 2px rgba(0, 200, 81, 0.45),
+                            0 0 18px rgba(0, 200, 81, 0.28);
 
-  --clay-btn-green:         0 8px 22px -3px rgba(0, 200, 81, 0.45),
-                            0 2px 6px rgba(0, 150, 50, 0.3),
-                            inset 1px 1px 2px rgba(255, 255, 255, 0.8),
-                            inset 4px 4px 8px rgba(255, 255, 255, 0.35),
-                            inset -4px -4px 8px rgba(0, 85, 25, 0.5);
+  --clay-btn-green:         0 8px 24px -2px rgba(0, 200, 81, 0.45),
+                            0 2px 6px rgba(0, 160, 50, 0.3),
+                            inset 0 1px 2px rgba(255, 255, 255, 0.7),
+                            inset 0 -2px 6px rgba(0, 85, 25, 0.5);
 
-  --clay-btn-green-hover:   0 14px 28px -3px rgba(0, 200, 81, 0.55),
-                            0 4px 10px rgba(0, 150, 50, 0.35),
-                            inset 1.5px 1.5px 2.5px rgba(255, 255, 255, 0.9),
-                            inset 5px 5px 10px rgba(255, 255, 255, 0.4),
-                            inset -4px -4px 9px rgba(0, 85, 25, 0.55);
+  --clay-btn-green-hover:   0 14px 32px -2px rgba(0, 200, 81, 0.6),
+                            0 4px 12px rgba(0, 160, 50, 0.35),
+                            inset 0 1.5px 2.5px rgba(255, 255, 255, 0.85),
+                            inset 0 -2px 7px rgba(0, 85, 25, 0.6);
 
   --clay-btn-green-active:  0 3px 8px rgba(0, 200, 81, 0.3),
-                            inset 3px 3px 6px rgba(0, 70, 20, 0.6),
-                            inset -2px -2px 4px rgba(255, 255, 255, 0.25);
+                            inset 2px 2px 6px rgba(0, 70, 20, 0.6),
+                            inset -1px -1px 3px rgba(255, 255, 255, 0.2);
 
-  --clay-pill:              0 6px 14px -2px rgba(0, 0, 0, 0.4),
-                            inset 1px 1px 1.5px rgba(255, 255, 255, 0.14),
-                            inset 3px 3px 6px rgba(255, 255, 255, 0.05),
-                            inset -3px -3px 6px rgba(0, 0, 0, 0.45);
+  --clay-pill:              0 4px 14px -2px rgba(0, 0, 0, 0.45),
+                            inset 0 1px 1px rgba(255, 255, 255, 0.14),
+                            inset 0 -1px 2px rgba(0, 0, 0, 0.45);
 
   --clay-badge:             0 3px 8px rgba(0, 0, 0, 0.35),
-                            inset 1px 1px 1.5px rgba(255, 255, 255, 0.2),
-                            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
+                            inset 0 1px 1px rgba(255, 255, 255, 0.18),
+                            inset 0 -1px 2px rgba(0, 0, 0, 0.4);
 
-  --clay-floating:          0 20px 42px -6px rgba(0, 0, 0, 0.75),
-                            0 8px 16px rgba(0, 0, 0, 0.4),
-                            inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.18),
-                            inset 6px 6px 14px rgba(255, 255, 255, 0.07),
-                            inset -5px -5px 12px rgba(0, 0, 0, 0.6);
+  --clay-floating:          0 24px 50px -8px rgba(0, 0, 0, 0.85),
+                            0 8px 20px rgba(0, 0, 0, 0.5),
+                            inset 0 1px 1.5px rgba(255, 255, 255, 0.18),
+                            inset 0 -1px 3px rgba(0, 0, 0, 0.6);
 
-  --clay-nav:               0 8px 24px -2px rgba(0, 0, 0, 0.55),
-                            inset 0 1px 1.5px rgba(255, 255, 255, 0.12),
-                            inset 0 -2px 6px rgba(0, 0, 0, 0.45);
+  --clay-nav:               0 10px 30px -4px rgba(0, 0, 0, 0.7),
+                            inset 0 1px 1px rgba(255, 255, 255, 0.12),
+                            inset 0 -1px 3px rgba(0, 0, 0, 0.5);
 
-  --shadow-color:           rgba(0, 0, 0, 0.40);
-  --shadow-color-strong:    rgba(0, 0, 0, 0.60);
+  --shadow-color:           rgba(0, 0, 0, 0.50);
+  --shadow-color-strong:    rgba(0, 0, 0, 0.75);
 
   /* Misc semantic helpers used in raw CSS below */
-  --glass-bg:       rgba(22, 28, 39, 0.88);
-  --glass-dark-bg:  rgba(13, 17, 23, 0.92);
-  --overlay-bg:     rgba(8, 10, 16, 0.75);
-  --scrollbar-bg:   #0d1117;
-  --range-track:    #10141d;
-  --selection-bg:   rgba(0, 200, 81, 0.25);
-  --selection-fg:   #00E65C;
+  --glass-bg:       rgba(18, 25, 38, 0.85);
+  --glass-dark-bg:  rgba(10, 14, 22, 0.92);
+  --overlay-bg:     rgba(4, 7, 12, 0.80);
+  --scrollbar-bg:   #0a0e17;
+  --range-track:    #192333;
+  --selection-bg:   rgba(0, 200, 81, 0.3);
+  --selection-fg:   #00FF66;
   --icon-circle-bg: rgba(0, 200, 81, 0.12);
 }
 
@@ -782,6 +779,19 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 1.15rem;
   box-shadow: var(--clay-btn-green);
   border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* In dark mode, eliminate white borders on green buttons & quantity counters */
+[data-theme="dark"] .clay-btn-green,
+.dark .clay-btn-green,
+[data-theme="dark"] .clay-counter,
+.dark .clay-counter {
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Ensure all border-mandi-border utilities use theme border color instead of falling back to light gray */
+[class*="border-mandi-border"] {
+  border-color: var(--color-border);
 }
 
 /* Clay Header & Bottom Dock */

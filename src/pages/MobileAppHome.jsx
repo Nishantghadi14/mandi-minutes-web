@@ -7,11 +7,11 @@ import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/common/Toast';
 import ProductCard from '../components/common/ProductCard';
-import { 
-  MapPin, Search, ChevronDown, Clock, ShieldCheck, Sparkles, 
+import {
+  MapPin, Search, ChevronDown, Clock, ShieldCheck, Sparkles,
   Truck, User, Flame, CheckCircle2,
   ChevronRight, BadgePercent, Tag, ArrowUpDown,
-  Copy, Check
+  Copy, Check, Zap, Moon, Sun
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -96,7 +96,7 @@ const QUICK_CATEGORIES = [
 ];
 
 export default function MobileAppHome() {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const { location, setLocationModal } = useLocation();
   const { user, openAuthModal } = useAuth();
   const { products: allProducts } = useData();
@@ -209,10 +209,10 @@ export default function MobileAppHome() {
 
       {/* App Canvas Wrapper */}
       <div className="max-w-md mx-auto min-h-screen bg-mandi-dark relative">
-        
+
         {/* ── Native Shopping App Header ── */}
         <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-2.5 pb-2.5 shadow-clay-nav rounded-b-3xl">
-          
+
           {/* Top Row: Brand & Delivery Promise Badge + Controls */}
           <div className="flex items-center justify-between gap-2 mb-2">
             {/* Express Delivery Badge */}
@@ -233,8 +233,18 @@ export default function MobileAppHome() {
               </div>
             </div>
 
-            {/* Right Action Icons: Profile Avatar */}
+            {/* Right Action Icons: Theme Toggle & Profile Avatar */}
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-green flex-shrink-0 active:scale-90 transition-all shadow-clay-pill hover:border-mandi-green/50"
+                aria-label="Toggle Dark / Light Mode"
+                title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+
               {/* Profile Avatar */}
               <button
                 onClick={() => (user ? navigate(getNavPath('/profile')) : openAuthModal('login'))}
@@ -303,7 +313,7 @@ export default function MobileAppHome() {
               </span>
             </div>
             <div className="w-full h-1.5 bg-mandi-surface rounded-full overflow-hidden border border-mandi-border/60">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-emerald-500 via-mandi-green to-teal-400 transition-all duration-500 rounded-full"
                 style={{ width: `${Math.max(8, freeDeliveryProgress)}%` }}
               />
@@ -311,7 +321,7 @@ export default function MobileAppHome() {
           </div>
 
           {/* Live Search Bar Capsule with Rotating Placeholder */}
-          <div 
+          <div
             onClick={() => navigate(getNavPath('/search'))}
             className="relative flex items-center bg-mandi-surface border border-mandi-border hover:border-mandi-green/50 rounded-2xl h-11 px-3.5 cursor-pointer shadow-clay-inset active:scale-[0.99] transition-all group"
           >
@@ -331,31 +341,28 @@ export default function MobileAppHome() {
           <div className="flex items-center gap-1.5 overflow-x-auto pt-2 no-scrollbar scrollbar-none -mx-1 px-1">
             <button
               onClick={() => { setActiveCategory('all'); setActiveFilter('all'); }}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${
-                activeCategory === 'all' && activeFilter === 'all'
+              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${activeCategory === 'all' && activeFilter === 'all'
                   ? 'bg-mandi-green text-black shadow-md shadow-mandi-green/20 font-black'
                   : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-              }`}
+                }`}
             >
               <span>⚡ All</span>
             </button>
             <button
               onClick={() => { setActiveFilter('steal'); setActiveCategory('all'); }}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${
-                activeFilter === 'steal'
+              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${activeFilter === 'steal'
                   ? 'bg-red-500 text-white shadow-md font-black'
                   : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-              }`}
+                }`}
             >
               <span>🔥 Steal Deals</span>
             </button>
             <button
               onClick={() => { setActiveFilter('under99'); setActiveCategory('all'); }}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${
-                activeFilter === 'under99'
+              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${activeFilter === 'under99'
                   ? 'bg-amber-400 text-black shadow-md font-black'
                   : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-              }`}
+                }`}
             >
               <span>💸 Under ₹99</span>
             </button>
@@ -365,11 +372,10 @@ export default function MobileAppHome() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategory(isSelected ? 'all' : cat.id); setActiveFilter(isSelected ? 'all' : cat.id); }}
-                  className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${
-                    isSelected
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 flex-shrink-0 active:scale-95 ${isSelected
                       ? 'bg-mandi-green text-black shadow-md shadow-mandi-green/20 font-black'
                       : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-                  }`}
+                    }`}
                 >
                   <span>{cat.icon}</span>
                   <span>{cat.name.split(' ')[0]}</span>
@@ -385,13 +391,13 @@ export default function MobileAppHome() {
 
           {/* ── Interactive Promo Hero Banners ── */}
           <section className="relative">
-            <div 
+            <div
               ref={bannerScrollRef}
               onScroll={handleBannerScroll}
               className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-none no-scrollbar -mx-3.5 px-3.5"
             >
               {PROMO_BANNERS.map((banner) => (
-                <div 
+                <div
                   key={banner.id}
                   onClick={() => banner.code && handleCopyCode(banner.code)}
                   className={`snap-center flex-shrink-0 w-full rounded-3xl bg-gradient-to-r ${isDark ? banner.bgDark : banner.bgLight} border ${isDark ? banner.borderDark : banner.borderLight} p-4 relative overflow-hidden shadow-clay-card cursor-pointer transition-transform active:scale-[0.99]`}
@@ -406,7 +412,7 @@ export default function MobileAppHome() {
                     <p className="text-xs text-slate-600 dark:text-emerald-200/90 mt-1 line-clamp-1 font-medium">
                       {banner.subtitle}
                     </p>
-                    
+
                     <div className="mt-2.5 flex items-center gap-2">
                       <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 size={13} />
@@ -430,11 +436,10 @@ export default function MobileAppHome() {
             {/* Dots Indicator */}
             <div className="flex justify-center gap-1.5 mt-2">
               {PROMO_BANNERS.map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    activeBannerIdx === i ? 'w-5 bg-mandi-green shadow-clay-badge' : 'w-1.5 bg-mandi-border'
-                  }`} 
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${activeBannerIdx === i ? 'w-5 bg-mandi-green shadow-clay-badge' : 'w-1.5 bg-mandi-border'
+                    }`}
                 />
               ))}
             </div>
@@ -447,8 +452,8 @@ export default function MobileAppHome() {
                 <span>⚡</span> Shop by Category
               </h3>
               {activeCategory !== 'all' && (
-                <button 
-                  onClick={() => setActiveCategory('all')} 
+                <button
+                  onClick={() => setActiveCategory('all')}
                   className="text-[11px] font-bold text-mandi-green hover:underline"
                 >
                   Show All Aisles
@@ -463,11 +468,10 @@ export default function MobileAppHome() {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(isSelected ? 'all' : cat.id)}
-                    className={`category-card flex flex-col items-center justify-between p-2 rounded-2xl text-center transition-all duration-200 active:scale-95 border ${
-                      isSelected 
-                        ? 'ring-2 ring-mandi-green border-mandi-green shadow-clay-card-hover' 
+                    className={`category-card flex flex-col items-center justify-between p-2 rounded-2xl text-center transition-all duration-200 active:scale-95 border ${isSelected
+                        ? 'ring-2 ring-mandi-green border-mandi-green shadow-clay-card-hover'
                         : 'border-mandi-border/40 hover:border-mandi-green/30'
-                    }`}
+                      }`}
                     style={{ background: isDark ? cat.bgDark : cat.bgLight }}
                   >
                     <div className="category-icon-bubble">
@@ -495,11 +499,11 @@ export default function MobileAppHome() {
                     <span>{QUICK_CATEGORIES.find(c => c.id === activeCategory)?.name}</span>
                   </h3>
                   <p className="text-[11px] text-mandi-muted">
-                    {sortedCatalogProducts.length} items available for next-day morning delivery
+                    {sortedCatalogProducts.length} items available for same-day & scheduled delivery
                   </p>
                 </div>
-                <button 
-                  onClick={() => setActiveCategory('all')} 
+                <button
+                  onClick={() => setActiveCategory('all')}
                   className="text-xs font-bold text-mandi-green bg-mandi-green/10 border border-mandi-green/20 px-2.5 py-1 rounded-lg"
                 >
                   View All
@@ -510,25 +514,22 @@ export default function MobileAppHome() {
               <div className="flex items-center gap-1.5 mb-3 overflow-x-auto no-scrollbar">
                 <button
                   onClick={() => setSortBy('recommended')}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${
-                    sortBy === 'recommended' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
-                  }`}
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${sortBy === 'recommended' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
+                    }`}
                 >
                   Recommended
                 </button>
                 <button
                   onClick={() => setSortBy('price-low')}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${
-                    sortBy === 'price-low' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
-                  }`}
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${sortBy === 'price-low' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
+                    }`}
                 >
                   Price: Low to High
                 </button>
                 <button
                   onClick={() => setSortBy('discount')}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${
-                    sortBy === 'discount' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
-                  }`}
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all ${sortBy === 'discount' ? 'bg-mandi-green text-black font-black' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'
+                    }`}
                 >
                   Top Discounts
                 </button>
@@ -559,8 +560,8 @@ export default function MobileAppHome() {
                       </div>
                       <p className="text-[11px] text-mandi-muted mt-0.5">Lowest guaranteed rates in Virar</p>
                     </div>
-                    <Link 
-                      to={getNavPath('/search')} 
+                    <Link
+                      to={getNavPath('/search')}
                       className="text-xs font-bold text-mandi-green flex items-center hover:underline"
                     >
                       See all <ChevronRight size={13} />
@@ -590,8 +591,8 @@ export default function MobileAppHome() {
                       </div>
                       <p className="text-[11px] text-mandi-muted mt-0.5">Pocket-friendly daily kitchen essentials</p>
                     </div>
-                    <Link 
-                      to={getNavPath('/search?maxPrice=100')} 
+                    <Link
+                      to={getNavPath('/search?maxPrice=100')}
                       className="text-xs font-bold text-mandi-green flex items-center hover:underline"
                     >
                       All <ChevronRight size={13} />
@@ -620,8 +621,8 @@ export default function MobileAppHome() {
                       </div>
                       <p className="text-[11px] text-mandi-muted mt-0.5">Silky, Kolam, Wada & fragrant long grains</p>
                     </div>
-                    <Link 
-                      to={getNavPath('/search?category=cat-rice')} 
+                    <Link
+                      to={getNavPath('/search?category=cat-rice')}
                       className="text-xs font-bold text-mandi-green flex items-center hover:underline"
                     >
                       All <ChevronRight size={13} />
@@ -649,8 +650,8 @@ export default function MobileAppHome() {
                       </div>
                       <p className="text-[11px] text-mandi-muted mt-0.5">Cleaned Toor, Moong, Masoor, Urad & Chana</p>
                     </div>
-                    <Link 
-                      to={getNavPath('/search?category=cat-daal')} 
+                    <Link
+                      to={getNavPath('/search?category=cat-daal')}
                       className="text-xs font-bold text-mandi-green flex items-center hover:underline"
                     >
                       All <ChevronRight size={13} />
@@ -678,8 +679,8 @@ export default function MobileAppHome() {
                       </div>
                       <p className="text-[11px] text-mandi-muted mt-0.5">Thick Poha, Shing Dana, Vatana & Kala Chana</p>
                     </div>
-                    <Link 
-                      to={getNavPath('/search?category=cat-grains')} 
+                    <Link
+                      to={getNavPath('/search?category=cat-grains')}
                       className="text-xs font-bold text-mandi-green flex items-center hover:underline"
                     >
                       All <ChevronRight size={13} />
@@ -707,8 +708,8 @@ export default function MobileAppHome() {
                   {/* Sort selector */}
                   <div className="flex items-center gap-1 bg-mandi-surface border border-mandi-border px-2 py-1 rounded-xl text-[10px] font-bold text-mandi-muted">
                     <ArrowUpDown size={11} className="text-mandi-green" />
-                    <select 
-                      value={sortBy} 
+                    <select
+                      value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                       className="bg-transparent text-mandi-text font-bold outline-none cursor-pointer"
                     >
@@ -733,10 +734,10 @@ export default function MobileAppHome() {
             <div className="grid grid-cols-3 gap-2 p-3.5 rounded-3xl bg-mandi-card border border-mandi-border shadow-clay-card">
               <div className="text-center space-y-1.5">
                 <div className="w-9 h-9 mx-auto rounded-2xl bg-mandi-green/15 border border-mandi-green/30 flex items-center justify-center text-mandi-green shadow-clay-badge">
-                  <Clock size={17} />
+                  <Zap size={17} />
                 </div>
-                <p className="text-[11px] font-black text-mandi-text leading-tight">7 AM Morning</p>
-                <p className="text-[9px] text-mandi-muted leading-tight">Prompt next-day drop</p>
+                <p className="text-[11px] font-black text-mandi-text leading-tight">Same-Day Drop</p>
+                <p className="text-[9px] text-mandi-muted leading-tight">Today or scheduled</p>
               </div>
 
               <div className="text-center space-y-1.5 border-x border-mandi-border px-1">

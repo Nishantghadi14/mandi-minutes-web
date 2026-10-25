@@ -9,6 +9,7 @@ import {
   query, 
   where, 
   orderBy, 
+  arrayUnion,
 } from 'firebase/firestore';
 import { db, functions, isFirebaseConfigured } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';

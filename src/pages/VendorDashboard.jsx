@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import ProductModal from '../components/vendor/ProductModal';
@@ -28,7 +29,11 @@ import {
   Sparkles,
   Settings,
   Save,
-  Minus
+  Minus,
+  Truck,
+  CheckCircle2,
+  Shield,
+  ArrowLeft
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -36,12 +41,26 @@ const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
   const { user } = useAuth();
-  const { stores, products: allProducts, categories, getProductsByStore, getOrdersByStore, addProduct, updateProduct, deleteProduct, updateStore } = useData();
+  const { stores, products: allProducts, categories, orders, updateOrderStatus, addProduct, updateProduct, deleteProduct, updateStore } = useData();
   const { addToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { storeId: routeStoreId } = useParams();
+  const requestedStoreId = routeStoreId || searchParams.get('storeId');
 
-  // Resolve store dynamically matching logged-in vendor user email, storeId, or uid
+  // Resolve store dynamically: matching requested store (if admin), logged-in vendor user email, storeId, or uid
   const store = useMemo(() => {
     if (!user) return null;
+
+    // 1. Admin Inspection Mode: Allows Admin from Admin Panel to check any specific vendor's dashboard
+    if (user.role === 'admin') {
+      if (requestedStoreId) {
+        const foundAdminStore = stores.find(s => s.id === requestedStoreId);
+        if (foundAdminStore) return foundAdminStore;
+      }
+      return stores.find(s => s.id === 'store-mahalaxmi-1') || stores[0] || null;
+    }
+
+    // 2. Regular Vendor Resolution
     let found = stores.find(s => 
       (user.storeId && s.id === user.storeId) ||
       (user.email && s.ownerEmail?.toLowerCase() === user.email.toLowerCase()) ||
@@ -71,10 +90,35 @@ export default function VendorDashboard() {
       };
     }
     return found || (user.role === 'vendor' ? null : stores[0]);
-  }, [stores, user]);
+  }, [stores, user, requestedStoreId]);
 
-  const products = useMemo(() => store?.id ? allProducts.filter(p => p.storeId === store.id) : [], [store?.id, allProducts]);
-  const storeOrders = useMemo(() => store?.id ? getOrdersByStore(store.id) : [], [store?.id, getOrdersByStore]);
+  const products = useMemo(() => {
+    if (!store?.id) return [];
+    return allProducts.filter(p => p.storeId === store.id || (!p.storeId && store.id === 'store-mahalaxmi-1'));
+  }, [store?.id, allProducts]);
+
+  const storeOrders = useMemo(() => {
+    if (!store?.id) return [];
+    return (orders || []).filter(o => 
+      o.storeId === store.id || 
+      (!o.storeId && store.id === 'store-mahalaxmi-1')
+    ).sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
+  }, [store?.id, orders]);
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      const noteMap = {
+        accepted: 'Store accepted the order and started packing',
+        preparing: 'Store is actively packing the fresh items for dispatch',
+        out_for_delivery: 'Items packed and handed to delivery partner for dispatch',
+      };
+      await updateOrderStatus(orderId, newStatus, noteMap[newStatus] || `Order status updated to ${newStatus}`);
+      addToast(`Order #${orderId.slice(-6).toUpperCase()} updated to ${newStatus.replace(/_/g, ' ')}! 🎉`, 'success');
+    } catch (err) {
+      console.error('Vendor order status update error:', err);
+      addToast('Failed to update order status. Please try again.', 'error');
+    }
+  };
 
   const [activeTab, setActiveTab] = useState('orders');
   const [editingProduct, setEditingProduct] = useState(null);
@@ -172,7 +216,11 @@ export default function VendorDashboard() {
       let slaStatus = 'ok';
       let slaMessage = '';
 
-      if (order.deliveryType !== 'scheduled') {
+      if (order.deliveryType === 'scheduled') {
+        slaMessage = `Scheduled for ${order.scheduledSlot?.label || order.scheduledSlot?.date || 'Slot'}`;
+      } else if (order.deliveryType === 'same-day' && order.scheduledSlot?.id && order.scheduledSlot.id !== 'same-day-express') {
+        slaMessage = `Same-Day (${order.scheduledSlot?.label || 'Today'})`;
+      } else {
         if (order.status === 'placed') {
           if (elapsedMinutes >= 5) {
             slaStatus = 'breached';
@@ -187,8 +235,6 @@ export default function VendorDashboard() {
             slaMessage = `Packing delayed (${elapsedMinutes}m total)`;
           }
         }
-      } else {
-        slaMessage = `Scheduled for ${order.scheduledSlot?.label || order.scheduledSlot?.date || 'Slot'}`;
       }
 
       return {
@@ -347,6 +393,39 @@ export default function VendorDashboard() {
   };
 
   if (!store) {
+    if (user?.role === 'admin') {
+      return (
+        <div className="max-w-xl mx-auto px-4 py-20 text-center">
+          <div className="card p-8 border-amber-500/30 bg-amber-950/20 space-y-4">
+            <Shield size={48} className="text-amber-400 mx-auto" />
+            <h2 className="text-xl font-bold text-mandi-text">Admin Vendor Inspection</h2>
+            <p className="text-mandi-muted text-sm max-w-md mx-auto">
+              Select a vendor from the list to inspect their orders, inventory catalog, and store operations.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-2">
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setSearchParams({ storeId: e.target.value });
+                  }
+                }}
+                defaultValue=""
+                className="input-field text-sm py-2 px-3 bg-mandi-surface border border-mandi-border text-mandi-text cursor-pointer"
+              >
+                <option value="" disabled>Choose a Vendor / Store...</option>
+                {stores.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
+                ))}
+              </select>
+              <Link to="/admin" className="btn-outline text-sm py-2 px-4">
+                Back to Admin Panel
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <div className="card p-8 border-orange-500/30 bg-orange-500/10 space-y-4">
@@ -367,6 +446,59 @@ export default function VendorDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      {/* Super Admin Vendor Inspection Mode Banner */}
+      {user?.role === 'admin' && (
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-mandi-card to-amber-500/10 border-2 border-amber-500/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center flex-shrink-0 shadow-md">
+              <Shield size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-md">
+                  Super Admin Inspection Mode
+                </span>
+                <span className="text-mandi-text font-bold text-base">
+                  {store.name}
+                </span>
+                <span className="text-mandi-subtle text-xs">
+                  (ID: <span className="font-mono text-mandi-muted">{store.id}</span>)
+                </span>
+              </div>
+              <p className="text-mandi-muted text-xs mt-0.5">
+                Inspecting vendor portal as Super Admin. You can view & manage live orders, catalog pricing, and shop customization.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap justify-end">
+            <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-xl px-3 py-1.5 text-xs text-mandi-text shadow-sm">
+              <Store size={14} className="text-amber-400 flex-shrink-0" />
+              <span className="text-mandi-muted font-medium">Switch Vendor:</span>
+              <select
+                value={store.id}
+                onChange={(e) => {
+                  setSearchParams({ storeId: e.target.value });
+                }}
+                className="bg-transparent font-bold text-mandi-green outline-none cursor-pointer py-0.5"
+              >
+                {stores.map(st => (
+                  <option key={st.id} value={st.id} className="bg-mandi-card text-mandi-text">
+                    {st.name} ({st.city || 'Virar'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Link
+              to="/admin"
+              className="btn-outline text-xs py-2 px-3.5 flex items-center gap-1.5 hover:border-amber-400 hover:text-amber-300 font-bold transition-all shadow-sm"
+            >
+              <ArrowLeft size={14} /> Back to Admin Panel
+            </Link>
+          </div>
+        </div>
+      )}
       {/* SLA Alert Urgent Banner */}
       {slaBreachedOrders.length > 0 && (
         <div className="mb-6 p-4 rounded-2xl bg-red-500/15 border-2 border-red-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-red-700 dark:text-red-200 shadow-lg animate-pulse">
@@ -526,7 +658,12 @@ export default function VendorDashboard() {
                       )}
                       {order.deliveryType === 'scheduled' && (
                         <span className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                          📅 Scheduled: {order.scheduledSlot?.label || order.scheduledSlot?.timeWindow || '2-Hour Slot'}
+                          📅 Scheduled: {order.scheduledSlot?.label || order.scheduledSlot?.timeWindow || 'Slot'}
+                        </span>
+                      )}
+                      {order.deliveryType === 'same-day' && (
+                        <span className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                          ⚡ Same-Day: {order.scheduledSlot?.label || 'Today'}
                         </span>
                       )}
                     </div>
@@ -541,18 +678,25 @@ export default function VendorDashboard() {
                     >
                       <MessageCircle size={13} /> WhatsApp
                     </a>
-                    <button onClick={() => setInvoiceOrder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1"><Printer size={12} />Invoice</button>
+                    <button type="button" onClick={() => setInvoiceOrder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1"><Printer size={12} />Invoice</button>
                     {order.status === 'placed' && (
-                      <button onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-1.5 px-3 text-xs font-bold">Accept Order</button>
+                      <button type="button" onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Accept Order</button>
                     )}
                     {order.status === 'accepted' && (
-                      <button onClick={() => handleStatusChange(order.id, 'preparing')} className="btn-primary py-1.5 px-3 text-xs font-bold">Start Packing</button>
+                      <button type="button" onClick={() => handleStatusChange(order.id, 'preparing')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Start Packing</button>
                     )}
                     {order.status === 'preparing' && (
-                      <button onClick={() => handleStatusChange(order.id, 'out_for_delivery')} className="btn-primary py-1.5 px-3 text-xs font-bold">Out for Delivery</button>
+                      <button type="button" onClick={() => handleStatusChange(order.id, 'out_for_delivery')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Ready for Delivery Partner</button>
                     )}
                     {order.status === 'out_for_delivery' && (
-                      <button onClick={() => handleStatusChange(order.id, 'delivered')} className="btn-primary py-1.5 px-3 text-xs font-bold">Mark Delivered</button>
+                      <span className="text-xs font-bold text-amber-500 bg-amber-500/15 border border-amber-500/30 py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                        <Truck size={13} className="text-amber-500" /> With Delivery Partner
+                      </span>
+                    )}
+                    {order.status === 'delivered' && (
+                      <span className="text-xs font-bold text-mandi-green bg-mandi-green/15 border border-mandi-green/30 py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle2 size={13} className="text-mandi-green" /> Delivered by Partner
+                      </span>
                     )}
                   </div>
                 </div>
@@ -773,11 +917,12 @@ export default function VendorDashboard() {
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={salesOverTime} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                    <XAxis dataKey="date" stroke="#6B6B6B" fontSize={11} />
-                    <YAxis stroke="#6B6B6B" fontSize={11} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+                    <XAxis dataKey="date" stroke="var(--color-subtle)" fontSize={11} />
+                    <YAxis stroke="var(--color-subtle)" fontSize={11} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#2A2A2A', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                      contentStyle={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', borderRadius: '14px', color: 'var(--color-text)', fontSize: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}
+                      labelStyle={{ color: 'var(--color-text)', fontWeight: 'bold' }}
                       formatter={(val) => [`₹${val}`, 'Sales']}
                     />
                     <Line type="monotone" dataKey="sales" stroke="#00C851" strokeWidth={3} dot={{ r: 4, fill: '#00C851' }} activeDot={{ r: 6 }} />

@@ -27,12 +27,12 @@ export default function StoreCard({ store }) {
   };
 
   const badgeColors = {
-    'Top Rated':    'bg-mandi-amber text-black',
-    'Popular':      'bg-mandi-green text-black',
-    'Fast Delivery':'bg-mandi-blue text-white',
-    'New':          'bg-purple-500 text-white',
-    'Trusted':      'bg-orange-500 text-black',
-    'Organic':      'bg-emerald-600 text-white',
+    'Top Rated': 'bg-mandi-amber text-black',
+    'Popular': 'bg-mandi-green text-black',
+    'Fast Delivery': 'bg-mandi-blue text-white',
+    'New': 'bg-purple-500 text-white',
+    'Trusted': 'bg-orange-500 text-black',
+    'Organic': 'bg-emerald-600 text-white',
   };
 
   return (

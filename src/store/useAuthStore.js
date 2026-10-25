@@ -698,28 +698,36 @@ export const useAuthStore = create((set, get) => ({
   // Update profile attributes (addresses, wishlist, name)
   updateUser: async (updates) => {
     const currentUser = get().user;
-    if (!currentUser?.uid && !currentUser?.id) return;
-
-    // Filter out client attempts to self-escalate role or storeId
-    const { role: _role, storeId: _storeId, uid: _uid, id: _id, ...safeUpdates } = updates;
-    if (!isFirebaseConfigured) {
-      const updated = { ...currentUser, ...safeUpdates };
+    const { role: _role, storeId: _storeId, uid: _uid, id: _id, ...safeUpdates } = updates || {};
+    
+    // Always update local user state and storage
+    const updated = currentUser ? { ...currentUser, ...safeUpdates } : {
+      id: 'guest',
+      uid: 'guest',
+      name: 'Guest',
+      email: '',
+      addresses: safeUpdates.addresses || [],
+      ...safeUpdates
+    };
+    
+    try {
       localStorage.setItem('mandi_local_user', JSON.stringify(updated));
-      set({ user: updated });
-      return updated;
-    }
+      if (safeUpdates.addresses?.length) {
+        localStorage.setItem('mandi_checkout_address', JSON.stringify(safeUpdates.addresses[0]));
+      }
+    } catch {}
 
-    if (db && isFirebaseConfigured && currentUser.uid) {
+    set({ user: updated });
+
+    if (db && isFirebaseConfigured && currentUser?.uid) {
       try {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userDocRef, safeUpdates);
-        set(state => ({ user: state.user ? { ...state.user, ...safeUpdates } : null }));
-        return { ...currentUser, ...safeUpdates };
+        await setDoc(doc(db, 'users', currentUser.uid), safeUpdates, { merge: true });
       } catch (err) {
-        console.error('Failed to sync user updates to Firestore:', err);
-        throw new Error('Could not save your profile changes. Please try again.');
+        console.warn('Firestore user update notice:', err?.message);
       }
     }
+
+    return updated;
   },
 
   // Activate Delivery Partner profile for an authenticated user

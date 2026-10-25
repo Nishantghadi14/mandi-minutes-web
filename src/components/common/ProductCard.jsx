@@ -40,21 +40,19 @@ export default function ProductCard({ product, showStore = false, compact = fals
   const isOOS = !product.isAvailable;
 
   return (
-    <div 
-      className={`card group flex flex-col relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover rounded-3xl ${
-        compact 
-          ? 'w-[150px] sm:w-[168px] flex-shrink-0 p-2' 
+    <div
+      className={`card group flex flex-col relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover rounded-3xl ${compact
+          ? 'w-[150px] sm:w-[168px] flex-shrink-0 p-2'
           : 'p-2 sm:p-2.5 w-full'
-      } ${isOOS ? 'product-oos' : ''}`}
+        } ${isOOS ? 'product-oos' : ''}`}
     >
       {/* Wishlist button */}
       <button
         onClick={handleWishlist}
-        className={`absolute z-10 bg-white/90 dark:bg-[#161c27]/90 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-clay-pill border border-white/40 dark:border-white/10 ${
-          compact 
-            ? 'top-2.5 right-2.5 w-7 h-7' 
+        className={`absolute z-10 bg-white/90 dark:bg-[#161c27]/90 backdrop-blur-md rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-clay-pill border border-white/40 dark:border-white/10 ${compact
+            ? 'top-2.5 right-2.5 w-7 h-7'
             : 'top-3 right-3 w-8 h-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
-        }`}
+          }`}
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
         <Heart size={compact ? 12 : 14} className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-slate-700 dark:text-white'} />
@@ -62,17 +60,15 @@ export default function ProductCard({ product, showStore = false, compact = fals
 
       {/* Discount badge */}
       {discountPct > 0 && !isOOS && (
-        <div className={`absolute left-2.5 z-10 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full text-black shadow-clay-badge border border-white/50 bg-gradient-to-r from-emerald-400 to-mandi-green ${
-          compact ? 'top-2' : 'top-3'
-        }`}>
+        <div className={`absolute left-2.5 z-10 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full text-black shadow-clay-badge border border-white/50 bg-gradient-to-r from-emerald-400 to-mandi-green ${compact ? 'top-2' : 'top-3'
+          }`}>
           {discountPct}% off
         </div>
       )}
 
       {/* Image with recessed clay frame */}
-      <div className={`relative overflow-hidden bg-mandi-surface flex-shrink-0 clay-image-frame rounded-2xl ${
-        compact ? 'h-28 sm:h-32' : 'h-32 sm:h-40'
-      }`}>
+      <div className={`relative overflow-hidden bg-mandi-surface flex-shrink-0 clay-image-frame rounded-2xl ${compact ? 'h-28 sm:h-32' : 'h-32 sm:h-40'
+        }`}>
         <LazyImage
           src={product.image}
           alt={product.name}
@@ -108,14 +104,13 @@ export default function ProductCard({ product, showStore = false, compact = fals
           )}
         </div>
 
-        <h3 className={`text-mandi-text font-bold leading-snug mb-1 line-clamp-2 group-hover:text-mandi-green transition-colors ${
-          compact ? 'text-xs min-h-[1.9rem]' : 'text-xs sm:text-sm min-h-[2.1rem]'
-        }`}>
+        <h3 className={`text-mandi-text font-bold leading-snug mb-1 line-clamp-2 group-hover:text-mandi-green transition-colors ${compact ? 'text-xs min-h-[1.9rem]' : 'text-xs sm:text-sm min-h-[2.1rem]'
+          }`}>
           {product.name}
         </h3>
 
         <div className="flex items-center justify-between mb-1">
-          <span className="text-mandi-subtle text-[10px] sm:text-[11px] font-medium bg-mandi-surface px-1.5 py-0.5 rounded-md border border-mandi-border/50">
+          <span className="text-mandi-subtle text-[10px] sm:text-[11px] font-medium bg-mandi-surface px-1.5 py-0.5 rounded-md border border-transparent">
             {product.unit}
           </span>
           {product.stock <= 5 && product.isAvailable && !compact && (
@@ -145,17 +140,15 @@ export default function ProductCard({ product, showStore = false, compact = fals
           ) : quantity === 0 ? (
             <button
               onClick={handleAdd}
-              className={`w-full text-xs font-black rounded-2xl bg-mandi-green text-black active:scale-95 transition-all duration-200 flex items-center justify-center gap-1 clay-btn-green ${
-                compact ? 'py-1.5 min-h-[32px]' : 'py-2 sm:py-2.5 min-h-[36px] sm:min-h-[38px]'
-              }`}
+              className={`w-full text-xs font-black rounded-2xl bg-mandi-green text-black active:scale-95 transition-all duration-200 flex items-center justify-center gap-1 clay-btn-green ${compact ? 'py-1.5 min-h-[32px]' : 'py-2 sm:py-2.5 min-h-[36px] sm:min-h-[38px]'
+                }`}
             >
               <Plus size={14} strokeWidth={2.8} />
               Add
             </button>
           ) : (
-            <div className={`flex items-center justify-between bg-mandi-green rounded-2xl overflow-hidden clay-counter border border-white/20 ${
-              compact ? 'min-h-[32px]' : 'min-h-[36px] sm:min-h-[38px]'
-            }`}>
+            <div className={`flex items-center justify-between bg-mandi-green rounded-2xl overflow-hidden clay-counter ${compact ? 'min-h-[32px]' : 'min-h-[36px] sm:min-h-[38px]'
+              }`}>
               <button
                 onClick={() => updateQuantity(product.id, quantity - 1)}
                 className="px-2.5 py-1.5 h-full flex items-center justify-center hover:bg-black/10 active:scale-90 transition-all duration-150"

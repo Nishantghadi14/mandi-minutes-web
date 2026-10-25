@@ -87,7 +87,13 @@ export default function OrderStatusPage() {
           </div>
           <div>
             <h2 className="text-white font-bold text-lg">Order Confirmed! 🎉</h2>
-            <p className="text-green-200 text-xs">Estimated Delivery: <span className="font-bold text-white">10-15 Mins</span> to Virar</p>
+            <p className="text-green-200 text-xs">
+              Delivery Type:{' '}
+              <span className="font-bold text-white">
+                {order.scheduledSlot?.label || (order.deliveryType === 'same-day' ? '⚡ Same-Day Delivery (Today)' : order.deliveryType === 'scheduled' ? '📅 Scheduled Delivery' : '⚡ Same-Day Express (15–30 Mins)')}
+              </span>{' '}
+              to Virar
+            </p>
           </div>
         </div>
       </div>

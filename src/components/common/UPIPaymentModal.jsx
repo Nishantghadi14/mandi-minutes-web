@@ -25,19 +25,20 @@ export default function UPIPaymentModal({
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [utrNumber, setUtrNumber] = useState('');
+  const [showQr, setShowQr] = useState(false);
 
   // Primary Merchant UPI Handle (0% Fee Direct Bank-to-Bank Transfer)
-  const effectiveUpiId = import.meta.env.VITE_MERCHANT_UPI_ID || propUpiId || store?.upiId || 'mahalaxmi.kirana@okicici';
+  const effectiveUpiId = import.meta.env.VITE_MERCHANT_UPI_ID || propUpiId || store?.upiId || 'mandiminutes@upi';
   const merchantName = storeName || store?.name || 'Mandi Minutes';
   
   // Standard NPCI UPI URI Specification
   const upiPayUrl = `upi://pay?pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent(merchantName)}&am=${Number(amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${orderId}`)}`;
 
-  // Generate dynamic high-res QR code
+  // Generate dynamic QR code only when needed
   useEffect(() => {
     if (isOpen && amount > 0) {
       QRCode.toDataURL(upiPayUrl, {
-        width: 280,
+        width: 240,
         margin: 1.5,
         color: { dark: '#000000', light: '#FFFFFF' }
       }).then(url => setQrDataUrl(url)).catch(err => {
@@ -51,6 +52,7 @@ export default function UPIPaymentModal({
       setStatus('pending');
       setUtrNumber('');
       setCopied(false);
+      setShowQr(false);
     }
   }, [isOpen]);
 
@@ -94,6 +96,20 @@ export default function UPIPaymentModal({
         console.warn('Firestore payment status notice:', err.message);
       }
     }
+    try {
+      const existing = JSON.parse(localStorage.getItem('mandi_synced_orders') || '[]');
+      const updated = existing.map(o => o.id === orderId ? {
+        ...o,
+        paymentStatus: 'upi_verification_pending',
+        paymentDetails: {
+          gateway: 'upi_direct',
+          upiId: effectiveUpiId,
+          utr: referenceId || null,
+          submittedAt: new Date().toISOString(),
+        }
+      } : o);
+      localStorage.setItem('mandi_synced_orders', JSON.stringify(updated));
+    } catch {}
     setStatus('success');
   }, [orderId, effectiveUpiId]);
 
@@ -112,11 +128,11 @@ export default function UPIPaymentModal({
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-mandi-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-mandi-green-muted rounded-xl flex items-center justify-center">
-              <QrCode size={20} className="text-mandi-green" />
+              <Smartphone size={20} className="text-mandi-green" />
             </div>
             <div>
               <h2 className="text-mandi-text font-bold text-base">Direct UPI Payment</h2>
-              <p className="text-mandi-muted text-xs">0% Fees • Instant Bank Transfer</p>
+              <p className="text-mandi-muted text-xs">Direct transfer to store account</p>
             </div>
           </div>
           <button onClick={onClose} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1">
@@ -135,29 +151,24 @@ export default function UPIPaymentModal({
           {/* PENDING STATE */}
           {status === 'pending' && (
             <div className="space-y-4">
-              {/* QR Code Card */}
-              <div className="bg-white p-3.5 rounded-2xl text-center shadow-md max-w-[240px] mx-auto">
-                {qrDataUrl ? (
-                  <img 
-                    src={qrDataUrl} 
-                    alt={`UPI QR code for ₹${amount}`} 
-                    className="w-48 h-48 mx-auto"
-                  />
-                ) : (
-                  <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
-                    Generating QR code...
-                  </div>
-                )}
-                <p className="text-[11px] font-bold text-gray-700 mt-1">Scan with any UPI App</p>
-                <div className="flex items-center justify-center gap-2 mt-1 opacity-80">
-                  <span className="text-[10px] font-semibold text-gray-600">GPay • PhonePe • Paytm • BHIM</span>
-                </div>
+              {/* Action 1: Direct 1-Click Mobile App Switch */}
+              <div className="space-y-1.5">
+                <a
+                  href={upiPayUrl}
+                  className="btn-primary w-full py-3.5 text-sm sm:text-base font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                >
+                  <Smartphone size={18} />
+                  <span>Open UPI App (GPay / PhonePe / Paytm)</span>
+                </a>
+                <p className="text-[11px] text-center text-mandi-muted">
+                  ⚡ Pre-fills our account & ₹{amount} amount in your UPI app
+                </p>
               </div>
 
               {/* UPI ID Copy Box */}
               <div className="flex items-center justify-between bg-mandi-surface border border-mandi-border rounded-xl px-3.5 py-2.5">
                 <div className="min-w-0 pr-2">
-                  <p className="text-mandi-muted text-[10px] uppercase font-semibold">Merchant UPI ID</p>
+                  <p className="text-mandi-muted text-[10px] uppercase font-semibold">Store Account UPI ID</p>
                   <p className="text-mandi-text font-mono font-bold text-xs truncate">{effectiveUpiId}</p>
                 </div>
                 <button
@@ -169,15 +180,6 @@ export default function UPIPaymentModal({
                   <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
-
-              {/* Action 1: Mobile Deep Link */}
-              <a
-                href={upiPayUrl}
-                className="btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95"
-              >
-                <Smartphone size={16} />
-                <span>Pay via UPI App (GPay / PhonePe)</span>
-              </a>
 
               {/* Action 2: UTR Reference Input + Confirm Button */}
               <div className="space-y-2 pt-2 border-t border-mandi-border">
@@ -199,6 +201,35 @@ export default function UPIPaymentModal({
                 </button>
               </div>
 
+              {/* Optional QR Code Reveal for desktop / secondary device */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowQr(prev => !prev)}
+                  className="text-xs text-mandi-muted hover:text-mandi-green transition-colors inline-flex items-center gap-1.5 font-medium underline"
+                >
+                  <QrCode size={13} />
+                  <span>{showQr ? 'Hide QR Code' : 'Paying from another phone? Show QR Code'}</span>
+                </button>
+
+                {showQr && (
+                  <div className="mt-3 bg-white p-3 rounded-2xl text-center shadow-md max-w-[210px] mx-auto animate-fade-in">
+                    {qrDataUrl ? (
+                      <img 
+                        src={qrDataUrl} 
+                        alt={`UPI QR code for ₹${amount}`} 
+                        className="w-40 h-40 mx-auto"
+                      />
+                    ) : (
+                      <div className="w-40 h-40 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
+                        Generating...
+                      </div>
+                    )}
+                    <p className="text-[10px] font-bold text-gray-700 mt-1">Scan with any UPI App</p>
+                  </div>
+                )}
+              </div>
+
               {/* Action 3: Switch to Cash on Delivery */}
               <div className="pt-2 border-t border-mandi-border">
                 <button
@@ -210,8 +241,8 @@ export default function UPIPaymentModal({
                   className="w-full py-2 text-xs text-mandi-muted hover:text-mandi-text transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Wallet size={14} className="text-mandi-subtle" />
-                  <span>Change mind?</span>
-                  <span className="text-mandi-green font-semibold">Switch to Cash on Delivery</span>
+                  <span>Pay at doorstep instead?</span>
+                  <span className="text-mandi-green font-semibold">Switch to Pay on Delivery</span>
                 </button>
               </div>
             </div>

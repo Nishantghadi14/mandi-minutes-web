@@ -25,17 +25,16 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
   const homePath = isApp ? '/app' : '/';
 
   return (
-    <nav 
-      aria-label="Mobile navigation" 
+    <nav
+      aria-label="Mobile navigation"
       className={`fixed bottom-0 left-0 right-0 ${isApp ? 'block' : 'md:hidden'} glass-dark border-t border-mandi-border z-40 px-3 pt-2 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] select-none rounded-t-3xl shadow-clay-nav`}
     >
       <div className="flex items-center justify-around max-w-md mx-auto">
         {/* 1. Home */}
         <Link
           to={homePath}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${
-            isActive('/') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
-          }`}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${isActive('/') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
+            }`}
           aria-label={t('nav.home')}
         >
           <div className={`p-1.5 rounded-2xl transition-all duration-200 ${isActive('/') ? 'bg-mandi-green/20 text-mandi-green shadow-clay-badge' : ''}`}>
@@ -49,9 +48,8 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
         {/* 2. Search */}
         <Link
           to="/search"
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${
-            isActive('/search') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
-          }`}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${isActive('/search') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
+            }`}
           aria-label={t('nav.search')}
         >
           <div className={`p-1.5 rounded-2xl transition-all duration-200 ${isActive('/search') ? 'bg-mandi-green/20 text-mandi-green shadow-clay-badge' : ''}`}>
@@ -84,9 +82,8 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
         {/* 4. Orders */}
         <Link
           to="/orders"
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${
-            isActive('/orders') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
-          }`}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${isActive('/orders') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
+            }`}
           aria-label={t('nav.orders')}
         >
           <div className={`p-1.5 rounded-2xl transition-all duration-200 ${isActive('/orders') ? 'bg-mandi-green/20 text-mandi-green shadow-clay-badge' : ''}`}>
@@ -100,25 +97,22 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
         {/* 5. Profile / Account */}
         <Link
           to="/profile"
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${
-            isActive('/profile') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
-          }`}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-2xl transition-all duration-150 active:scale-90 ${isActive('/profile') ? 'text-mandi-green' : 'text-mandi-muted hover:text-mandi-text'
+            }`}
           aria-label={t('nav.profile')}
         >
           <div className={`p-1.5 rounded-2xl transition-all duration-200 ${isActive('/profile') ? 'bg-mandi-green/20 text-mandi-green shadow-clay-badge' : ''}`}>
             {user ? (
-              <div className={`w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black shadow-clay-badge ${
-                isActive('/profile') ? 'ring-2 ring-mandi-green ring-offset-1 ring-offset-mandi-dark' : ''
-              }`}>
+              <div className={`w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black shadow-clay-badge ${isActive('/profile') ? 'ring-2 ring-mandi-green ring-offset-1 ring-offset-mandi-dark' : ''
+                }`}>
                 {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
               </div>
             ) : (
               <User size={20} className={isActive('/profile') ? 'drop-shadow-green stroke-[2.3]' : 'stroke-[1.8]'} />
             )}
           </div>
-          <span className={`text-[10px] font-medium leading-none max-w-[55px] truncate ${
-            isActive('/profile') ? 'text-mandi-green font-extrabold' : ''
-          }`}>
+          <span className={`text-[10px] font-medium leading-none max-w-[55px] truncate ${isActive('/profile') ? 'text-mandi-green font-extrabold' : ''
+            }`}>
             {user ? (user.name || user.displayName || 'Profile').split(' ')[0] : t('nav.profile')}
           </span>
         </Link>

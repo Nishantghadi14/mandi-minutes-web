@@ -78,7 +78,7 @@ export function TermsPage() {
           <h2 className="text-mandi-text font-bold text-base">1. Platform Services & Delivery SLAs</h2>
           <p>Mandi Minutes acts as a digital marketplace enabling customers to order grocery staples from verified neighborhood Kirana stores in Virar.</p>
           <ul className="list-disc list-inside space-y-1 pl-2 text-xs sm:text-sm">
-            <li><strong>Next-Day Delivery Drops:</strong> Orders placed for morning delivery are delivered between 7:00 AM and 11:00 AM.</li>
+            <li><strong>Same-Day & Scheduled Delivery Drops:</strong> Customers can choose instant same-day delivery (15–30 minutes) or schedule convenient morning/evening slots for today or tomorrow. Morning scheduled drops are delivered between 7:00 AM and 11:00 AM.</li>
             <li><strong>Delivery Charges:</strong> FREE delivery on orders over ₹199. Orders below ₹199 carry a nominal delivery fee of ₹20.</li>
             <li><strong>Service Area:</strong> Deliveries are limited to verified serviceable pincodes in Virar East and Virar West.</li>
           </ul>

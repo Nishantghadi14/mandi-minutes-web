@@ -188,6 +188,17 @@ export default function Navbar() {
                 <ChevronDown size={11} className="text-mandi-subtle flex-shrink-0 ml-0.5 group-hover:text-mandi-green transition-colors" />
               </button>
 
+              {/* Mobile / Tablet Quick Theme Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="lg:hidden p-2 rounded-2xl border border-mandi-border bg-mandi-surface/90 hover:border-mandi-green transition-all duration-200 active:scale-90 shadow-clay-pill text-mandi-green flex-shrink-0"
+                aria-label="Toggle Theme"
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+
               {/* Cart Button — visible on Tablet (sm:flex), on Phone it's in BottomNav */}
               <button
                 onClick={() => setIsOpen(true)}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
@@ -7,7 +8,7 @@ import { isFirebaseConfigured } from '../config/firebase';
 import {
   Shield, Store, Megaphone, HelpCircle, Check, X, Plus, Trash2, RefreshCw,
   ShieldAlert, Activity, TrendingUp, Database, XCircle, Search,
-  Users, Tag, Ban, RotateCcw,
+  Users, Tag, Ban, RotateCcw, ExternalLink,
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -103,6 +104,7 @@ export default function AdminPanel() {
     retryFetch, loadingStates, errorStates,
   } = useData();
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('orders');
   const [showAddStoreModal, setShowAddStoreModal] = useState(false);
@@ -316,7 +318,26 @@ export default function AdminPanel() {
             <p className="text-mandi-muted text-xs">Live Order Oversight, Inventory &amp; Operations Dashboard</p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-xl px-2.5 py-1.5 text-xs text-mandi-text shadow-sm">
+            <Store size={14} className="text-mandi-green flex-shrink-0" />
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  navigate(`/vendor?storeId=${e.target.value}`);
+                }
+              }}
+              className="bg-transparent text-xs font-semibold text-mandi-text outline-none cursor-pointer pr-1"
+            >
+              <option value="" disabled className="bg-mandi-card text-mandi-muted">Check Vendor Dashboard...</option>
+              {stores.map(st => (
+                <option key={st.id} value={st.id} className="bg-mandi-card text-mandi-text">
+                  {st.name} ({st.status})
+                </option>
+              ))}
+            </select>
+          </div>
           <button onClick={handleRefresh} disabled={refreshing} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green hover:text-mandi-green transition-all">
             <RefreshCw size={14} className={refreshing ? 'animate-spin text-mandi-green' : ''} />
             {refreshing ? 'Syncing...' : 'Sync Live Orders'}
@@ -356,11 +377,11 @@ export default function AdminPanel() {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={dailyOrderChart} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#6b7280' }} interval={4} />
-                  <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, fontSize: 11 }} labelStyle={{ color: '#d1d5db' }} formatter={(val, name) => [val, name === 'orders' ? 'Orders' : 'GMV (₹)']} />
-                  <Line type="monotone" dataKey="orders" stroke="#4ade80" strokeWidth={2} dot={false} name="orders" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--color-subtle)' }} interval={4} />
+                  <YAxis tick={{ fontSize: 9, fill: 'var(--color-subtle)' }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, fontSize: 11, color: 'var(--color-text)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }} labelStyle={{ color: 'var(--color-text)', fontWeight: 'bold' }} formatter={(val, name) => [val, name === 'orders' ? 'Orders' : 'GMV (₹)']} />
+                  <Line type="monotone" dataKey="orders" stroke="#00C851" strokeWidth={2.5} dot={false} name="orders" />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -500,6 +521,16 @@ export default function AdminPanel() {
                       {order.customerEmail && <p className="text-mandi-subtle">{order.customerEmail}</p>}
                       <p className="text-mandi-text mt-1">{order.address?.line1}, {order.address?.city} - {order.address?.pincode}</p>
                       {order.paymentDetails?.utr && <p className="text-mandi-green font-mono text-[11px] mt-1">UTR: {order.paymentDetails.utr}</p>}
+                      <div className="flex items-center justify-between pt-1.5 border-t border-mandi-border/40">
+                        <span className="text-mandi-muted text-[11px]">Store: {order.storeName || 'Local Kirana'}</span>
+                        <Link
+                          to={`/vendor?storeId=${order.storeId || 'store-mahalaxmi-1'}`}
+                          className="text-[11px] text-mandi-green hover:underline flex items-center gap-1 font-bold"
+                          title="Open Vendor Dashboard"
+                        >
+                          <Store size={12} /> Dashboard <ExternalLink size={10} />
+                        </Link>
+                      </div>
                     </div>
                     <div className="bg-mandi-surface p-3.5 rounded-xl space-y-1.5 border border-mandi-border/60">
                       <p className="text-mandi-muted font-semibold uppercase text-[10px] tracking-wider">Ordered Items ({order.items?.length || 0})</p>
@@ -540,6 +571,13 @@ export default function AdminPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+                <Link
+                  to={`/vendor?storeId=${s.id}`}
+                  className="py-1.5 px-3 text-xs flex items-center gap-1.5 bg-mandi-green/10 text-mandi-green border border-mandi-green/30 hover:bg-mandi-green hover:text-black rounded-xl transition-all font-bold shadow-sm"
+                  title={`Open ${s.name} vendor dashboard`}
+                >
+                  <Store size={14} /> Open Dashboard
+                </Link>
                 {s.status === 'pending' && <button onClick={() => { updateStore(s.id, { status: 'approved' }); addToast(`${s.name} approved!`, 'success'); }} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1"><Check size={14} /> Approve</button>}
                 {s.status === 'approved' && <button onClick={() => { updateStore(s.id, { status: 'suspended' }); addToast(`${s.name} suspended`, 'error'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-orange-950 text-orange-400 border border-orange-500/30 hover:border-orange-400 rounded-xl transition-all font-semibold"><Ban size={14} /> Suspend</button>}
                 {s.status === 'suspended' && <button onClick={() => { updateStore(s.id, { status: 'approved' }); addToast(`${s.name} reactivated!`, 'success'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-mandi-green-muted text-mandi-green border border-mandi-green/30 hover:border-mandi-green rounded-xl transition-all font-semibold"><RotateCcw size={14} /> Reactivate</button>}

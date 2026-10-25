@@ -23,7 +23,7 @@ ${itemsList}
 
 ----------------------------------------
 💰 *Total Bill:* ₹${order.total} (${order.paymentMethod || 'Paid'})
-⚡ *Slot:* ${order.deliveryType === 'express' ? 'Express 10-15 Mins' : order.deliveryType || 'Standard'}
+⚡ *Slot:* ${order.scheduledSlot?.label || (order.deliveryType === 'same-day' ? 'Same-Day Delivery' : order.deliveryType === 'express' ? 'Express 15-30 Mins' : order.deliveryType || 'Standard')}
 
 🔗 *Live Tracking:* ${origin}/order-status/${order.id}
 
@@ -44,7 +44,7 @@ Items: ${itemsSummary}
 Total Amount: ₹${order.total} (${order.paymentMethod || 'Paid'})
 Status: ${order.status?.replace(/_/g, ' ').toUpperCase() || 'CONFIRMED'}
 
-⚡ Delivered in 10-15 Mins in Virar!
+⚡ ${order.scheduledSlot?.label ? `Delivery Slot: ${order.scheduledSlot.label}` : order.deliveryType === 'scheduled' ? 'Scheduled Delivery' : 'Same-Day Delivery in Virar!'}
 📍 Track Live: ${origin}/order-status/${order.id}`;
 
   const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;

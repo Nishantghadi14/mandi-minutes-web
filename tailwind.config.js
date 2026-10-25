@@ -4,27 +4,27 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: ['selector', '[data-theme="dark"]'],
+  darkMode: ['selector', '[data-theme="dark"], .dark'],
   theme: {
     extend: {
       colors: {
         // These tokens now point to CSS custom properties, so they
         // automatically flip between dark and light themes.
-        'mandi-dark':         'var(--color-dark)',
-        'mandi-card':         'var(--color-card)',
-        'mandi-border':       'var(--color-border)',
+        'mandi-dark': 'var(--color-dark)',
+        'mandi-card': 'var(--color-card)',
+        'mandi-border': 'var(--color-border)',
         'mandi-border-light': 'var(--color-border-light)',
-        'mandi-surface':      'var(--color-surface)',
-        'mandi-text':         'var(--color-text)',
-        'mandi-muted':        'var(--color-muted)',
-        'mandi-subtle':       'var(--color-subtle)',
+        'mandi-surface': 'var(--color-surface)',
+        'mandi-text': 'var(--color-text)',
+        'mandi-muted': 'var(--color-muted)',
+        'mandi-subtle': 'var(--color-subtle)',
         // Brand / accent colours — unchanged across themes
-        'mandi-green':        '#00C851',
-        'mandi-green-dark':   '#007E33',
-        'mandi-green-light':  '#00E65C',
-        'mandi-green-muted':  '#00C85120',
-        'mandi-amber':        '#F59E0B',
-        'mandi-blue':         '#3B82F6',
+        'mandi-green': '#00C851',
+        'mandi-green-dark': '#007E33',
+        'mandi-green-light': '#00E65C',
+        'mandi-green-muted': '#00C85120',
+        'mandi-amber': '#F59E0B',
+        'mandi-blue': '#3B82F6',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],

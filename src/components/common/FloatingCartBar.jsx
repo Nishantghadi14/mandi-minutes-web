@@ -9,8 +9,8 @@ export default function FloatingCartBar() {
   // Hide on checkout, order status, or when cart is empty
   const hideOnPaths = ['/checkout', '/admin', '/vendor', '/rider'];
   if (
-    itemCount === 0 || 
-    hideOnPaths.includes(location.pathname) || 
+    itemCount === 0 ||
+    hideOnPaths.includes(location.pathname) ||
     location.pathname.startsWith('/order-status')
   ) {
     return null;
@@ -25,7 +25,7 @@ export default function FloatingCartBar() {
   const freeDeliveryRemaining = Math.max(0, 199 - total);
 
   return (
-    <aside 
+    <aside
       aria-label="Floating cart summary"
       className="fixed bottom-[calc(6.25rem+env(safe-area-inset-bottom,0px))] left-0 right-0 max-w-md mx-auto px-3.5 z-40 pointer-events-none"
     >

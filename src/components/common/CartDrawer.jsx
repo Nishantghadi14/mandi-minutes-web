@@ -82,8 +82,8 @@ export default function CartDrawer() {
               <div className="mx-4 mt-3 flex items-center gap-2.5 bg-mandi-green/10 border border-mandi-green/30 rounded-2xl p-3.5 shadow-clay-card">
                 <Truck size={18} className="text-mandi-green flex-shrink-0" />
                 <div>
-                  <p className="text-mandi-green text-xs font-bold uppercase tracking-wider">Next-Day Delivery Guaranteed</p>
-                  <p className="text-mandi-muted text-xs">Delivered Tomorrow • 7:00 AM – 11:00 AM</p>
+                  <p className="text-mandi-green text-xs font-bold uppercase tracking-wider">Same-Day & Scheduled Delivery</p>
+                  <p className="text-mandi-muted text-xs">Delivered today in 15–30 min or schedule for tomorrow</p>
                 </div>
               </div>
 

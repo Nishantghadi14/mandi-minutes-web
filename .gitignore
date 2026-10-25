@@ -42,3 +42,6 @@ firebase-adminsdk*.json
 *.apk
 android/app/build/
 android/.gradle/
+
+# Agents
+.agents

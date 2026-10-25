@@ -237,18 +237,18 @@ export default function SearchPage() {
               </div>
             </section>
 
-            {/* Next-Day Delivery Guarantee Card */}
+            {/* Delivery Guarantee Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-mandi-card via-mandi-surface to-mandi-card border border-mandi-green/30 flex items-center gap-3.5 shadow-md">
               <div className="w-11 h-11 rounded-2xl bg-mandi-green/15 border border-mandi-green/30 flex items-center justify-center text-mandi-green flex-shrink-0">
                 <Truck size={22} />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-black text-mandi-text">Next-Day 7 AM Drop</p>
+                  <p className="text-xs font-black text-mandi-text">Same-Day & Scheduled Delivery</p>
                   <span className="text-[10px] font-bold text-mandi-green bg-mandi-green/15 px-2 py-0.5 rounded-full border border-mandi-green/20">FREE on ₹199+</span>
                 </div>
                 <p className="text-[11px] text-mandi-muted mt-0.5">
-                  Order staples tonight, delivered fresh to your doorstep tomorrow morning.
+                  Get same-day delivery today, or schedule for tomorrow morning right to your doorstep.
                 </p>
               </div>
             </div>

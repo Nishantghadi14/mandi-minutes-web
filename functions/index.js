@@ -20,6 +20,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
   const gatewayKeyId = process.env.RAZORPAY_KEY_ID || functions.config().razorpay?.key_id;
   const gatewaySecret = process.env.RAZORPAY_KEY_SECRET || functions.config().razorpay?.key_secret;
   if (paymentMethod === 'UPI / Online Gateway' && (!gatewayKeyId || !gatewaySecret)) throw new functions.https.HttpsError('failed-precondition', 'Online payment is temporarily unavailable. Please choose Cash on Delivery.');
+  const placedAt = new Date().toISOString();
   const orderId = `ord_${crypto.createHash('sha256').update(`${customerId}:${idempotencyKey}`).digest('hex').slice(0, 28)}`;
   const orderRef = db.collection('orders').doc(orderId);
   const productRefs = new Map();
@@ -45,8 +46,8 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
     if (subtotal < MIN_ORDER_AMOUNT) throw new functions.https.HttpsError('invalid-argument', `Minimum order amount is ₹${MIN_ORDER_AMOUNT}.`);
     const discount = applyCoupon(subtotal, couponCode); const deliveryCharge = calculateDeliveryCharge(subtotal); const total = Math.max(0, subtotal - discount + deliveryCharge);
     if (paymentMethod === 'Cash on Delivery' && total > MAX_COD_AMOUNT) throw new functions.https.HttpsError('invalid-argument', `Cash on Delivery is capped at ₹${MAX_COD_AMOUNT}.`);
-    const placedAt = new Date().toISOString();
-    order = { id: orderId, idempotencyKey, customerId, storeId, storeName: clean(storeSnap.data().name, 120) || 'Local Store', items: verifiedItems, subtotal, discount, deliveryCharge, total, address: { label: clean(address.label, 40) || 'Address', line1: clean(address.line1, 150), city: clean(address.city, 80), pincode: String(address.pincode) }, paymentMethod, paymentStatus: paymentMethod === 'Cash on Delivery' ? 'cod_pending' : 'pending', status: 'placed', statusHistory: [{ status: 'placed', time: placedAt, note: 'Order placed and inventory reserved.' }], deliveryType: deliveryType === 'scheduled' ? 'scheduled' : 'express', scheduledSlot: deliveryType === 'scheduled' ? scheduledSlot : null, placedAt };
+    const validDeliveryType = ['scheduled', 'same-day', 'express'].includes(deliveryType) ? deliveryType : 'same-day';
+    order = { id: orderId, idempotencyKey, customerId, storeId, storeName: clean(storeSnap.data().name, 120) || 'Local Store', items: verifiedItems, subtotal, discount, deliveryCharge, total, address: { label: clean(address.label, 40) || 'Address', line1: clean(address.line1, 150), city: clean(address.city, 80), pincode: String(address.pincode) }, paymentMethod, paymentStatus: paymentMethod === 'Cash on Delivery' ? 'cod_pending' : 'pending', status: 'placed', statusHistory: [{ status: 'placed', time: placedAt, note: 'Order placed and inventory reserved.' }], deliveryType: validDeliveryType, scheduledSlot: scheduledSlot || null, placedAt };
     tx.create(orderRef, order);
   });
   if (paymentMethod === 'Cash on Delivery' || order.razorpayOrderId) return { success: true, order, isDuplicate: Boolean(order.razorpayOrderId) };

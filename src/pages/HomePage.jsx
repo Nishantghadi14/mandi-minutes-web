@@ -409,11 +409,10 @@ export default function HomePage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-3.5 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
               <button
                 onClick={() => setSelectedVendorFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${
-                  selectedVendorFilter === 'all'
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${selectedVendorFilter === 'all'
                     ? 'bg-mandi-green text-black shadow-sm'
                     : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-                }`}
+                  }`}
               >
                 <Store size={12} />
                 <span>{t('sections.allStores')} ({localVendorProducts.length})</span>
@@ -425,11 +424,10 @@ export default function HomePage() {
                   <button
                     key={s.id}
                     onClick={() => setSelectedVendorFilter(s.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${
-                      selectedVendorFilter === s.id
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 active:scale-95 flex-shrink-0 ${selectedVendorFilter === s.id
                         ? 'bg-mandi-green text-black shadow-sm'
                         : 'bg-mandi-surface border border-mandi-border text-mandi-muted hover:text-mandi-text'
-                    }`}
+                      }`}
                   >
                     <span>{s.name}</span>
                     {count > 0 && <span className="opacity-75 text-[10px]">({count})</span>}

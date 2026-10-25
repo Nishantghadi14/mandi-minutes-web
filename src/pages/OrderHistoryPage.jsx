@@ -231,7 +231,7 @@ export default function OrderHistoryPage() {
             <div className="grid grid-cols-2 gap-2 text-left pt-1">
               <div className="p-2.5 rounded-xl bg-mandi-surface border border-mandi-border text-[11px] text-mandi-muted flex items-center gap-2">
                 <Truck size={14} className="text-mandi-green flex-shrink-0" />
-                <span>Next-Day 7 AM Drop</span>
+                <span>Same-Day & Scheduled</span>
               </div>
               <div className="p-2.5 rounded-xl bg-mandi-surface border border-mandi-border text-[11px] text-mandi-muted flex items-center gap-2">
                 <Clock size={14} className="text-mandi-green flex-shrink-0" />
@@ -289,7 +289,7 @@ export default function OrderHistoryPage() {
                   <div className="flex items-center gap-2 text-[11px] text-mandi-green bg-mandi-green/10 px-2.5 py-1 rounded-xl border border-mandi-green/20">
                     <Truck size={13} className="text-mandi-green flex-shrink-0" />
                     <span className="font-semibold">
-                      {order.scheduledSlot?.label || 'Next-Day Morning Delivery (7:00 AM – 11:00 AM)'}
+                      {order.scheduledSlot?.label || (order.deliveryType === 'same-day' ? '⚡ Same-Day Delivery (Today)' : order.deliveryType === 'scheduled' ? '📅 Scheduled Delivery' : '⚡ Same-Day Express (15–30 Mins)')}
                     </span>
                   </div>
 
