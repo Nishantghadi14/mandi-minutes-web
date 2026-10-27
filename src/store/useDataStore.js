@@ -305,6 +305,125 @@ export const useDataStore = create((set, get) => ({
     return newOrder;
   },
 
+  // Record Local In-Store Sale & Automatically Deduct Product Stock
+  recordLocalSale: async (saleData) => {
+    const {
+      storeId,
+      storeName = 'Local Store',
+      items = [],
+      paymentMethod = 'Cash',
+      paymentStatus = 'paid',
+      customerName = 'Walk-in Customer',
+      customerPhone = '',
+      notes = '',
+      discount = 0,
+    } = saleData;
+
+    const subtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+    const safeDiscount = Math.min(subtotal, Math.max(0, Number(discount) || 0));
+    const total = Math.max(0, subtotal - safeDiscount);
+    const saleId = `sale-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const placedAt = new Date().toISOString();
+
+    const localSaleOrder = {
+      id: saleId,
+      isLocalSale: true,
+      orderType: 'local_sale',
+      channel: 'in_store',
+      storeId,
+      storeName,
+      customerName: (customerName || '').trim() || 'Walk-in Customer',
+      customerPhone: (customerPhone || '').trim(),
+      customerId: 'walk-in',
+      notes: (notes || '').trim(),
+      items: items.map(it => ({
+        productId: it.productId || it.id || '',
+        name: it.name,
+        price: Number(it.price) || 0,
+        mrp: Number(it.mrp) || Number(it.price) || 0,
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'unit',
+        image: it.image || '',
+      })),
+      subtotal,
+      discount: safeDiscount,
+      deliveryCharge: 0,
+      total,
+      paymentMethod,
+      paymentStatus,
+      status: 'delivered',
+      deliveryType: 'in_store_counter',
+      placedAt,
+      address: {
+        line1: 'In-Store Counter Pickup',
+        city: 'Virar',
+        pincode: '401305',
+      },
+      statusHistory: [
+        {
+          status: 'delivered',
+          time: placedAt,
+          note: `Local counter sale recorded. Payment: ${paymentMethod}.`,
+        }
+      ],
+    };
+
+    // 1. Deduct Stock for matching catalog products
+    const currentProducts = get().products;
+    const productUpdates = [];
+
+    items.forEach(saleItem => {
+      const prodId = saleItem.productId || saleItem.id;
+      if (!prodId) return;
+      const existingProd = currentProducts.find(p => p.id === prodId);
+      if (existingProd) {
+        const currentStock = Number(existingProd.stock) || 0;
+        const newStock = Math.max(0, currentStock - (Number(saleItem.quantity) || 1));
+        const updates = {
+          stock: newStock,
+          isAvailable: newStock > 0,
+        };
+        productUpdates.push({ id: prodId, updates });
+      }
+    });
+
+    if (productUpdates.length > 0) {
+      set(state => ({
+        products: state.products.map(p => {
+          const upd = productUpdates.find(u => u.id === p.id);
+          return upd ? { ...p, ...upd.updates } : p;
+        })
+      }));
+
+      if (db && isFirebaseConfigured) {
+        for (const { id, updates } of productUpdates) {
+          try {
+            await updateDoc(doc(db, 'products', id), updates);
+          } catch (err) {
+            console.warn(`Firestore product stock deduction warning for ${id}:`, err?.message);
+          }
+        }
+      }
+    }
+
+    // 2. Persist Local Sale Order
+    if (db && isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, 'orders', saleId), localSaleOrder);
+      } catch (err) {
+        console.warn('Direct local sale order write warning:', err?.message);
+      }
+    }
+
+    const updatedOrders = [localSaleOrder, ...get().orders.filter(o => o.id !== saleId)];
+    try {
+      localStorage.setItem('mandi_synced_orders', JSON.stringify(updatedOrders));
+    } catch {}
+
+    set({ orders: updatedOrders });
+    return localSaleOrder;
+  },
+
   // Update order status with audit log
   updateOrderStatus: async (orderId, status, note = '', extraFields = {}) => {
     const historyEntry = { 

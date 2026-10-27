@@ -5,6 +5,7 @@ import { useData } from '../context/DataContext';
 import ProductModal from '../components/vendor/ProductModal';
 import InvoiceModal from '../components/vendor/InvoiceModal';
 import MasterCatalogModal from '../components/vendor/MasterCatalogModal';
+import LocalSaleModal from '../components/vendor/LocalSaleModal';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
 import ImageUploadField from '../components/common/ImageUploadField';
@@ -41,7 +42,7 @@ const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
 
 export default function VendorDashboard() {
   const { user } = useAuth();
-  const { stores, products: allProducts, categories, orders, updateOrderStatus, addProduct, updateProduct, deleteProduct, updateStore } = useData();
+  const { stores, products: allProducts, categories, orders, updateOrderStatus, addProduct, updateProduct, deleteProduct, updateStore, recordLocalSale } = useData();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { storeId: routeStoreId } = useParams();
@@ -124,6 +125,7 @@ export default function VendorDashboard() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showMasterModal, setShowMasterModal] = useState(false);
+  const [showLocalSaleModal, setShowLocalSaleModal] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
   const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d'
@@ -216,7 +218,9 @@ export default function VendorDashboard() {
       let slaStatus = 'ok';
       let slaMessage = '';
 
-      if (order.deliveryType === 'scheduled') {
+      if (order.isLocalSale || order.orderType === 'local_sale') {
+        slaMessage = 'Direct Counter Sale';
+      } else if (order.deliveryType === 'scheduled') {
         slaMessage = `Scheduled for ${order.scheduledSlot?.label || order.scheduledSlot?.date || 'Slot'}`;
       } else if (order.deliveryType === 'same-day' && order.scheduledSlot?.id && order.scheduledSlot.id !== 'same-day-express') {
         slaMessage = `Same-Day (${order.scheduledSlot?.label || 'Today'})`;
@@ -257,6 +261,7 @@ export default function VendorDashboard() {
     
     const completedOrOut = storeOrders.filter(o => ['delivered', 'out_for_delivery'].includes(o.status));
     const onTimeOrders = completedOrOut.filter(o => {
+      if (o.isLocalSale || o.orderType === 'local_sale') return true;
       const acceptStep = o.statusHistory?.find(h => h.status === 'accepted');
       if (!acceptStep) return true;
       const acceptDiff = (new Date(acceptStep.time).getTime() - new Date(o.placedAt).getTime()) / (60 * 1000);
@@ -303,10 +308,14 @@ export default function VendorDashboard() {
 
   const earningsSummary = useMemo(() => {
     const grossSales = storeOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-    const platformCommission = Math.round(grossSales * PLATFORM_COMMISSION_RATE);
+    const onlineOrders = storeOrders.filter(o => !o.isLocalSale && o.orderType !== 'local_sale');
+    const localOrders = storeOrders.filter(o => o.isLocalSale || o.orderType === 'local_sale');
+    const onlineSales = onlineOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const localSales = localOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const platformCommission = Math.round(onlineSales * PLATFORM_COMMISSION_RATE);
     const netPayout = grossSales - platformCommission;
     const deliveredCount = storeOrders.filter(o => o.status === 'delivered').length;
-    return { grossSales, platformCommission, netPayout, deliveredCount, rate: PLATFORM_COMMISSION_RATE * 100 };
+    return { grossSales, onlineSales, localSales, platformCommission, netPayout, deliveredCount, rate: PLATFORM_COMMISSION_RATE * 100 };
   }, [storeOrders]);
 
   const topSellingProducts = useMemo(() => {
@@ -324,10 +333,15 @@ export default function VendorDashboard() {
       .slice(0, 5);
   }, [storeOrders]);
 
+  const localSalesCount = useMemo(() => {
+    return storeOrders.filter(o => o.isLocalSale || o.orderType === 'local_sale').length;
+  }, [storeOrders]);
+
   const filteredOrders = useMemo(() => {
     if (orderFilter === 'all') return ordersWithSla;
     if (orderFilter === 'sla_breach') return slaBreachedOrders;
-    return ordersWithSla.filter(o => o.status === orderFilter);
+    if (orderFilter === 'local_sale') return ordersWithSla.filter(o => o.isLocalSale || o.orderType === 'local_sale');
+    return ordersWithSla.filter(o => o.status === orderFilter && !o.isLocalSale && o.orderType !== 'local_sale');
   }, [ordersWithSla, slaBreachedOrders, orderFilter]);
 
   const handleSaveProduct = async (prodData) => {
@@ -342,6 +356,18 @@ export default function VendorDashboard() {
       setShowProductModal(false);
       setEditingProduct(null);
     } catch (err) { addToast(err.message || 'Could not save product.', 'error'); }
+  };
+
+  const handleCreateLocalSale = async (salePayload) => {
+    try {
+      const completedOrder = await recordLocalSale(salePayload);
+      addToast('🎉 Local sale recorded and stock deducted!', 'success', 3500);
+      return completedOrder;
+    } catch (err) {
+      console.error('Local sale creation error:', err);
+      addToast(err.message || 'Could not record local sale.', 'error');
+      throw err;
+    }
   };
 
   const handleBatchSaveProducts = async (prodList) => {
@@ -389,6 +415,30 @@ export default function VendorDashboard() {
       addToast('🎉 Shop settings & customization updated successfully!', 'success', 4000);
     } catch (err) {
       addToast(err.message || 'Could not update store settings.', 'error');
+    }
+  };
+
+  const handleToggleStoreStatus = async () => {
+    if (!store?.id) return;
+    const isCurrentlyClosed = store.status === 'closed' || store.isOpen === false;
+    const nextStatus = isCurrentlyClosed ? 'approved' : 'closed';
+    const nextIsOpen = isCurrentlyClosed;
+    try {
+      await updateStore(store.id, {
+        status: nextStatus,
+        isOpen: nextIsOpen,
+        updatedAt: new Date().toISOString(),
+      });
+      setStoreForm(f => ({ ...f, status: nextStatus }));
+      addToast(
+        nextIsOpen 
+          ? '🟢 Store is now OPEN & accepting online orders!' 
+          : '🔴 Store is now PAUSED (walk-in counter sales only)', 
+        nextIsOpen ? 'success' : 'info', 
+        3000
+      );
+    } catch (err) {
+      addToast(err.message || 'Could not update store status', 'error');
     }
   };
 
@@ -445,177 +495,240 @@ export default function VendorDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24 md:pb-6">
+      {/* Super Admin Vendor Inspection Mode Banner */}
       {/* Super Admin Vendor Inspection Mode Banner */}
       {user?.role === 'admin' && (
-        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-mandi-card to-amber-500/10 border-2 border-amber-500/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center flex-shrink-0 shadow-md">
-              <Shield size={22} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-md">
+        <div className="mb-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-500 text-black font-black flex items-center justify-center flex-shrink-0">
+                <Shield size={14} />
+              </div>
+              <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded">
                   Super Admin Inspection Mode
                 </span>
-                <span className="text-mandi-text font-bold text-base">
+                <span className="text-mandi-text font-bold text-xs truncate">
                   {store.name}
                 </span>
-                <span className="text-mandi-subtle text-xs">
+                <span className="text-mandi-subtle text-[10px]">
                   (ID: <span className="font-mono text-mandi-muted">{store.id}</span>)
                 </span>
               </div>
-              <p className="text-mandi-muted text-xs mt-0.5">
-                Inspecting vendor portal as Super Admin. You can view & manage live orders, catalog pricing, and shop customization.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap justify-end">
-            <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-xl px-3 py-1.5 text-xs text-mandi-text shadow-sm">
-              <Store size={14} className="text-amber-400 flex-shrink-0" />
-              <span className="text-mandi-muted font-medium">Switch Vendor:</span>
-              <select
-                value={store.id}
-                onChange={(e) => {
-                  setSearchParams({ storeId: e.target.value });
-                }}
-                className="bg-transparent font-bold text-mandi-green outline-none cursor-pointer py-0.5"
-              >
-                {stores.map(st => (
-                  <option key={st.id} value={st.id} className="bg-mandi-card text-mandi-text">
-                    {st.name} ({st.city || 'Virar'})
-                  </option>
-                ))}
-              </select>
             </div>
 
             <Link
               to="/admin"
-              className="btn-outline text-xs py-2 px-3.5 flex items-center gap-1.5 hover:border-amber-400 hover:text-amber-300 font-bold transition-all shadow-sm"
+              className="btn-outline text-[11px] py-1 px-2.5 flex items-center gap-1 font-bold whitespace-nowrap flex-shrink-0"
             >
-              <ArrowLeft size={14} /> Back to Admin Panel
+              <ArrowLeft size={12} /> Back to Admin Panel
             </Link>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1.5 text-xs text-mandi-text w-full">
+            <Store size={13} className="text-amber-400 flex-shrink-0" />
+            <span className="text-mandi-muted text-[11px] font-medium flex-shrink-0">Switch Vendor:</span>
+            <select
+              value={store.id}
+              onChange={(e) => {
+                setSearchParams({ storeId: e.target.value });
+              }}
+              className="bg-transparent font-bold text-mandi-green outline-none cursor-pointer text-xs flex-1 min-w-0 truncate"
+            >
+              {stores.map(st => (
+                <option key={st.id} value={st.id} className="bg-mandi-card text-mandi-text">
+                  {st.name} ({st.city || 'Virar'})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}
+
       {/* SLA Alert Urgent Banner */}
       {slaBreachedOrders.length > 0 && (
-        <div className="mb-6 p-4 rounded-2xl bg-red-500/15 border-2 border-red-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-red-700 dark:text-red-200 shadow-lg animate-pulse">
-          <div className="flex items-center gap-3">
-            <ShieldAlert size={24} className="text-red-500 dark:text-red-400 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-red-800 dark:text-red-100">
-                🚨 SLA Urgency Alert: {slaBreachedOrders.length} Order{slaBreachedOrders.length > 1 ? 's' : ''} Delayed!
-              </p>
-              <p className="text-xs text-red-300">
-                Orders have been waiting for acceptance/packing beyond the 10-15 min express guarantee.
-              </p>
-            </div>
+        <div className="mb-3 p-3 rounded-2xl bg-red-500/15 border border-red-500/40 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldAlert size={18} className="text-red-500 dark:text-red-400 flex-shrink-0" />
+            <p className="font-bold text-xs text-red-600 dark:text-red-300 truncate">
+              🚨 SLA Urgency Alert: {slaBreachedOrders.length} Order{slaBreachedOrders.length > 1 ? 's' : ''} Delayed!
+            </p>
           </div>
           <button
             onClick={() => setOrderFilter('sla_breach')}
-            className="btn-primary text-xs py-2 px-4 bg-red-600 hover:bg-red-500 text-white font-bold"
+            className="btn-primary text-[11px] py-1.5 px-3 bg-red-600 hover:bg-red-500 text-white font-bold whitespace-nowrap flex-shrink-0 shadow-sm"
           >
-            Review Delayed Orders ({slaBreachedOrders.length})
+            Review ({slaBreachedOrders.length})
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-mandi-border bg-mandi-surface shadow-sm flex-shrink-0">
-            <LazyImage
-              src={store.image}
-              alt={store.name}
-              className="w-full h-full object-cover"
-              containerClass="w-full h-full"
-              fallbackText="No Image"
-            />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-mandi-text font-black text-2xl">{store.name}</h1>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${store.status === 'closed' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30' : 'badge-green'}`}>
-                {store.status === 'closed' ? 'Store Paused' : store.status}
-              </span>
+      {/* Clean App Header Bar */}
+      <div className="card p-3 sm:p-4 mb-3.5 bg-mandi-card border border-mandi-border/80 shadow-sm">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] max-w-[44px] max-h-[44px] rounded-xl overflow-hidden border border-mandi-border/70 bg-mandi-surface flex-shrink-0 shadow-sm">
+              <LazyImage
+                src={store.image}
+                alt={store.name}
+                className="w-full h-full object-cover"
+                containerClass="w-full h-full"
+                width={100}
+                quality={60}
+                fallbackText="Store"
+              />
             </div>
-            <p className="text-mandi-muted text-xs mt-1">Vendor Portal • Owner: {store.ownerName || 'Verified Partner'} • Virar Region</p>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black text-mandi-text leading-tight truncate">
+                {store.name}
+              </h1>
+              <p className="text-mandi-muted text-[11px] truncate mt-0.5">
+                Vendor Portal • {store.city || 'Virar Region'}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <button onClick={() => setShowMasterModal(true)} className="btn-outline text-mandi-green border-mandi-green border-opacity-40 hover:bg-mandi-green hover:text-black flex items-center gap-1.5 text-xs font-bold py-2 px-3 transition-all">
-            <Sparkles size={15} />Browse Master Catalog
-          </button>
-          <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="btn-primary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
-            <Plus size={15} />Add Custom Product
+
+          <button
+            type="button"
+            onClick={handleToggleStoreStatus}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm cursor-pointer ${
+              store.status === 'closed'
+                ? 'bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25'
+                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+            }`}
+            title="Tap to toggle Store Open / Paused status"
+          >
+            <span className={`w-2 h-2 rounded-full ${store.status === 'closed' ? 'bg-red-500' : 'bg-emerald-400 animate-pulse'}`} />
+            <span>{store.status === 'closed' ? 'Store Paused' : 'Store Open'}</span>
           </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mandi-muted text-xs font-medium">Total Revenue</span>
-            <TrendingUp size={16} className="text-mandi-green" />
-          </div>
-          <div className="text-2xl font-black text-mandi-green">₹{stats.rev}</div>
-          <span className="text-mandi-subtle text-xs">All-time sales</span>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mandi-muted text-xs font-medium">Total Orders</span>
-            <ShoppingBag size={16} className="text-blue-400" />
-          </div>
-          <div className="text-2xl font-black text-mandi-text">{stats.count}</div>
-          <span className="text-mandi-subtle text-xs">Completed & active</span>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mandi-muted text-xs font-medium">Active Orders</span>
-            <Clock size={16} className="text-yellow-400" />
-          </div>
-          <div className="text-2xl font-black text-yellow-400">{stats.pending}</div>
-          <span className="text-mandi-subtle text-xs">Need action</span>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mandi-muted text-xs font-medium">SLA Compliance</span>
-            <Zap size={16} className="text-mandi-green" />
-          </div>
-          <div className="text-2xl font-black text-mandi-green">{stats.slaRate}%</div>
-          <span className="text-mandi-subtle text-xs">&le; 5 min acceptance</span>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mandi-muted text-xs font-medium">Low Stock</span>
-            <AlertTriangle size={16} className="text-orange-400" />
-          </div>
-          <div className="text-2xl font-black text-orange-400">{stats.lowStock}</div>
-          <span className="text-mandi-subtle text-xs">&le; 5 units left</span>
+      {/* Quick Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-3.5">
+        <button 
+          type="button"
+          onClick={() => setShowLocalSaleModal(true)} 
+          className="btn-primary flex-1 bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-500 hover:from-emerald-500 hover:to-green-400 text-white flex items-center justify-center gap-1.5 text-xs font-black py-2.5 px-4 shadow-md active:scale-95 transition-all"
+          title="Create in-store counter sale and deduct stock"
+        >
+          <Zap size={16} className="text-yellow-300" />
+          <span>Create Local Sale (POS)</span>
+        </button>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <button 
+            onClick={() => setShowMasterModal(true)} 
+            className="btn-outline text-mandi-green border-mandi-green/40 hover:bg-mandi-green hover:text-black flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-3 transition-all whitespace-nowrap"
+          >
+            <Sparkles size={14} />
+            <span className="hidden sm:inline">Browse Master Catalog</span>
+            <span className="sm:hidden">Master Catalog</span>
+          </button>
+          <button 
+            onClick={() => { setEditingProduct(null); setShowProductModal(true); }} 
+            className="btn-outline flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-3 whitespace-nowrap"
+          >
+            <Plus size={14} />
+            <span className="hidden sm:inline">Add Custom Product</span>
+            <span className="sm:hidden">Add Product</span>
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-mandi-border mb-6 overflow-x-auto">
+      {/* Stats Cards - Swipeable Carousel on Mobile, 5-col Grid on Desktop */}
+      <div className="flex md:grid md:grid-cols-5 gap-2 overflow-x-auto pb-1 mb-3.5 scrollbar-none">
+        <div className="card p-2.5 sm:p-3 min-w-[130px] flex-shrink-0 md:min-w-0 bg-mandi-card border border-mandi-border/70">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-mandi-muted text-[10px] sm:text-xs font-medium">Revenue</span>
+            <TrendingUp size={14} className="text-mandi-green" />
+          </div>
+          <div className="text-lg sm:text-xl font-black text-mandi-green leading-none">₹{stats.rev}</div>
+          <span className="text-mandi-subtle text-[10px] mt-1 block">All-time sales</span>
+        </div>
+
+        <div className="card p-2.5 sm:p-3 min-w-[130px] flex-shrink-0 md:min-w-0 bg-mandi-card border border-mandi-border/70">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-mandi-muted text-[10px] sm:text-xs font-medium">Total Orders</span>
+            <ShoppingBag size={14} className="text-blue-400" />
+          </div>
+          <div className="text-lg sm:text-xl font-black text-mandi-text leading-none">{stats.count}</div>
+          <span className="text-mandi-subtle text-[10px] mt-1 block">Completed & active</span>
+        </div>
+
+        <div className="card p-2.5 sm:p-3 min-w-[130px] flex-shrink-0 md:min-w-0 bg-mandi-card border border-mandi-border/70">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-mandi-muted text-[10px] sm:text-xs font-medium">Active Orders</span>
+            <Clock size={14} className="text-yellow-400" />
+          </div>
+          <div className="text-lg sm:text-xl font-black text-yellow-400 leading-none">{stats.pending}</div>
+          <span className="text-mandi-subtle text-[10px] mt-1 block">Need action</span>
+        </div>
+
+        <div className="card p-2.5 sm:p-3 min-w-[130px] flex-shrink-0 md:min-w-0 bg-mandi-card border border-mandi-border/70">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-mandi-muted text-[10px] sm:text-xs font-medium">SLA</span>
+            <Zap size={14} className="text-mandi-green" />
+          </div>
+          <div className="text-lg sm:text-xl font-black text-mandi-green leading-none">{stats.slaRate}%</div>
+          <span className="text-mandi-subtle text-[10px] mt-1 block">&le; 5 min acceptance</span>
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('analytics')}
+          className="card p-2.5 sm:p-3 min-w-[130px] flex-shrink-0 md:min-w-0 bg-mandi-card border border-mandi-border/70 hover:border-orange-400/50 cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-mandi-muted text-[10px] sm:text-xs font-medium">Low Stock</span>
+            <AlertTriangle size={14} className="text-orange-400" />
+          </div>
+          <div className="text-lg sm:text-xl font-black text-orange-400 leading-none">{stats.lowStock}</div>
+          <span className="text-mandi-subtle text-[10px] mt-1 block">&le; 5 units left</span>
+        </div>
+      </div>
+
+      {/* App-Style Segmented Tab Bar */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3.5 border-b border-mandi-border/70 scrollbar-none">
         {[
-          { id: 'orders', label: `Orders (${storeOrders.length})` },
-          { id: 'products', label: `Products & Pricing (${products.length})` },
-          { id: 'analytics', label: 'Sales & SLA Analytics' },
-          { id: 'customization', label: '⚙️ Shop Customization' },
-        ].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={`py-3 px-4 font-semibold text-sm border-b-2 whitespace-nowrap transition-all ${activeTab === t.id ? 'border-mandi-green text-mandi-green' : 'border-transparent text-mandi-muted'}`}>{t.label}</button>
-        ))}
+          { id: 'orders', label: 'Orders', icon: ShoppingBag, count: storeOrders.length },
+          { id: 'products', label: 'Products & Pricing', icon: Layers, count: products.length },
+          { id: 'analytics', label: 'Sales & SLA Analytics', icon: TrendingUp },
+          { id: 'customization', label: 'Shop Settings', icon: Settings },
+        ].map(t => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`py-2 px-3 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                isActive
+                  ? 'bg-mandi-green text-black font-extrabold shadow-md'
+                  : 'bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border/60'
+              }`}
+            >
+              <Icon size={14} className={isActive ? 'text-black' : 'text-mandi-muted'} />
+              <span>{t.label}</span>
+              {t.count !== undefined && (
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  isActive ? 'bg-black/20 text-black' : 'bg-mandi-card text-mandi-muted border border-mandi-border'
+                }`}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB 1: Orders */}
       {activeTab === 'orders' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
+
           <div className="flex gap-2 overflow-x-auto pb-2">
             {[
               { id: 'all', label: 'All Orders' },
+              { id: 'local_sale', label: `🏪 Local Sales (${localSalesCount})` },
               { id: 'sla_breach', label: `⚠️ Delayed (${slaBreachedOrders.length})` },
               { id: 'placed', label: 'Placed' },
               { id: 'accepted', label: 'Accepted' },
@@ -634,18 +747,23 @@ export default function VendorDashboard() {
           </div>
 
           {filteredOrders.length === 0 ? (
-            <div className="card p-8 text-center text-mandi-muted">No orders matching filter</div>
+            <div className="card p-8 text-center text-mandi-muted text-xs">No orders matching filter</div>
           ) : (
             filteredOrders.map(order => (
               <div 
                 key={order.id} 
-                className={`card p-5 space-y-3 transition-all ${order.slaStatus === 'breached' ? 'border-red-500/40 bg-red-500/10' : ''}`}
+                className={`card p-3.5 sm:p-5 space-y-3 transition-all ${order.slaStatus === 'breached' ? 'border-red-500/40 bg-red-500/10' : ''}`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-mandi-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-mandi-border">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-mandi-text font-bold text-base">#{order.id.toUpperCase()}</span>
+                      <span className="text-mandi-text font-bold text-sm sm:text-base">#{order.id.toUpperCase()}</span>
                       <span className="badge-green text-xs capitalize">{order.status.replace(/_/g, ' ')}</span>
+                      {order.isLocalSale && (
+                        <span className="bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+                          <Store size={11} /> Local Sale
+                        </span>
+                      )}
                       {order.slaStatus === 'breached' && (
                         <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md animate-pulse">
                           ⚠️ {order.slaMessage}
@@ -669,42 +787,58 @@ export default function VendorDashboard() {
                     </div>
                     <p className="text-mandi-muted text-xs mt-0.5">Placed: {new Date(order.placedAt).toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                     <a
-                      href={`https://api.whatsapp.com/send?phone=919920941603&text=${encodeURIComponent(`Hello! Updating you regarding your Mandi Minutes Order #${order.id.toUpperCase()} from ${store.name}.`)}`}
+                      href={order.isLocalSale && order.customerPhone 
+                        ? `https://api.whatsapp.com/send?phone=91${order.customerPhone.replace(/\D/g, '')}&text=${encodeURIComponent(`Hello ${order.customerName || 'Customer'}! Here is your bill receipt for ₹${order.total} from ${store.name}. Thank you for shopping with us!`)}`
+                        : `https://api.whatsapp.com/send?phone=919920941603&text=${encodeURIComponent(`Hello! Updating you regarding your Mandi Minutes Order #${order.id.toUpperCase()} from ${store.name}.`)}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#25D366] text-black font-bold py-1.5 px-3 text-xs rounded-xl flex items-center gap-1 hover:bg-opacity-90 transition-all shadow-sm"
+                      className="bg-[#25D366] text-black font-bold py-1.5 px-3 text-xs rounded-xl flex items-center gap-1 hover:bg-opacity-90 transition-all shadow-sm flex-1 sm:flex-initial justify-center"
                     >
                       <MessageCircle size={13} /> WhatsApp
                     </a>
-                    <button type="button" onClick={() => setInvoiceOrder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1"><Printer size={12} />Invoice</button>
-                    {order.status === 'placed' && (
-                      <button type="button" onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Accept Order</button>
-                    )}
-                    {order.status === 'accepted' && (
-                      <button type="button" onClick={() => handleStatusChange(order.id, 'preparing')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Start Packing</button>
-                    )}
-                    {order.status === 'preparing' && (
-                      <button type="button" onClick={() => handleStatusChange(order.id, 'out_for_delivery')} className="btn-primary py-1.5 px-3 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all">Ready for Delivery Partner</button>
-                    )}
-                    {order.status === 'out_for_delivery' && (
-                      <span className="text-xs font-bold text-amber-500 bg-amber-500/15 border border-amber-500/30 py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                        <Truck size={13} className="text-amber-500" /> With Delivery Partner
+                    <button type="button" onClick={() => setInvoiceOrder(order)} className="btn-outline py-1.5 px-3 text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center"><Printer size={12} />Invoice</button>
+                    {order.isLocalSale ? (
+                      <span className="text-xs font-bold text-mandi-green bg-mandi-green/15 border border-mandi-green/30 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto">
+                        <CheckCircle2 size={13} className="text-mandi-green" /> In-Store Completed
                       </span>
-                    )}
-                    {order.status === 'delivered' && (
-                      <span className="text-xs font-bold text-mandi-green bg-mandi-green/15 border border-mandi-green/30 py-1 px-2.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                        <CheckCircle2 size={13} className="text-mandi-green" /> Delivered by Partner
-                      </span>
+                    ) : (
+                      <>
+                        {order.status === 'placed' && (
+                          <button type="button" onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center">Accept Order</button>
+                        )}
+                        {order.status === 'accepted' && (
+                          <button type="button" onClick={() => handleStatusChange(order.id, 'preparing')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center">Start Packing</button>
+                        )}
+                        {order.status === 'preparing' && (
+                          <button type="button" onClick={() => handleStatusChange(order.id, 'out_for_delivery')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center">Ready for Delivery Partner</button>
+                        )}
+                        {order.status === 'out_for_delivery' && (
+                          <span className="text-xs font-bold text-amber-500 bg-amber-500/15 border border-amber-500/30 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto">
+                            <Truck size={13} className="text-amber-500" /> With Delivery Partner
+                          </span>
+                        )}
+                        {order.status === 'delivered' && (
+                          <span className="text-xs font-bold text-mandi-green bg-mandi-green/15 border border-mandi-green/30 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto">
+                            <CheckCircle2 size={13} className="text-mandi-green" /> Delivered by Partner
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-mandi-subtle mb-1">Customer Address:</p>
-                    <p className="text-mandi-text">{order.address?.line1}, {order.address?.city} - {order.address?.pincode}</p>
+                    <p className="text-mandi-subtle mb-1">{order.isLocalSale ? 'Customer & Counter Pickup:' : 'Customer Address:'}</p>
+                    <p className="text-mandi-text font-medium">
+                      {order.isLocalSale 
+                        ? `${order.customerName || 'Walk-in Customer'} ${order.customerPhone ? `(${order.customerPhone})` : ''}`
+                        : `${order.address?.line1}, ${order.address?.city} - ${order.address?.pincode}`}
+                    </p>
+                    {order.notes && <p className="text-mandi-subtle text-[11px] italic mt-0.5">&ldquo;{order.notes}&rdquo;</p>}
                   </div>
                   <div>
                     <p className="text-mandi-subtle mb-1">Payment & Total:</p>
@@ -733,7 +867,7 @@ export default function VendorDashboard() {
       {activeTab === 'products' && (
         <div className="space-y-4">
           {/* Search & Category Filter Bar */}
-          <div className="card p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="card p-3.5 sm:p-4 flex flex-col sm:flex-row gap-3 items-center justify-between bg-mandi-card border border-mandi-border shadow-sm">
             <div className="relative flex-1 w-full">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-subtle" />
               <input
@@ -741,23 +875,167 @@ export default function VendorDashboard() {
                 placeholder="Search products by name or brand..."
                 value={productSearch}
                 onChange={e => setProductSearch(e.target.value)}
-                className="input-field pl-9 text-xs w-full"
+                className="input-field pl-9 pr-8 text-xs w-full py-2"
               />
+              {productSearch && (
+                <button
+                  type="button"
+                  onClick={() => setProductSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-mandi-subtle hover:text-mandi-text text-xs p-1"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter size={14} className="text-mandi-muted flex-shrink-0" />
-              <select
-                value={selectedCategoryFilter}
-                onChange={e => setSelectedCategoryFilter(e.target.value)}
-                className="input-field text-xs py-2 px-3 w-full sm:w-auto cursor-pointer"
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                <Filter size={14} className="text-mandi-muted flex-shrink-0" />
+                <select
+                  value={selectedCategoryFilter}
+                  onChange={e => setSelectedCategoryFilter(e.target.value)}
+                  className="input-field text-xs py-2 px-2.5 w-full sm:w-auto cursor-pointer"
+                >
+                  <option value="all">All Categories ({products.length})</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLocalSaleModal(true)}
+                className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 transition-all font-bold flex-shrink-0"
+                title="Open quick POS to record an in-store sale and deduct stock"
               >
-                <option value="all">All Categories</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-              </select>
+                <Zap size={13} className="text-yellow-300" /> POS Sale
+              </button>
             </div>
           </div>
 
-          <div className="card overflow-x-auto">
+          {/* MOBILE PRODUCT CARDS (< md): Touch-Friendly App Experience (No Sideways Scroll) */}
+          <div className="md:hidden space-y-3">
+            {filteredProducts.length === 0 ? (
+              <div className="card p-8 text-center text-mandi-muted text-xs">
+                No products found matching &ldquo;{productSearch || selectedCategoryFilter}&rdquo;.
+              </div>
+            ) : (
+              filteredProducts.map(p => (
+                <div 
+                  key={`mob-${p.id}`} 
+                  className={`card p-3.5 space-y-3 bg-mandi-card border transition-all ${
+                    p.stock <= stockThreshold ? 'border-amber-500/30 shadow-sm' : 'border-mandi-border/80'
+                  }`}
+                >
+                  {/* Top Row: Thumbnail, Name, Unit, MRP, Edit/Delete */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-mandi-border/60 bg-mandi-surface flex-shrink-0">
+                      <LazyImage
+                        src={p.image}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                        containerClass="w-full h-full"
+                        width={100}
+                        quality={50}
+                        fallbackText="Item"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="text-sm font-bold text-mandi-text line-clamp-1">{p.name}</h4>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                          <button
+                            type="button"
+                            onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                            className="p-1.5 rounded-lg bg-mandi-surface hover:border-mandi-green text-mandi-muted hover:text-mandi-text border border-mandi-border"
+                            title="Edit details"
+                          >
+                            <Edit size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { deleteProduct(p.id); addToast('Product deleted', 'info'); }}
+                            className="p-1.5 rounded-lg bg-mandi-surface hover:border-red-500 text-red-400 border border-mandi-border"
+                            title="Delete product"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-mandi-subtle truncate mt-0.5">
+                        {p.brand || 'Local Brand'} • {p.unit} {p.mrp ? `• MRP ₹${p.mrp}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Touch Controls Row: Price Input, Stock Stepper, In-Stock Toggle */}
+                  <div className="grid grid-cols-12 gap-2 items-center pt-2.5 border-t border-mandi-border/60">
+                    {/* Inline Selling Price */}
+                    <div className="col-span-4 flex items-center bg-mandi-surface border border-mandi-border focus-within:border-mandi-green rounded-xl px-2 py-1.5">
+                      <span className="text-mandi-green font-bold text-xs mr-1">₹</span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="1"
+                        step="0.5"
+                        defaultValue={p.price}
+                        key={`mob-price-${p.id}-${p.price}`}
+                        onBlur={e => handleInlinePriceChange(p.id, e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                        className="w-full bg-transparent text-xs font-bold text-mandi-green focus:outline-none"
+                        title="Tap to edit selling price"
+                      />
+                    </div>
+
+                    {/* Touch Stock Stepper */}
+                    <div className="col-span-5 flex items-center justify-between bg-mandi-surface border border-mandi-border rounded-xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => handleStockAdjust(p.id, p.stock, -1)}
+                        className="w-7 h-7 rounded-lg bg-mandi-card hover:bg-red-500/20 active:scale-90 text-mandi-muted hover:text-red-400 flex items-center justify-center font-black transition-all"
+                        title="Decrease stock"
+                      >
+                        <Minus size={12} />
+                      </button>
+                      <span className={`text-xs font-black px-1 ${p.stock <= stockThreshold ? 'text-red-400' : 'text-mandi-text'}`}>
+                        {p.stock}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleStockAdjust(p.id, p.stock, 1)}
+                        className="w-7 h-7 rounded-lg bg-mandi-card hover:bg-mandi-green/20 active:scale-90 text-mandi-muted hover:text-mandi-green flex items-center justify-center font-black transition-all"
+                        title="Increase stock"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+
+                    {/* Availability Toggle */}
+                    <div className="col-span-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => updateProduct(p.id, { isAvailable: !p.isAvailable })}
+                        className={`w-full py-1.5 rounded-xl text-[10px] font-bold text-center transition-all active:scale-95 ${
+                          p.isAvailable 
+                            ? 'bg-mandi-green-muted text-mandi-green border border-mandi-green/30' 
+                            : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                        }`}
+                      >
+                        {p.isAvailable ? 'In Stock' : 'Out'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {p.stock <= stockThreshold && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/25">
+                      <AlertTriangle size={11} className="flex-shrink-0" />
+                      <span>Low stock: only {p.stock} {p.unit} remaining on shelf</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* DESKTOP PRODUCT TABLE (>= md) */}
+          <div className="hidden md:block card overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-mandi-surface text-mandi-muted text-xs uppercase border-b border-mandi-border">
                 <tr>
@@ -817,7 +1095,7 @@ export default function VendorDashboard() {
                           >
                             <Minus size={12} />
                           </button>
-                          <span className={`w-8 text-center text-xs font-bold ${p.stock <= 5 ? 'text-red-400' : 'text-mandi-text'}`}>
+                          <span className={`w-8 text-center text-xs font-bold ${p.stock <= stockThreshold ? 'text-red-400' : 'text-mandi-text'}`}>
                             {p.stock}
                           </span>
                           <button
@@ -853,49 +1131,60 @@ export default function VendorDashboard() {
 
       {/* TAB 3: Analytics */}
       {activeTab === 'analytics' && (
-        <div className="space-y-6">
-          {/* Earnings Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="card p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-mandi-muted text-xs font-semibold uppercase tracking-wider">Gross Sales</span>
-                <div className="w-8 h-8 rounded-xl bg-blue-900 bg-opacity-30 flex items-center justify-center text-blue-400">
-                  <DollarSign size={16} />
+        <div className="space-y-5 sm:space-y-6">
+          {/* Earnings Summary Cards - 2x2 on Mobile, 4x1 on Desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="card p-3.5 sm:p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border shadow-sm">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-mandi-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Gross Sales</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-900/30 flex items-center justify-center text-blue-400">
+                  <DollarSign size={15} />
                 </div>
               </div>
-              <p className="text-2xl font-black text-mandi-text">₹{earningsSummary.grossSales.toLocaleString('en-IN')}</p>
-              <p className="text-mandi-subtle text-xs mt-1">Total revenue across {storeOrders.length} order{storeOrders.length === 1 ? '' : 's'}</p>
+              <p className="text-xl sm:text-2xl font-black text-mandi-text">₹{earningsSummary.grossSales.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-subtle text-[10px] sm:text-xs mt-0.5 sm:mt-1 truncate">All {storeOrders.length} orders</p>
             </div>
 
-            <div className="card p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-mandi-muted text-xs font-semibold uppercase tracking-wider">Platform Fee ({earningsSummary.rate}%)</span>
-                <div className="w-8 h-8 rounded-xl bg-yellow-900 bg-opacity-30 flex items-center justify-center text-yellow-400">
-                  <Layers size={16} />
+            <div className="card p-3.5 sm:p-5 bg-gradient-to-br from-purple-950/20 to-mandi-card border-purple-500/30 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-purple-600 dark:text-purple-300 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Local Sales</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Store size={15} />
                 </div>
               </div>
-              <p className="text-2xl font-black text-yellow-400">-₹{earningsSummary.platformCommission.toLocaleString('en-IN')}</p>
-              <p className="text-mandi-subtle text-xs mt-1">App infrastructure & delivery logistics</p>
+              <p className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400">₹{earningsSummary.localSales.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-subtle text-[10px] sm:text-xs mt-0.5 sm:mt-1 truncate">0% platform fee</p>
             </div>
 
-            <div className="card p-5 bg-gradient-to-br from-[#0d2a14] to-mandi-card border-mandi-green border-opacity-40">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-green-300 text-xs font-semibold uppercase tracking-wider">Net Vendor Payout</span>
-                <div className="w-8 h-8 rounded-xl bg-mandi-green bg-opacity-20 flex items-center justify-center text-mandi-green">
-                  <ArrowUpRight size={18} />
+            <div className="card p-3.5 sm:p-5 bg-gradient-to-br from-mandi-card to-mandi-surface border-mandi-border shadow-sm">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-mandi-muted text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Platform Fee</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-yellow-900/30 flex items-center justify-center text-yellow-400">
+                  <Layers size={15} />
                 </div>
               </div>
-              <p className="text-3xl font-black text-mandi-green">₹{earningsSummary.netPayout.toLocaleString('en-IN')}</p>
-              <p className="text-mandi-muted text-xs mt-1">Direct settlement to your registered UPI / Bank</p>
+              <p className="text-xl sm:text-2xl font-black text-yellow-400">-₹{earningsSummary.platformCommission.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-subtle text-[10px] sm:text-xs mt-0.5 sm:mt-1 truncate">10% online fee</p>
+            </div>
+
+            <div className="card p-3.5 sm:p-5 bg-gradient-to-br from-[#0d2a14] to-mandi-card border-mandi-green border-opacity-40 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <span className="text-green-300 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Net Payout</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-mandi-green/20 flex items-center justify-center text-mandi-green">
+                  <ArrowUpRight size={16} />
+                </div>
+              </div>
+              <p className="text-2xl sm:text-3xl font-black text-mandi-green">₹{earningsSummary.netPayout.toLocaleString('en-IN')}</p>
+              <p className="text-mandi-muted text-[10px] sm:text-xs mt-0.5 sm:mt-1 truncate">Direct settlement</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
             {/* Sales Over Time Line Chart */}
-            <div className="lg:col-span-2 card p-6">
+            <div className="lg:col-span-2 card p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <div>
-                  <h3 className="text-mandi-text font-bold text-lg">Sales Trend (₹)</h3>
+                  <h3 className="text-mandi-text font-bold text-base sm:text-lg">Sales Trend (₹)</h3>
                   <p className="text-mandi-muted text-xs">Daily store revenue calculated from confirmed orders</p>
                 </div>
                 <div className="flex bg-mandi-surface rounded-xl p-1 border border-mandi-border self-start sm:self-auto">
@@ -903,20 +1192,20 @@ export default function VendorDashboard() {
                     onClick={() => setTimeframe('7d')}
                     className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === '7d' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
                   >
-                    Last 7 Days
+                    7 Days
                   </button>
                   <button
                     onClick={() => setTimeframe('30d')}
                     className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === '30d' ? 'bg-mandi-green text-black' : 'text-mandi-muted hover:text-mandi-text'}`}
                   >
-                    Last 30 Days
+                    30 Days
                   </button>
                 </div>
               </div>
 
-              <div className="h-64 w-full">
+              <div className="h-56 sm:h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={salesOverTime} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <LineChart data={salesOverTime} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
                     <XAxis dataKey="date" stroke="var(--color-subtle)" fontSize={11} />
                     <YAxis stroke="var(--color-subtle)" fontSize={11} />
@@ -925,24 +1214,29 @@ export default function VendorDashboard() {
                       labelStyle={{ color: 'var(--color-text)', fontWeight: 'bold' }}
                       formatter={(val) => [`₹${val}`, 'Sales']}
                     />
-                    <Line type="monotone" dataKey="sales" stroke="#00C851" strokeWidth={3} dot={{ r: 4, fill: '#00C851' }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="sales" stroke="#00C851" strokeWidth={3} dot={{ r: 3, fill: '#00C851' }} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Top Products */}
-            <div className="card p-6">
-              <h3 className="text-mandi-text font-bold text-lg mb-1">Top Selling Items</h3>
+            <div className="card p-4 sm:p-6">
+              <h3 className="text-mandi-text font-bold text-base sm:text-lg mb-1">Top Selling Items</h3>
               <p className="text-mandi-muted text-xs mb-4">Most popular staples ordered from your store</p>
               {topSellingProducts.length === 0 ? (
                 <p className="text-mandi-subtle text-xs py-8 text-center">No sales recorded yet</p>
               ) : (
                 <div className="space-y-3">
                   {topSellingProducts.map((it, idx) => (
-                    <div key={idx} className="flex items-center justify-between border-b border-mandi-border pb-2 text-xs">
-                      <span className="text-mandi-text font-medium truncate max-w-[160px]">{it.name}</span>
-                      <span className="badge-green font-bold">{it.units} units</span>
+                    <div key={idx} className="flex items-center justify-between border-b border-mandi-border/70 pb-2 text-xs">
+                      <div className="flex items-center gap-2 truncate max-w-[170px]">
+                        <span className="w-5 h-5 rounded-full bg-mandi-surface text-mandi-muted text-[10px] font-black flex items-center justify-center flex-shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-mandi-text font-medium truncate">{it.name}</span>
+                      </div>
+                      <span className="badge-green font-bold text-[11px]">{it.units} units</span>
                     </div>
                   ))}
                 </div>
@@ -951,11 +1245,11 @@ export default function VendorDashboard() {
           </div>
 
           {/* Low-Stock Alert List */}
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-yellow-400" />
-                <h3 className="text-mandi-text font-bold text-lg">Low Stock Alerts ({lowStockProducts.length})</h3>
+                <h3 className="text-mandi-text font-bold text-base sm:text-lg">Low Stock Alerts ({lowStockProducts.length})</h3>
               </div>
               <div className="flex items-center gap-2 text-xs text-mandi-muted">
                 <span>Alert threshold:</span>
@@ -976,44 +1270,74 @@ export default function VendorDashboard() {
                 ✅ All products have sufficient stock (above {stockThreshold} units).
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-mandi-surface text-mandi-muted border-b border-mandi-border">
-                    <tr>
-                      <th className="p-3">Product</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Price</th>
-                      <th className="p-3">Current Stock</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-mandi-border">
-                    {lowStockProducts.map(p => (
-                      <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
-                        <td className="p-3 flex items-center gap-3">
-                          <LazyImage src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover" />
-                          <span className="font-semibold text-mandi-text">{p.name}</span>
-                        </td>
-                        <td className="p-3 text-mandi-muted">{p.category}</td>
-                        <td className="p-3 text-mandi-green font-bold">₹{p.price}</td>
-                        <td className="p-3">
-                          <span className="bg-red-500/15 text-red-600 dark:text-red-300 font-bold px-2 py-0.5 rounded border border-red-500/30">
+              <>
+                {/* Mobile Low Stock Alert Cards (< md) */}
+                <div className="md:hidden space-y-2.5">
+                  {lowStockProducts.map(p => (
+                    <div key={`low-mob-${p.id}`} className="p-3 rounded-xl bg-mandi-surface border border-amber-500/30 flex items-center justify-between gap-3 shadow-sm">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-mandi-border/60 bg-mandi-card flex-shrink-0">
+                          <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover" containerClass="w-full h-full" fallbackText="Item" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-xs text-mandi-text truncate">{p.name}</p>
+                          <p className="text-[11px] text-mandi-muted">{p.category} • <span className="text-mandi-green font-bold">₹{p.price}</span></p>
+                          <span className="inline-block mt-1 bg-red-500/15 text-red-500 dark:text-red-300 font-bold px-2 py-0.5 rounded text-[10px] border border-red-500/30">
                             {p.stock} {p.unit} remaining
                           </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
-                            className="btn-outline py-1 px-2.5 text-xs text-mandi-green hover:bg-mandi-green hover:text-black font-semibold"
-                          >
-                            Update Stock
-                          </button>
-                        </td>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                        className="btn-outline py-1.5 px-3 text-xs text-mandi-green hover:bg-mandi-green hover:text-black font-bold whitespace-nowrap flex-shrink-0 shadow-sm"
+                      >
+                        Update Stock
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Low Stock Table (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-mandi-surface text-mandi-muted border-b border-mandi-border">
+                      <tr>
+                        <th className="p-3">Product</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Price</th>
+                        <th className="p-3">Current Stock</th>
+                        <th className="p-3 text-right">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-mandi-border">
+                      {lowStockProducts.map(p => (
+                        <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
+                          <td className="p-3 flex items-center gap-3">
+                            <LazyImage src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover" />
+                            <span className="font-semibold text-mandi-text">{p.name}</span>
+                          </td>
+                          <td className="p-3 text-mandi-muted">{p.category}</td>
+                          <td className="p-3 text-mandi-green font-bold">₹{p.price}</td>
+                          <td className="p-3">
+                            <span className="bg-red-500/15 text-red-600 dark:text-red-300 font-bold px-2 py-0.5 rounded border border-red-500/30">
+                              {p.stock} {p.unit} remaining
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                              className="btn-outline py-1 px-2.5 text-xs text-mandi-green hover:bg-mandi-green hover:text-black font-semibold"
+                            >
+                              Update Stock
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1021,38 +1345,38 @@ export default function VendorDashboard() {
 
       {/* TAB 4: Shop Settings & Customization */}
       {activeTab === 'customization' && (
-        <div className="card p-6 max-w-4xl space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-mandi-border">
+        <div className="card p-4 sm:p-6 max-w-4xl space-y-5 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-mandi-border gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mandi-green bg-opacity-15 flex items-center justify-center text-mandi-green">
+              <div className="w-10 h-10 rounded-xl bg-mandi-green bg-opacity-15 flex items-center justify-center text-mandi-green flex-shrink-0">
                 <Settings size={22} />
               </div>
               <div>
-                <h2 className="text-mandi-text font-bold text-lg">Shop Customization & Settings</h2>
+                <h2 className="text-mandi-text font-bold text-base sm:text-lg">Shop Customization & Settings</h2>
                 <p className="text-mandi-muted text-xs">Update your shop branding, operating hours, delivery parameters, and payout details.</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleSaveStoreCustomization}
-              className="btn-primary py-2 px-5 text-xs font-bold flex items-center gap-1.5"
+              className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center justify-center gap-1.5 w-full sm:w-auto"
             >
               <Save size={15} /> Save Changes
             </button>
           </div>
 
-          <form onSubmit={handleSaveStoreCustomization} className="space-y-6">
+          <form onSubmit={handleSaveStoreCustomization} className="space-y-5 sm:space-y-6">
             {/* Store Status Toggle */}
-            <div className="p-4 rounded-xl bg-mandi-surface border border-mandi-border flex items-center justify-between">
+            <div className="p-3.5 sm:p-4 rounded-xl bg-mandi-surface border border-mandi-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <p className="text-mandi-text font-bold text-sm">Store Operating Status</p>
                 <p className="text-mandi-muted text-xs">Toggle whether your shop is actively accepting customer orders on Mandi Minutes.</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setStoreForm(f => ({ ...f, status: f.status === 'closed' ? 'approved' : 'closed' }))}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     storeForm.status === 'closed'
                       ? 'bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30'
                       : 'bg-mandi-green text-black'
@@ -1261,6 +1585,15 @@ export default function VendorDashboard() {
       )}
       {showMasterModal && (
         <MasterCatalogModal storeId={store.id} onClose={() => setShowMasterModal(false)} onSaveBatch={handleBatchSaveProducts} />
+      )}
+      {showLocalSaleModal && (
+        <LocalSaleModal
+          store={store}
+          products={products}
+          categories={categories}
+          onClose={() => setShowLocalSaleModal(false)}
+          onSaleCompleted={handleCreateLocalSale}
+        />
       )}
       {invoiceOrder && (
         <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />

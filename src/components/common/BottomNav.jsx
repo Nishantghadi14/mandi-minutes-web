@@ -15,10 +15,9 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
 
   const isActive = (path) => path === '/' ? (loc.pathname === '/' || loc.pathname === '/app') : loc.pathname === path;
 
-  // In standard web mode, hide BottomNav on focused workflow pages where it obstructs content.
-  // In app view, the bottom navigation bar is always visible!
-  const HIDE_BOTTOM_NAV_ROUTES = ['/checkout', '/admin', '/vendor', '/rider'];
-  if (!isApp && (HIDE_BOTTOM_NAV_ROUTES.includes(loc.pathname) || loc.pathname.startsWith('/order-status'))) {
+  // Customer BottomNav should NEVER appear on merchant, admin, rider, or checkout screens
+  const HIDE_BOTTOM_NAV_PREFIXES = ['/checkout', '/admin', '/vendor', '/rider', '/order-status'];
+  if (HIDE_BOTTOM_NAV_PREFIXES.some(prefix => loc.pathname.startsWith(prefix))) {
     return null;
   }
 

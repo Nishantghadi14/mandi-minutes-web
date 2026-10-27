@@ -2,13 +2,14 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
+import { useTheme } from '../context/ThemeContext';
 import LazyImage from '../components/common/LazyImage';
 import ImageUploadField from '../components/common/ImageUploadField';
 import { isFirebaseConfigured } from '../config/firebase';
 import {
   Shield, Store, Megaphone, HelpCircle, Check, X, Plus, Trash2, RefreshCw,
   ShieldAlert, Activity, TrendingUp, Database, XCircle, Search,
-  Users, Tag, Ban, RotateCcw, ExternalLink,
+  Users, Tag, Ban, RotateCcw, ExternalLink, Sun, Moon,
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -37,11 +38,11 @@ function CancelOrderModal({ order, onConfirm, onClose }) {
   ];
 
   return (
-    <div className="overlay flex items-center justify-center p-4 z-50">
-      <div className="bg-mandi-card border border-red-500/30 rounded-2xl p-6 w-full max-w-md animate-scale-in shadow-2xl">
+    <div className="overlay flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div className="bg-mandi-card border border-red-200 dark:border-red-500/30 rounded-2xl p-6 w-full max-w-md animate-scale-in shadow-2xl">
         <div className="flex items-start gap-3 mb-5">
-          <div className="w-11 h-11 bg-red-950 rounded-xl flex items-center justify-center flex-shrink-0">
-            <XCircle size={22} className="text-red-400" />
+          <div className="w-11 h-11 bg-red-100 text-red-600 dark:bg-red-950/80 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-xl flex items-center justify-center flex-shrink-0">
+            <XCircle size={22} />
           </div>
           <div className="flex-1">
             <h2 className="text-mandi-text font-bold text-lg">Cancel Order</h2>
@@ -55,8 +56,8 @@ function CancelOrderModal({ order, onConfirm, onClose }) {
         <div className="space-y-4">
           <div>
             <label className="block text-mandi-muted text-xs font-medium mb-1.5">Cancellation Reason *</label>
-            <select value={reason} onChange={e => setReason(e.target.value)} className="input-field text-sm w-full">
-              {CANCEL_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            <select value={reason} onChange={e => setReason(e.target.value)} className="input-field text-sm w-full bg-mandi-surface text-mandi-text border-mandi-border">
+              {CANCEL_REASONS.map(r => <option key={r} value={r} className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">{r}</option>)}
             </select>
           </div>
 
@@ -70,7 +71,7 @@ function CancelOrderModal({ order, onConfirm, onClose }) {
             <div className="grid grid-cols-3 gap-2">
               {REFUND_OPTS.map(opt => (
                 <button key={opt.value} type="button" onClick={() => setRefundStatus(opt.value)}
-                  className={`py-2 px-2 rounded-xl text-center border transition-all ${refundStatus === opt.value ? 'border-mandi-green bg-mandi-green/10 text-mandi-green' : 'border-mandi-border bg-mandi-surface text-mandi-muted hover:border-mandi-green/40'}`}>
+                  className={`py-2 px-2 rounded-xl text-center border transition-all ${refundStatus === opt.value ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:border-mandi-green dark:bg-mandi-green/10 dark:text-mandi-green' : 'border-mandi-border bg-mandi-surface text-mandi-muted hover:border-emerald-500/40'}`}>
                   <p className="text-xs font-bold leading-tight">{opt.label}</p>
                   <p className="text-[10px] opacity-70 mt-0.5">{opt.sub}</p>
                 </button>
@@ -80,7 +81,7 @@ function CancelOrderModal({ order, onConfirm, onClose }) {
 
           <div className="flex gap-2 pt-1">
             <button onClick={() => onConfirm({ reason, notes, refundStatus })}
-              className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm">
               <XCircle size={16} /> Confirm Cancellation
             </button>
             <button onClick={onClose} className="py-2.5 px-4 bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border rounded-xl text-sm transition-all">
@@ -104,6 +105,7 @@ export default function AdminPanel() {
     retryFetch, loadingStates, errorStates,
   } = useData();
   const { addToast } = useToast();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('orders');
@@ -270,15 +272,25 @@ export default function AdminPanel() {
     return Object.values(map).sort((a, b) => b.totalSpent - a.totalSpent);
   }, [orders]);
 
-  // Helpers
-  const statusColor = (s) => ({
-    delivered:        'bg-mandi-green-muted text-mandi-green',
-    cancelled:        'bg-red-950 text-red-400',
-    out_for_delivery: 'bg-blue-950 text-blue-400',
-  }[s] || 'bg-yellow-950 text-yellow-300');
+  // Helpers with High-Contrast Dark & Light Theme Classes
+  const statusColor = (s) => {
+    switch (s) {
+      case 'delivered':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30';
+      case 'cancelled':
+        return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-400 dark:border-red-500/30';
+      case 'out_for_delivery':
+        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-400 dark:border-blue-500/30';
+      case 'preparing':
+      case 'accepted':
+        return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-500/30';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:border-slate-700';
+    }
+  };
 
   const refundLabel = (r) => ({ none: 'No Refund', pending: 'Refund Pending', issued: 'Refund Issued' }[r] || r);
-  const refundColor = (r) => ({ none: 'text-mandi-muted', pending: 'text-yellow-400', issued: 'text-mandi-green' }[r] || '');
+  const refundColor = (r) => ({ none: 'text-mandi-muted', pending: 'text-amber-600 dark:text-yellow-400 font-semibold', issued: 'text-emerald-600 dark:text-mandi-green font-semibold' }[r] || '');
 
   const TABS = [
     { id: 'analytics', label: 'Analytics & SLA' },
@@ -305,13 +317,13 @@ export default function AdminPanel() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-mandi-green rounded-xl flex items-center justify-center text-black font-black flex-shrink-0">
+          <div className="w-10 h-10 bg-mandi-green rounded-xl flex items-center justify-center text-black font-black flex-shrink-0 shadow-clay-badge">
             <Shield size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-mandi-text font-black text-2xl">Super Admin Panel</h1>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${isFirebaseConfigured ? 'bg-mandi-green-muted text-mandi-green border border-mandi-green border-opacity-30' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'}`}>
+              <h1 className="text-mandi-text font-black text-2xl tracking-tight">Super Admin Panel</h1>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${isFirebaseConfigured ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-500/30' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'}`}>
                 {isFirebaseConfigured ? '🔥 Firebase Real-Time' : '💾 Local Engine'}
               </span>
             </div>
@@ -319,8 +331,27 @@ export default function AdminPanel() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
+          {/* Quick Theme Mode Switcher */}
+          <button
+            onClick={toggleTheme}
+            className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green transition-all shadow-sm"
+            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDark ? (
+              <>
+                <Sun size={14} className="text-yellow-400" />
+                <span className="font-semibold">Light View</span>
+              </>
+            ) : (
+              <>
+                <Moon size={14} className="text-indigo-600" />
+                <span className="font-semibold">Dark View</span>
+              </>
+            )}
+          </button>
+
           <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-xl px-2.5 py-1.5 text-xs text-mandi-text shadow-sm">
-            <Store size={14} className="text-mandi-green flex-shrink-0" />
+            <Store size={14} className="text-emerald-600 dark:text-mandi-green flex-shrink-0" />
             <select
               defaultValue=""
               onChange={(e) => {
@@ -330,16 +361,16 @@ export default function AdminPanel() {
               }}
               className="bg-transparent text-xs font-semibold text-mandi-text outline-none cursor-pointer pr-1"
             >
-              <option value="" disabled className="bg-mandi-card text-mandi-muted">Check Vendor Dashboard...</option>
+              <option value="" disabled className="bg-white dark:bg-[#131B28] text-mandi-muted">Check Vendor Dashboard...</option>
               {stores.map(st => (
-                <option key={st.id} value={st.id} className="bg-mandi-card text-mandi-text">
+                <option key={st.id} value={st.id} className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">
                   {st.name} ({st.status})
                 </option>
               ))}
             </select>
           </div>
-          <button onClick={handleRefresh} disabled={refreshing} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green hover:text-mandi-green transition-all">
-            <RefreshCw size={14} className={refreshing ? 'animate-spin text-mandi-green' : ''} />
+          <button onClick={handleRefresh} disabled={refreshing} className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green hover:text-emerald-600 dark:hover:text-mandi-green transition-all">
+            <RefreshCw size={14} className={refreshing ? 'animate-spin text-emerald-600 dark:text-mandi-green' : ''} />
             {refreshing ? 'Syncing...' : 'Sync Live Orders'}
           </button>
           <button onClick={() => setShowAddStoreModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5">
@@ -350,18 +381,38 @@ export default function AdminPanel() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <div className="card p-4"><span className="text-mandi-muted text-xs font-medium">Platform GMV</span><p className="text-2xl font-black text-mandi-green mt-1">₹{totalGMV.toLocaleString('en-IN')}</p><span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered</span></div>
-        <div className="card p-4"><span className="text-mandi-muted text-xs font-medium">Total Orders</span><p className="text-2xl font-black text-mandi-text mt-1">{orders.length}</p><span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered</span></div>
-        <div className="card p-4"><span className="text-mandi-muted text-xs font-medium">Avg. Order Value</span><p className="text-2xl font-black text-blue-400 mt-1">₹{aov}</p><span className="text-mandi-subtle text-[11px]">AOV across {completedOrders.length} orders</span></div>
-        <div className="card p-4"><span className="text-mandi-muted text-xs font-medium">Active Stores</span><p className="text-2xl font-black text-yellow-400 mt-1">{activeStores.length}</p><span className="text-mandi-subtle text-[11px]">{pendingVendors} pending review</span></div>
-        <div className="card p-4 border border-red-500/20 bg-red-950/10"><span className="text-mandi-muted text-xs font-medium">Cancelled</span><p className="text-2xl font-black text-red-400 mt-1">{cancelledOrders.length}</p><span className="text-mandi-subtle text-[11px]">{cancellationRate}% cancellation rate</span></div>
+        <div className="card p-4 transition-transform hover:-translate-y-0.5">
+          <span className="text-mandi-muted text-xs font-medium">Platform GMV</span>
+          <p className="text-2xl font-black text-emerald-600 dark:text-mandi-green mt-1">₹{totalGMV.toLocaleString('en-IN')}</p>
+          <span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered</span>
+        </div>
+        <div className="card p-4 transition-transform hover:-translate-y-0.5">
+          <span className="text-mandi-muted text-xs font-medium">Total Orders</span>
+          <p className="text-2xl font-black text-mandi-text mt-1">{orders.length}</p>
+          <span className="text-mandi-subtle text-[11px]">{completedOrders.length} delivered</span>
+        </div>
+        <div className="card p-4 transition-transform hover:-translate-y-0.5">
+          <span className="text-mandi-muted text-xs font-medium">Avg. Order Value</span>
+          <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{aov}</p>
+          <span className="text-mandi-subtle text-[11px]">AOV across {completedOrders.length} orders</span>
+        </div>
+        <div className="card p-4 transition-transform hover:-translate-y-0.5">
+          <span className="text-mandi-muted text-xs font-medium">Active Stores</span>
+          <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{activeStores.length}</p>
+          <span className="text-mandi-subtle text-[11px]">{pendingVendors} pending review</span>
+        </div>
+        <div className="card p-4 border border-red-200 bg-red-50/70 dark:border-red-500/20 dark:bg-red-950/20 transition-transform hover:-translate-y-0.5">
+          <span className="text-red-700 dark:text-red-300 text-xs font-medium">Cancelled</span>
+          <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">{cancelledOrders.length}</p>
+          <span className="text-red-600/70 dark:text-red-400/70 text-[11px]">{cancellationRate}% cancellation rate</span>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-mandi-border mb-6 overflow-x-auto scrollbar-none">
+      <div className="flex border-b border-mandi-border mb-6 overflow-x-auto scrollbar-none gap-1">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`py-3 px-4 font-semibold text-sm border-b-2 whitespace-nowrap transition-all ${activeTab === t.id ? 'border-mandi-green text-mandi-green font-bold' : 'border-transparent text-mandi-muted hover:text-mandi-text'}`}>
+            className={`py-3 px-4 font-semibold text-sm border-b-2 whitespace-nowrap transition-all rounded-t-xl ${activeTab === t.id ? 'border-mandi-green text-emerald-600 dark:text-mandi-green font-bold bg-mandi-green/10' : 'border-transparent text-mandi-muted hover:text-mandi-text hover:bg-mandi-surface/50'}`}>
             {t.label}
           </button>
         ))}
@@ -371,37 +422,74 @@ export default function AdminPanel() {
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4"><TrendingUp size={18} className="text-mandi-green" /><h3 className="text-mandi-text font-bold text-base">Daily Orders — Last 30 Days</h3></div>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={18} className="text-emerald-600 dark:text-mandi-green" />
+              <h3 className="text-mandi-text font-bold text-base">Daily Orders — Last 30 Days</h3>
+            </div>
             {orders.length === 0 ? (
               <p className="text-mandi-muted text-xs py-8 text-center">No orders yet — incoming orders will populate the chart.</p>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={dailyOrderChart} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--color-subtle)' }} interval={4} />
-                  <YAxis tick={{ fontSize: 9, fill: 'var(--color-subtle)' }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, fontSize: 11, color: 'var(--color-text)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }} labelStyle={{ color: 'var(--color-text)', fontWeight: 'bold' }} formatter={(val, name) => [val, name === 'orders' ? 'Orders' : 'GMV (₹)']} />
-                  <Line type="monotone" dataKey="orders" stroke="#00C851" strokeWidth={2.5} dot={false} name="orders" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: isDark ? '#94A3B8' : '#64748B' }} interval={4} />
+                  <YAxis tick={{ fontSize: 9, fill: isDark ? '#94A3B8' : '#64748B' }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: isDark ? '#131B28' : '#FFFFFF',
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(185, 202, 224, 0.65)',
+                      borderRadius: 12,
+                      fontSize: 11,
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                      boxShadow: isDark ? '0 12px 30px rgba(0,0,0,0.6)' : '0 12px 30px rgba(135,155,185,0.3)',
+                    }}
+                    labelStyle={{ color: isDark ? '#F8FAFC' : '#0F172A', fontWeight: 'bold' }}
+                    formatter={(val, name) => [val, name === 'orders' ? 'Orders' : 'GMV (₹)']}
+                  />
+                  <Line type="monotone" dataKey="orders" stroke={isDark ? "#00C851" : "#009639"} strokeWidth={2.5} dot={false} name="orders" />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
 
           <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4"><Activity size={18} className="text-mandi-green" /><div><h3 className="text-mandi-text font-bold text-base">Store Comparison — Orders, GMV &amp; Rating</h3><p className="text-mandi-muted text-xs mt-0.5">Sorted by GMV. Delayed = in-progress order older than 10 min.</p></div></div>
+            <div className="flex items-center gap-2 mb-4">
+              <Activity size={18} className="text-emerald-600 dark:text-mandi-green" />
+              <div>
+                <h3 className="text-mandi-text font-bold text-base">Store Comparison — Orders, GMV &amp; Rating</h3>
+                <p className="text-mandi-muted text-xs mt-0.5">Sorted by GMV. Delayed = in-progress order older than 10 min.</p>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-mandi-surface text-mandi-muted uppercase border-b border-mandi-border">
-                  <tr><th className="p-3">Store</th><th className="p-3">Orders</th><th className="p-3">GMV</th><th className="p-3">Rating</th><th className="p-3">SLA</th></tr>
+                  <tr>
+                    <th className="p-3">Store</th>
+                    <th className="p-3">Orders</th>
+                    <th className="p-3">GMV</th>
+                    <th className="p-3">Rating</th>
+                    <th className="p-3">SLA</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-mandi-border">
                   {vendorPerformance.map(v => (
-                    <tr key={v.id} className="hover:bg-mandi-surface transition-colors">
+                    <tr key={v.id} className="hover:bg-mandi-surface/70 transition-colors">
                       <td className="p-3 font-semibold text-mandi-text">{v.name}</td>
                       <td className="p-3 text-mandi-muted">{v.ordersCount}</td>
-                      <td className="p-3 text-mandi-green font-bold">₹{v.gmv.toLocaleString('en-IN')}</td>
-                      <td className="p-3"><span className="flex items-center gap-1"><span className="text-yellow-400">★</span><span className="text-mandi-text font-medium">{v.rating > 0 ? v.rating.toFixed(1) : '—'}</span></span></td>
-                      <td className="p-3">{v.delayedCount === 0 ? <span className="badge-green text-[10px]">On Track</span> : <span className="bg-red-900 text-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">⚠️ {v.delayedCount} Delayed</span>}</td>
+                      <td className="p-3 text-emerald-600 dark:text-mandi-green font-bold">₹{v.gmv.toLocaleString('en-IN')}</td>
+                      <td className="p-3">
+                        <span className="flex items-center gap-1">
+                          <span className="text-amber-500 dark:text-yellow-400">★</span>
+                          <span className="text-mandi-text font-medium">{v.rating > 0 ? v.rating.toFixed(1) : '—'}</span>
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        {v.delayedCount === 0 ? (
+                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">On Track</span>
+                        ) : (
+                          <span className="bg-red-100 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">⚠️ {v.delayedCount} Delayed</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -409,20 +497,28 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          <div className="card p-6 border-orange-500 border-opacity-30 bg-orange-950 bg-opacity-10">
-            <div className="flex items-center gap-2 mb-3"><ShieldAlert size={20} className="text-orange-400" /><h3 className="text-mandi-text font-bold text-base">Fraud &amp; High-Risk Guardrail Monitor</h3></div>
+          <div className="card p-6 border border-amber-300 bg-amber-50/60 dark:border-orange-500/30 dark:bg-orange-950/10">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert size={20} className="text-amber-600 dark:text-orange-400" />
+              <h3 className="text-mandi-text font-bold text-base">Fraud &amp; High-Risk Guardrail Monitor</h3>
+            </div>
             <p className="text-mandi-muted text-xs mb-4">Orders flagged for high COD value (≥ ₹1,500) or high item density</p>
             {highRiskOrders.length === 0 ? (
-              <p className="text-mandi-green text-xs py-2">✓ No high-risk or suspicious orders detected.</p>
+              <p className="text-emerald-600 dark:text-mandi-green text-xs py-2 font-medium">✓ No high-risk or suspicious orders detected.</p>
             ) : (
               <div className="space-y-2">
                 {highRiskOrders.map(o => (
                   <div key={o.id} className="p-3 rounded-xl bg-mandi-surface border border-mandi-border flex items-center justify-between text-xs gap-3">
-                    <div><span className="font-bold text-mandi-text">#{o.id.toUpperCase()}</span><span className="text-mandi-muted ml-2">{o.paymentMethod} · ₹{o.total} · {o.items?.length} items</span></div>
+                    <div>
+                      <span className="font-bold text-mandi-text">#{o.id.toUpperCase()}</span>
+                      <span className="text-mandi-muted ml-2">{o.paymentMethod} · ₹{o.total} · {o.items?.length} items</span>
+                    </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="bg-orange-500 text-black px-2 py-0.5 rounded font-bold text-[10px]">High Value Flag</span>
+                      <span className="bg-amber-500 text-slate-950 dark:bg-orange-500 dark:text-black px-2 py-0.5 rounded font-bold text-[10px]">High Value Flag</span>
                       {!['delivered', 'cancelled'].includes(o.status) && (
-                        <button onClick={() => setCancelModal({ order: o })} className="py-1 px-2 rounded-lg bg-red-950 text-red-400 border border-red-500/30 hover:border-red-400 transition-all text-[10px] font-bold flex items-center gap-1"><XCircle size={11} /> Cancel</button>
+                        <button onClick={() => setCancelModal({ order: o })} className="py-1 px-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-red-950/80 dark:text-red-400 dark:border-red-500/30 transition-all text-[10px] font-bold flex items-center gap-1">
+                          <XCircle size={11} /> Cancel
+                        </button>
                       )}
                     </div>
                   </div>
@@ -442,33 +538,42 @@ export default function AdminPanel() {
               <input type="text" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="Search by order ID, customer name or phone..." className="input-field pl-10 text-sm w-full" />
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <select value={orderStatusFilter} onChange={e => setOrderStatusFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[140px]">
-                <option value="all">All Statuses</option><option value="placed">Placed</option><option value="accepted">Accepted</option>
-                <option value="preparing">Preparing</option><option value="out_for_delivery">Out for Delivery</option>
-                <option value="delivered">Delivered</option><option value="cancelled">Cancelled</option>
+              <select value={orderStatusFilter} onChange={e => setOrderStatusFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[140px] bg-mandi-surface text-mandi-text border-mandi-border">
+                <option value="all" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">All Statuses</option>
+                <option value="placed" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Placed</option>
+                <option value="accepted" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Accepted</option>
+                <option value="preparing" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Preparing</option>
+                <option value="out_for_delivery" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Out for Delivery</option>
+                <option value="delivered" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Delivered</option>
+                <option value="cancelled" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Cancelled</option>
               </select>
-              <select value={orderPaymentFilter} onChange={e => setOrderPaymentFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[130px]">
-                <option value="all">All Payments</option><option value="upi">UPI / Online</option><option value="cod">Cash on Delivery</option>
+              <select value={orderPaymentFilter} onChange={e => setOrderPaymentFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[130px] bg-mandi-surface text-mandi-text border-mandi-border">
+                <option value="all" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">All Payments</option>
+                <option value="upi" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">UPI / Online</option>
+                <option value="cod" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Cash on Delivery</option>
               </select>
-              <select value={orderDateFilter} onChange={e => setOrderDateFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[130px]">
-                <option value="all">All Time</option><option value="today">Today</option><option value="7days">Last 7 Days</option><option value="30days">Last 30 Days</option>
+              <select value={orderDateFilter} onChange={e => setOrderDateFilter(e.target.value)} className="input-field text-xs py-1.5 px-3 flex-1 min-w-[130px] bg-mandi-surface text-mandi-text border-mandi-border">
+                <option value="all" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">All Time</option>
+                <option value="today" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Today</option>
+                <option value="7days" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Last 7 Days</option>
+                <option value="30days" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Last 30 Days</option>
               </select>
               {(orderSearch || orderStatusFilter !== 'all' || orderPaymentFilter !== 'all' || orderDateFilter !== 'all') && (
-                <button onClick={() => { setOrderSearch(''); setOrderStatusFilter('all'); setOrderPaymentFilter('all'); setOrderDateFilter('all'); }} className="text-xs text-mandi-muted hover:text-red-400 transition-colors flex items-center gap-1 px-2 py-1.5"><X size={13} /> Clear</button>
+                <button onClick={() => { setOrderSearch(''); setOrderStatusFilter('all'); setOrderPaymentFilter('all'); setOrderDateFilter('all'); }} className="text-xs text-mandi-muted hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 px-2 py-1.5"><X size={13} /> Clear</button>
               )}
             </div>
             <p className="text-mandi-subtle text-xs">Showing {filteredOrders.length} of {orders.length} orders</p>
           </div>
 
           {errorStates?.orders && (
-            <div className="card p-4 bg-amber-950/40 border-amber-600/50 flex items-start gap-3">
-              <ShieldAlert className="text-amber-400 flex-shrink-0 mt-0.5" size={18} />
-              <div className="text-xs"><p className="text-amber-200 font-bold">Cloud Sync: {errorStates.orders}</p><p className="text-amber-300/80">Showing locally synced orders.</p></div>
+            <div className="card p-4 bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-600/50 dark:text-amber-200 flex items-start gap-3">
+              <ShieldAlert className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+              <div className="text-xs"><p className="font-bold">Cloud Sync: {errorStates.orders}</p><p className="opacity-80">Showing locally synced orders.</p></div>
             </div>
           )}
 
           {loadingStates?.orders && orders.length === 0 ? (
-            <div className="card p-12 text-center space-y-3"><RefreshCw size={24} className="animate-spin text-mandi-green mx-auto" /><h3 className="text-mandi-text font-bold">Syncing Live Orders...</h3></div>
+            <div className="card p-12 text-center space-y-3"><RefreshCw size={24} className="animate-spin text-emerald-600 dark:text-mandi-green mx-auto" /><h3 className="text-mandi-text font-bold">Syncing Live Orders...</h3></div>
           ) : filteredOrders.length === 0 ? (
             <div className="card p-12 text-center space-y-3">
               <div className="w-12 h-12 bg-mandi-surface rounded-full flex items-center justify-center mx-auto text-mandi-muted"><Database size={24} /></div>
@@ -480,12 +585,12 @@ export default function AdminPanel() {
               const cd = cancellationDetails[order.id];
               const isCancellable = !['delivered', 'cancelled'].includes(order.status);
               return (
-                <div key={order.id} className={`card p-5 space-y-4 border transition-colors ${order.status === 'cancelled' ? 'border-red-500/20 bg-red-950/5' : 'border-mandi-border hover:border-mandi-green/40'}`}>
+                <div key={order.id} className={`card p-5 space-y-4 border transition-colors ${order.status === 'cancelled' ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-950/10' : 'border-mandi-border hover:border-emerald-500/40 dark:hover:border-mandi-green/40'}`}>
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-mandi-border">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-mandi-text font-black text-base">#{order.id.toUpperCase().slice(-8)}</span>
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase border ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                         {cd && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-mandi-surface border border-mandi-border text-mandi-muted">{cd.reason}</span>}
                       </div>
                       <p className="text-mandi-muted text-xs">Store: <strong className="text-mandi-text">{order.storeName || 'Local Store'}</strong> · {new Date(order.placedAt || Date.now()).toLocaleString('en-IN')}</p>
@@ -493,21 +598,25 @@ export default function AdminPanel() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                       <div className="text-right">
-                        <p className="text-mandi-green font-black text-xl">₹{order.total}</p>
-                        <p className="text-mandi-subtle text-[11px]">{order.paymentMethod} · <span className={order.paymentStatus === 'paid' ? 'text-mandi-green font-semibold' : 'text-yellow-400'}>{order.paymentStatus?.toUpperCase()}</span></p>
+                        <p className="text-emerald-600 dark:text-mandi-green font-black text-xl">₹{order.total}</p>
+                        <p className="text-mandi-subtle text-[11px]">{order.paymentMethod} · <span className={order.paymentStatus === 'paid' ? 'text-emerald-600 dark:text-mandi-green font-semibold' : 'text-amber-600 dark:text-yellow-400 font-semibold'}>{order.paymentStatus?.toUpperCase()}</span></p>
                       </div>
                       <select value={order.status}
                         onChange={e => {
                           if (e.target.value === 'cancelled') { setCancelModal({ order }); }
                           else { updateOrderStatus(order.id, e.target.value); addToast(`Order #${order.id.slice(-6)} → ${e.target.value}`, 'info'); }
                         }}
-                        className="bg-mandi-surface border border-mandi-border rounded-xl text-xs font-semibold px-3 py-2 text-mandi-text hover:border-mandi-green transition-colors cursor-pointer">
-                        <option value="placed">Placed</option><option value="accepted">Accepted</option><option value="preparing">Preparing</option>
-                        <option value="out_for_delivery">Out for Delivery</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option>
+                        className="bg-mandi-surface border border-mandi-border rounded-xl text-xs font-semibold px-3 py-2 text-mandi-text hover:border-emerald-500 dark:hover:border-mandi-green transition-colors cursor-pointer shadow-sm">
+                        <option value="placed" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Placed</option>
+                        <option value="accepted" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Accepted</option>
+                        <option value="preparing" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Preparing</option>
+                        <option value="out_for_delivery" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Out for Delivery</option>
+                        <option value="delivered" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Delivered</option>
+                        <option value="cancelled" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Cancelled</option>
                       </select>
                       {isCancellable && (
                         <button onClick={() => setCancelModal({ order })}
-                          className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-red-950 text-red-400 border border-red-500/30 hover:border-red-400 hover:bg-red-900/60 active:scale-95 transition-all text-xs font-bold">
+                          className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-red-950/70 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-900/60 active:scale-95 transition-all text-xs font-bold shadow-sm">
                           <XCircle size={14} /> Cancel
                         </button>
                       )}
@@ -520,12 +629,12 @@ export default function AdminPanel() {
                       {order.customerPhone && <p className="text-mandi-muted">Phone: {order.customerPhone}</p>}
                       {order.customerEmail && <p className="text-mandi-subtle">{order.customerEmail}</p>}
                       <p className="text-mandi-text mt-1">{order.address?.line1}, {order.address?.city} - {order.address?.pincode}</p>
-                      {order.paymentDetails?.utr && <p className="text-mandi-green font-mono text-[11px] mt-1">UTR: {order.paymentDetails.utr}</p>}
+                      {order.paymentDetails?.utr && <p className="text-emerald-600 dark:text-mandi-green font-mono text-[11px] mt-1 font-bold">UTR: {order.paymentDetails.utr}</p>}
                       <div className="flex items-center justify-between pt-1.5 border-t border-mandi-border/40">
                         <span className="text-mandi-muted text-[11px]">Store: {order.storeName || 'Local Kirana'}</span>
                         <Link
                           to={`/vendor?storeId=${order.storeId || 'store-mahalaxmi-1'}`}
-                          className="text-[11px] text-mandi-green hover:underline flex items-center gap-1 font-bold"
+                          className="text-[11px] text-emerald-600 dark:text-mandi-green hover:underline flex items-center gap-1 font-bold"
                           title="Open Vendor Dashboard"
                         >
                           <Store size={12} /> Dashboard <ExternalLink size={10} />
@@ -543,7 +652,7 @@ export default function AdminPanel() {
                         ))}
                       </div>
                       <div className="pt-2 border-t border-mandi-border flex justify-between font-bold text-xs text-mandi-text">
-                        <span>Total ({order.paymentMethod})</span><span className="text-mandi-green">₹{order.total}</span>
+                        <span>Total ({order.paymentMethod})</span><span className="text-emerald-600 dark:text-mandi-green">₹{order.total}</span>
                       </div>
                     </div>
                   </div>
@@ -558,13 +667,13 @@ export default function AdminPanel() {
       {activeTab === 'stores' && (
         <div className="space-y-4">
           {stores.map(s => (
-            <div key={s.id} className={`card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${s.status === 'suspended' ? 'border-red-500/20 bg-red-950/5' : ''}`}>
+            <div key={s.id} className={`card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${s.status === 'suspended' ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-950/10' : ''}`}>
               <div className="flex items-center gap-4">
                 <LazyImage src={s.image} alt={s.name} className="w-full h-full object-cover rounded-xl" containerClass="w-16 h-16 rounded-xl flex-shrink-0" width={100} quality={60} />
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-mandi-text font-bold text-base">{s.name}</h3>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${s.status === 'approved' ? 'bg-mandi-green-muted text-mandi-green' : s.status === 'suspended' ? 'bg-red-950 text-red-400' : 'bg-yellow-900 text-yellow-200'}`}>{s.status}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${s.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30' : s.status === 'suspended' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-400 dark:border-red-500/30' : 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-500/30'}`}>{s.status}</span>
                   </div>
                   <p className="text-mandi-muted text-xs mt-0.5">{s.address}, {s.city}</p>
                   <p className="text-mandi-subtle text-xs mt-0.5">Owner: {s.ownerName || 'Kirana Partner'} · {s.ownerPhone || 'N/A'}</p>
@@ -573,15 +682,15 @@ export default function AdminPanel() {
               <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
                 <Link
                   to={`/vendor?storeId=${s.id}`}
-                  className="py-1.5 px-3 text-xs flex items-center gap-1.5 bg-mandi-green/10 text-mandi-green border border-mandi-green/30 hover:bg-mandi-green hover:text-black rounded-xl transition-all font-bold shadow-sm"
+                  className="py-1.5 px-3 text-xs flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white dark:bg-mandi-green/10 dark:text-mandi-green dark:border-mandi-green/30 dark:hover:bg-mandi-green dark:hover:text-black rounded-xl transition-all font-bold shadow-sm"
                   title={`Open ${s.name} vendor dashboard`}
                 >
                   <Store size={14} /> Open Dashboard
                 </Link>
                 {s.status === 'pending' && <button onClick={() => { updateStore(s.id, { status: 'approved' }); addToast(`${s.name} approved!`, 'success'); }} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1"><Check size={14} /> Approve</button>}
-                {s.status === 'approved' && <button onClick={() => { updateStore(s.id, { status: 'suspended' }); addToast(`${s.name} suspended`, 'error'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-orange-950 text-orange-400 border border-orange-500/30 hover:border-orange-400 rounded-xl transition-all font-semibold"><Ban size={14} /> Suspend</button>}
-                {s.status === 'suspended' && <button onClick={() => { updateStore(s.id, { status: 'approved' }); addToast(`${s.name} reactivated!`, 'success'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-mandi-green-muted text-mandi-green border border-mandi-green/30 hover:border-mandi-green rounded-xl transition-all font-semibold"><RotateCcw size={14} /> Reactivate</button>}
-                <button onClick={() => handleDeleteStore(s.id, s.name)} className="p-2 rounded-xl bg-mandi-surface hover:bg-red-950 text-red-400 border border-mandi-border hover:border-red-500 transition-all"><Trash2 size={16} /></button>
+                {s.status === 'approved' && <button onClick={() => { updateStore(s.id, { status: 'suspended' }); addToast(`${s.name} suspended`, 'error'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 dark:bg-orange-950/70 dark:text-orange-400 dark:border-orange-500/30 dark:hover:bg-orange-900/50 rounded-xl transition-all font-semibold"><Ban size={14} /> Suspend</button>}
+                {s.status === 'suspended' && <button onClick={() => { updateStore(s.id, { status: 'approved' }); addToast(`${s.name} reactivated!`, 'success'); }} className="py-1.5 px-3 text-xs flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30 rounded-xl transition-all font-semibold"><RotateCcw size={14} /> Reactivate</button>}
+                <button onClick={() => handleDeleteStore(s.id, s.name)} className="p-2 rounded-xl bg-mandi-surface hover:bg-red-50 text-red-500 dark:text-red-400 border border-mandi-border hover:border-red-300 dark:hover:border-red-500 dark:hover:bg-red-950/60 transition-all"><Trash2 size={16} /></button>
               </div>
             </div>
           ))}
@@ -597,15 +706,15 @@ export default function AdminPanel() {
             </thead>
             <tbody className="divide-y divide-mandi-border">
               {products.map(p => (
-                <tr key={p.id} className="hover:bg-mandi-surface transition-colors">
+                <tr key={p.id} className="hover:bg-mandi-surface/70 transition-colors">
                   <td className="p-3 flex items-center gap-3">
                     <LazyImage src={p.image} alt={p.name} className="w-full h-full object-cover rounded-lg" containerClass="w-10 h-10 rounded-lg flex-shrink-0" width={100} quality={50} />
                     <div><p className="text-mandi-text font-semibold text-xs">{p.name}</p><p className="text-mandi-subtle text-xs">{p.brand}</p></div>
                   </td>
                   <td className="p-3 text-mandi-muted text-xs">{p.unit}</td>
-                  <td className="p-3 text-mandi-green font-bold text-xs">₹{p.price}</td>
+                  <td className="p-3 text-emerald-600 dark:text-mandi-green font-bold text-xs">₹{p.price}</td>
                   <td className="p-3 text-xs">{p.stock}</td>
-                  <td className="p-3 text-right"><button onClick={() => { deleteProduct(p.id); addToast('Product deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface text-red-400 border border-mandi-border hover:border-red-500"><Trash2 size={14} /></button></td>
+                  <td className="p-3 text-right"><button onClick={() => { deleteProduct(p.id); addToast('Product deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface text-red-500 dark:text-red-400 border border-mandi-border hover:bg-red-50 dark:hover:bg-red-950/60 hover:border-red-300 dark:hover:border-red-500"><Trash2 size={14} /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -621,7 +730,7 @@ export default function AdminPanel() {
           ) : (
             <div className="card overflow-x-auto">
               <div className="p-4 border-b border-mandi-border flex items-center gap-2">
-                <Users size={16} className="text-mandi-green" />
+                <Users size={16} className="text-emerald-600 dark:text-mandi-green" />
                 <h3 className="text-mandi-text font-bold text-sm">{customerList.length} Unique Customers</h3>
                 <span className="text-mandi-subtle text-xs ml-auto">Derived from order history · sorted by spend</span>
               </div>
@@ -634,17 +743,17 @@ export default function AdminPanel() {
                     const key = (c.email !== '—' ? c.email : c.phone !== '—' ? c.phone : c.name) + idx;
                     const isBanned = bannedUsers[key];
                     return (
-                      <tr key={idx} className={`hover:bg-mandi-surface transition-colors ${isBanned ? 'opacity-50' : ''}`}>
-                        <td className="p-3"><div className="flex items-center gap-2"><div className="w-7 h-7 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black flex-shrink-0">{c.name[0].toUpperCase()}</div><div><p className="text-mandi-text font-semibold">{c.name}</p>{isBanned && <span className="text-[10px] text-red-400 font-bold">BANNED</span>}</div></div></td>
+                      <tr key={idx} className={`hover:bg-mandi-surface/70 transition-colors ${isBanned ? 'opacity-50' : ''}`}>
+                        <td className="p-3"><div className="flex items-center gap-2"><div className="w-7 h-7 bg-emerald-500 text-slate-950 dark:bg-mandi-green dark:text-black rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{c.name[0].toUpperCase()}</div><div><p className="text-mandi-text font-semibold">{c.name}</p>{isBanned && <span className="text-[10px] text-red-600 dark:text-red-400 font-bold bg-red-100 dark:bg-red-950/60 border border-red-200 dark:border-red-500/30 px-1.5 py-0.5 rounded">BANNED</span>}</div></div></td>
                         <td className="p-3 text-mandi-muted"><p>{c.email}</p><p className="text-mandi-subtle">{c.phone}</p></td>
                         <td className="p-3 text-mandi-text font-semibold">{c.orders}</td>
-                        <td className="p-3 text-mandi-green font-bold">₹{c.totalSpent.toLocaleString('en-IN')}</td>
+                        <td className="p-3 text-emerald-600 dark:text-mandi-green font-bold">₹{c.totalSpent.toLocaleString('en-IN')}</td>
                         <td className="p-3 text-mandi-muted">{c.lastOrder ? c.lastOrder.toLocaleDateString('en-IN') : '—'}</td>
                         <td className="p-3 text-right">
                           {isBanned ? (
-                            <button onClick={() => { setBannedUsers(p => { const n={...p}; delete n[key]; return n; }); addToast(`${c.name} unbanned`, 'success'); }} className="py-1 px-2.5 text-[10px] font-bold rounded-lg bg-mandi-green-muted text-mandi-green border border-mandi-green/30 hover:border-mandi-green transition-all flex items-center gap-1 ml-auto"><RotateCcw size={11} /> Unban</button>
+                            <button onClick={() => { setBannedUsers(p => { const n={...p}; delete n[key]; return n; }); addToast(`${c.name} unbanned`, 'success'); }} className="py-1 px-2.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30 transition-all flex items-center gap-1 ml-auto"><RotateCcw size={11} /> Unban</button>
                           ) : (
-                            <button onClick={() => { setBannedUsers(p => ({...p, [key]: true})); addToast(`${c.name} banned`, 'error'); }} className="py-1 px-2.5 text-[10px] font-bold rounded-lg bg-red-950 text-red-400 border border-red-500/30 hover:border-red-400 transition-all flex items-center gap-1 ml-auto"><Ban size={11} /> Ban</button>
+                            <button onClick={() => { setBannedUsers(p => ({...p, [key]: true})); addToast(`${c.name} banned`, 'error'); }} className="py-1 px-2.5 text-[10px] font-bold rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-red-950/70 dark:text-red-400 dark:border-red-500/30 transition-all flex items-center gap-1 ml-auto"><Ban size={11} /> Ban</button>
                           )}
                         </td>
                       </tr>
@@ -662,7 +771,7 @@ export default function AdminPanel() {
         <div className="space-y-6">
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><Tag size={16} className="text-mandi-green" /><h3 className="text-mandi-text font-bold text-sm">Discount Coupons Manager</h3></div>
+              <div className="flex items-center gap-2"><Tag size={16} className="text-emerald-600 dark:text-mandi-green" /><h3 className="text-mandi-text font-bold text-sm">Discount Coupons Manager</h3></div>
               <button onClick={() => setShowCouponForm(p => !p)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"><Plus size={14} /> {showCouponForm ? 'Cancel' : 'New Coupon'}</button>
             </div>
 
@@ -691,17 +800,17 @@ export default function AdminPanel() {
                   {coupons.map(c => {
                     const expired = new Date(c.expiry) < new Date();
                     return (
-                      <tr key={c.id} className={`hover:bg-mandi-surface transition-colors ${!c.active || expired ? 'opacity-50' : ''}`}>
-                        <td className="py-3 pr-4"><span className="font-mono font-black text-mandi-text bg-mandi-surface px-2 py-0.5 rounded-lg border border-mandi-border">{c.code}</span></td>
-                        <td className="py-3 pr-4 text-mandi-green font-bold">{c.type === 'percent' ? `${c.value}%` : `₹${c.value}`}<span className="text-mandi-muted font-normal"> (cap ₹{c.cap})</span></td>
+                      <tr key={c.id} className={`hover:bg-mandi-surface/70 transition-colors ${!c.active || expired ? 'opacity-50' : ''}`}>
+                        <td className="py-3 pr-4"><span className="font-mono font-black text-mandi-text bg-mandi-surface px-2.5 py-1 rounded-lg border border-mandi-border shadow-xs">{c.code}</span></td>
+                        <td className="py-3 pr-4 text-emerald-600 dark:text-mandi-green font-bold">{c.type === 'percent' ? `${c.value}%` : `₹${c.value}`}<span className="text-mandi-muted font-normal"> (cap ₹{c.cap})</span></td>
                         <td className="py-3 pr-4 text-mandi-muted">₹{c.minOrder}</td>
-                        <td className="py-3 pr-4 text-mandi-muted">{c.expiry}{expired && <span className="ml-1 text-red-400 font-bold">EXPIRED</span>}</td>
+                        <td className="py-3 pr-4 text-mandi-muted">{c.expiry}{expired && <span className="ml-1 text-red-600 dark:text-red-400 font-bold">EXPIRED</span>}</td>
                         <td className="py-3 pr-4 text-mandi-muted">{c.uses}</td>
-                        <td className="py-3 pr-4"><span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${c.active && !expired ? 'bg-mandi-green-muted text-mandi-green' : 'bg-mandi-surface text-mandi-muted border border-mandi-border'}`}>{!c.active ? 'Inactive' : expired ? 'Expired' : 'Active'}</span></td>
+                        <td className="py-3 pr-4"><span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${c.active && !expired ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}>{!c.active ? 'Inactive' : expired ? 'Expired' : 'Active'}</span></td>
                         <td className="py-3 text-right">
                           <div className="flex items-center gap-1.5 justify-end">
-                            {c.active && !expired && <button onClick={() => { setCoupons(p => p.map(x => x.id === c.id ? {...x, active: false} : x)); addToast('Coupon deactivated', 'info'); }} className="py-1 px-2 text-[10px] font-bold rounded-lg bg-mandi-surface text-mandi-muted border border-mandi-border hover:border-mandi-green transition-all">Deactivate</button>}
-                            <button onClick={() => { setCoupons(p => p.filter(x => x.id !== c.id)); addToast('Coupon deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface text-red-400 border border-mandi-border hover:border-red-500 transition-all"><Trash2 size={12} /></button>
+                            {c.active && !expired && <button onClick={() => { setCoupons(p => p.map(x => x.id === c.id ? {...x, active: false} : x)); addToast('Coupon deactivated', 'info'); }} className="py-1 px-2 text-[10px] font-bold rounded-lg bg-mandi-surface text-mandi-muted border border-mandi-border hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-mandi-green transition-all">Deactivate</button>}
+                            <button onClick={() => { setCoupons(p => p.filter(x => x.id !== c.id)); addToast('Coupon deleted', 'info'); }} className="p-1.5 rounded-lg bg-mandi-surface text-red-500 dark:text-red-400 border border-mandi-border hover:bg-red-50 dark:hover:bg-red-950/60 hover:border-red-300 dark:hover:border-red-500 transition-all"><Trash2 size={12} /></button>
                           </div>
                         </td>
                       </tr>
@@ -718,7 +827,7 @@ export default function AdminPanel() {
       {activeTab === 'banners' && (
         <div className="space-y-6">
           <div className="card p-5 max-w-xl">
-            <h3 className="text-mandi-text font-bold mb-3 text-sm flex items-center gap-2"><Megaphone size={16} className="text-mandi-green" />Add Promotional Banner</h3>
+            <h3 className="text-mandi-text font-bold mb-3 text-sm flex items-center gap-2"><Megaphone size={16} className="text-emerald-600 dark:text-mandi-green" />Add Promotional Banner</h3>
             <form onSubmit={handleCreateBanner} className="space-y-3">
               <input required value={newBannerTitle} onChange={e => setNewBannerTitle(e.target.value)} placeholder="Banner Title (e.g. 🎉 Flat 30% Off)" className="input-field text-sm" />
               <input value={newBannerSub} onChange={e => setNewBannerSub(e.target.value)} placeholder="Subtitle (e.g. Use code FLASH30)" className="input-field text-sm" />
@@ -729,7 +838,7 @@ export default function AdminPanel() {
             {banners.map(b => (
               <div key={b.id} className="card p-4 flex items-center justify-between">
                 <div><p className="text-mandi-text font-bold text-sm">{b.title}</p><p className="text-mandi-muted text-xs">{b.subtitle}</p></div>
-                <button onClick={() => { deleteBanner(b.id); addToast('Banner removed', 'info'); }} className="text-red-400 hover:text-red-300 p-2"><Trash2 size={16} /></button>
+                <button onClick={() => { deleteBanner(b.id); addToast('Banner removed', 'info'); }} className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 p-2"><Trash2 size={16} /></button>
               </div>
             ))}
           </div>
@@ -742,12 +851,12 @@ export default function AdminPanel() {
           {tickets.map(t => (
             <div key={t.id} className="card p-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2"><HelpCircle size={16} className="text-mandi-green" /><h3 className="text-mandi-text font-bold text-sm">{t.subject}</h3></div>
-                <span className={`text-xs px-2.5 py-1 rounded-full uppercase font-bold ${t.status === 'open' ? 'bg-yellow-900 text-yellow-200' : 'bg-mandi-green-muted text-mandi-green'}`}>{t.status}</span>
+                <div className="flex items-center gap-2"><HelpCircle size={16} className="text-emerald-600 dark:text-mandi-green" /><h3 className="text-mandi-text font-bold text-sm">{t.subject}</h3></div>
+                <span className={`text-xs px-2.5 py-1 rounded-full uppercase font-bold border ${t.status === 'open' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-400 dark:border-emerald-500/30'}`}>{t.status}</span>
               </div>
               <p className="text-mandi-muted text-xs mb-3">{t.message}</p>
               {t.reply ? (
-                <div className="bg-mandi-surface p-3 rounded-xl border border-mandi-border text-xs"><p className="text-mandi-green font-semibold mb-1">Admin Reply:</p><p className="text-mandi-text">{t.reply}</p></div>
+                <div className="bg-mandi-surface p-3 rounded-xl border border-mandi-border text-xs"><p className="text-emerald-600 dark:text-mandi-green font-bold mb-1">Admin Reply:</p><p className="text-mandi-text">{t.reply}</p></div>
               ) : (
                 <div className="flex gap-2">
                   <input placeholder="Type resolution reply..." value={replyText[t.id] || ''} onChange={e => setReplyText({ ...replyText, [t.id]: e.target.value })} className="input-field text-xs py-1.5 flex-1" />
@@ -761,10 +870,15 @@ export default function AdminPanel() {
 
       {/* Modal: Add Store */}
       {showAddStoreModal && (
-        <div className="overlay flex items-center justify-center p-4">
-          <div className="bg-mandi-card border border-mandi-border rounded-2xl p-6 w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto">
+        <div className="overlay flex items-center justify-center p-4 backdrop-blur-sm z-50">
+          <div className="bg-mandi-card border border-mandi-border rounded-2xl p-6 w-full max-w-lg animate-scale-in max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2"><Store size={20} className="text-mandi-green" /><h2 className="text-mandi-text font-bold text-lg">Add New Kirana Store</h2></div>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-emerald-100 text-emerald-700 dark:bg-mandi-green/10 dark:text-mandi-green border border-emerald-200 dark:border-mandi-green/30 rounded-xl flex items-center justify-center">
+                  <Store size={20} />
+                </div>
+                <h2 className="text-mandi-text font-bold text-lg">Add New Kirana Store</h2>
+              </div>
               <button onClick={() => setShowAddStoreModal(false)} className="text-mandi-subtle hover:text-mandi-text"><X size={20} /></button>
             </div>
             <form onSubmit={handleCreateStore} className="space-y-4">
@@ -798,7 +912,7 @@ export default function AdminPanel() {
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" className="btn-primary flex-1 py-2.5 text-sm">Create &amp; Approve Store</button>
-                <button type="button" onClick={() => setShowAddStoreModal(false)} className="py-2.5 px-4 bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border rounded-xl text-sm transition-all">Cancel</button>
+                <button type="button" onClick={() => setShowAddStoreModal(false)} className="py-2.5 px-4 bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border rounded-xl text-sm transition-all hover:bg-mandi-surface/80">Cancel</button>
               </div>
             </form>
           </div>

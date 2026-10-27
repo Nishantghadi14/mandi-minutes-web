@@ -38,6 +38,7 @@ export const useData = () => {
   const getOrdersByCustomer = useDataStore(state => state.getOrdersByCustomer);
   const getOrdersByStore = useDataStore(state => state.getOrdersByStore);
   const addOrder = useDataStore(state => state.addOrder);
+  const recordLocalSale = useDataStore(state => state.recordLocalSale);
   const updateOrderStatus = useDataStore(state => state.updateOrderStatus);
   const addProduct = useDataStore(state => state.addProduct);
   const updateProduct = useDataStore(state => state.updateProduct);
@@ -68,6 +69,7 @@ export const useData = () => {
     getOrdersByCustomer,
     getOrdersByStore,
     addOrder,
+    recordLocalSale,
     updateOrderStatus,
     addProduct,
     updateProduct,

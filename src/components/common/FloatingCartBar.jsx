@@ -7,11 +7,10 @@ export default function FloatingCartBar() {
   const location = useLocation();
 
   // Hide on checkout, order status, or when cart is empty
-  const hideOnPaths = ['/checkout', '/admin', '/vendor', '/rider'];
+  const hideOnPaths = ['/checkout', '/admin', '/vendor', '/rider', '/order-status'];
   if (
     itemCount === 0 ||
-    hideOnPaths.includes(location.pathname) ||
-    location.pathname.startsWith('/order-status')
+    hideOnPaths.some(p => location.pathname.startsWith(p))
   ) {
     return null;
   }

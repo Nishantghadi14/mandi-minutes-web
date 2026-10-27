@@ -32,6 +32,7 @@
 
 - 📍 **Hyperlocal Pincode Engine** — Dynamic detection and store filtering for Virar West (`401305`), Virar East (`401303`), Nallasopara (`401301`), Arnala (`401309`), and Vasai (`401208`, `401209`).
 - 🏪 **Store Discovery with Live Stock** — In-stock previews on Kirana store cards showing available products and pricing at a glance.
+- ⚡ **In-Store Counter POS (Local Sales)** — Dedicated Point-of-Sale module for walk-in customers with instant real-time inventory deduction, printable retail cash memos, and one-tap WhatsApp bill sharing.
 - 🎲 **Local Vendor Catalog Showcase** — Curated staples sold by verified local vendors, complete with store tags, category filters, and seamless search.
 - 💳 **Direct UPI Payments & COD** — Native intent triggers for Google Pay, PhonePe, Paytm, and BHIM (`upi://pay`), dynamic QR codes, and Cash on Delivery with zero client trust verification.
 - 🗺️ **Live Rider GPS Tracking** — Real-time interactive Leaflet map tracking the rider’s route from Kirana store to customer doorstep.
@@ -45,10 +46,10 @@
 | Role | Portal / Route | Capabilities |
 |---|---|---|
 | **Customer** | `/` & `/store/:id` | Browse local Kiranas, add items to cart, order via UPI/COD, track rider live, manage profile & address book. |
-| **Vendor** | `/vendor` | Store inventory management, product pricing/stock toggle, incoming order acceptance, real-time analytics. |
+| **Vendor** | `/vendor` | Store inventory management, Live POS for local counter sales, pricing/stock toggles, order lifecycle (accepted/packing/ready), real-time SLA metrics. |
 | **Vendor Onboarding** | `/vendor-onboarding` | Kirana store self-registration, license/address verification, instant catalogue initialization. |
 | **Rider** | `/rider` | Accept delivery runs, broadcast real-time GPS coordinates, call customers/stores, update delivery status. |
-| **Admin** | `/admin` | Master control panel: manage approved/pending stores, review tickets, view system-wide revenue & orders. |
+| **Admin** | `/admin` | Master control panel: manage approved/pending stores, review tickets, view system-wide revenue & orders, Super Admin vendor inspection. |
 
 ---
 
@@ -64,7 +65,7 @@
 | **Push Notifications** | Firebase Cloud Messaging (FCM) + Service Workers |
 | **Maps & Geo** | Leaflet, React Leaflet (OpenStreetMap / CartoDB tiles) |
 | **Data Visualization** | Recharts (Vendor & Admin performance analytics) |
-| **Quality & Tests** | Oxlint (fast linter), Vitest (25 unit tests) |
+| **Quality & Tests** | Oxlint (fast linter), Vitest (50 automated unit tests across 4 test suites) |
 
 ---
 
@@ -176,7 +177,7 @@ mandi-minutes.apk
 | `npm run build` | Builds optimized production static web bundle into `/dist`. |
 | `npm run preview` | Previews the production build locally. |
 | `npm run lint` | Runs Oxlint for code quality and syntax validation. |
-| `npm test` | Runs the Vitest test suite (pricing and search unit tests). |
+| `npm test` | Runs 50 Vitest unit tests (pricing, search, delivery slots, and local sale POS). |
 | `npm run cap:sync` | Builds web assets and synchronizes Capacitor Android plugins & assets. |
 | `npm run build:apk` | Complete production pipeline: builds web, syncs Capacitor, outputs release APK. |
 | `npm run build:apk:debug` | Debug pipeline: builds web, syncs Capacitor, outputs debug APK. |
@@ -247,7 +248,3 @@ mandi-minutes-web/
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 © 2026 Mandi Minutes. Built with ❤️ for neighborhood Kiranas.
-
-
-7-11pm
-11:30pm
