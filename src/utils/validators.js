@@ -85,8 +85,8 @@ export function sanitizeText(str, maxLength = 500) {
 export function validateAddress(address) {
   const errors = {};
 
-  if (!address.line1 || sanitizeText(address.line1).length < 5) {
-    errors.line1 = 'Street address must be at least 5 characters';
+  if (!address.line1 || sanitizeText(address.line1).length < 3) {
+    errors.line1 = 'Flat / House / Building is required';
   }
 
   if (!address.city || sanitizeText(address.city).length < 2) {
@@ -104,6 +104,8 @@ export function validateAddress(address) {
     sanitized: {
       label: sanitizeText(address.label || 'Home', 20),
       line1: sanitizeText(address.line1, 150),
+      area: sanitizeText(address.area || '', 100),
+      landmark: sanitizeText(address.landmark || '', 100),
       city: sanitizeText(address.city, 50),
       pincode: pinCheck.value || '',
     }

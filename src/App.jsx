@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 
 /** Smoothly scrolls to the top of the page on every route change */
 function ScrollToTop() {
@@ -10,7 +10,7 @@ function ScrollToTop() {
   return null;
 }
 import { HelmetProvider } from 'react-helmet-async';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LocationProvider } from './context/LocationContext';
 import { DataProvider } from './context/DataContext';
@@ -43,6 +43,7 @@ const RiderPortal = lazy(() => import('./pages/RiderPortal'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -75,11 +76,19 @@ function PageLoader() {
 }
 
 function AppContent() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname, search } = location;
   const isRider = isRiderApp() || pathname.startsWith('/rider');
   const inAppMode = isInAppMode(pathname) || isRider;
-  const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/rider'].includes(pathname) || pathname.startsWith('/order-status') || pathname.startsWith('/vendor')));
+  const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/rider', '/reset-password', '/auth/action'].includes(pathname) || pathname.startsWith('/order-status') || pathname.startsWith('/vendor')));
   const hideNavbar = isRider || inAppMode;
+
+  // Intercept any password reset or email action links landing on generic URLs
+  const searchParams = new URLSearchParams(search);
+  const isAuthAction = searchParams.get('mode') === 'resetPassword' || searchParams.has('oobCode');
+  if (isAuthAction && pathname !== '/reset-password' && pathname !== '/auth/action') {
+    return <Navigate to={`/reset-password${search}`} replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-mandi-dark text-mandi-text selection:bg-mandi-green selection:text-black">
@@ -113,6 +122,8 @@ function AppContent() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/auth/action" element={<ResetPasswordPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </>
             )}

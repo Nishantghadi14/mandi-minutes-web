@@ -25,8 +25,13 @@ service cloud.firestore {
       return signedIn() && hasUserDoc() && userDoc().get('role', '') == 'rider' && order.riderId == request.auth.uid;
     }
 
+    match /phoneIndex/{phone} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
     match /users/{uid} {
-      allow read: if own(uid) || admin();
+      allow read: if own(uid) || admin() || (signedIn() && resource.data.phone == request.auth.token.phone_number);
       // Regular users can only register as customers; role and storeId cannot be initialized by regular users
       allow create: if signedIn() && request.auth.uid == uid
         && (!('role' in request.resource.data) || request.resource.data.role == 'customer')

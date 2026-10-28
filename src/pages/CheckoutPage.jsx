@@ -107,20 +107,25 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
 
   const store = stores.find(s => s.id === storeId);
+  const isMockAddress = (a) => !a || a.id === 'addr-1' || a.line1 === 'Virar West, Maharashtra, 401303';
+
   const getInitialAddress = () => {
     if (user?.addresses?.length) {
-      return user.addresses.find(a => a.isDefault) || user.addresses[0];
+      const validAddrs = user.addresses.filter(a => !isMockAddress(a));
+      if (validAddrs.length) {
+        return validAddrs.find(a => a.isDefault) || validAddrs[0];
+      }
     }
     try {
       const stored = JSON.parse(localStorage.getItem('mandi_checkout_address') || 'null');
-      if (stored && validateAddress(stored).valid) return stored;
+      if (stored && !isMockAddress(stored) && validateAddress(stored).valid) return stored;
     } catch {}
     return null;
   };
 
   const [selectedAddress, setSelectedAddress] = useState(getInitialAddress);
   const [showAddressForm, setShowAddressForm] = useState(!getInitialAddress());
-  const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', city: 'Virar, Palghar', pincode: '401305' });
+  const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', area: '', landmark: '', city: 'Virar West', pincode: '401305' });
   const [addressErrors, setAddressErrors] = useState({});
   const [deliveryMode, setDeliveryMode] = useState('same-day'); // 'same-day' | 'scheduled'
   const [selectedSameDaySlotId, setSelectedSameDaySlotId] = useState('same-day-express');
@@ -138,27 +143,31 @@ export default function CheckoutPage() {
   // Sync saved address when user profile loads - never wipe out valid local address
   useEffect(() => {
     if (user?.addresses?.length) {
-      setSelectedAddress(prev => {
-        if (!prev || !user.addresses.some(a => a.id === prev.id)) {
-          return user.addresses.find(a => a.isDefault) || user.addresses[0];
-        }
-        return prev;
-      });
-      setShowAddressForm(false);
+      const validAddrs = user.addresses.filter(a => !isMockAddress(a));
+      if (validAddrs.length > 0) {
+        setSelectedAddress(prev => {
+          if (!prev || isMockAddress(prev) || !validAddrs.some(a => a.id === prev.id)) {
+            return validAddrs.find(a => a.isDefault) || validAddrs[0];
+          }
+          return prev;
+        });
+        setShowAddressForm(false);
+      } else {
+        setSelectedAddress(null);
+        setShowAddressForm(true);
+      }
     } else {
       // Check if user already has an address in local storage
       try {
         const stored = JSON.parse(localStorage.getItem('mandi_checkout_address') || 'null');
-        if (stored && validateAddress(stored).valid) {
+        if (stored && !isMockAddress(stored) && validateAddress(stored).valid) {
           setSelectedAddress(prev => prev || stored);
           setShowAddressForm(false);
           return;
         }
       } catch {}
-      setSelectedAddress(prev => {
-        if (!prev) setShowAddressForm(true);
-        return prev;
-      });
+      setSelectedAddress(null);
+      setShowAddressForm(true);
     }
   }, [user]);
 
@@ -388,31 +397,39 @@ export default function CheckoutPage() {
               {showAddressForm ? (
                 <div className="space-y-3 bg-mandi-surface/50 p-3.5 rounded-2xl border border-mandi-border/80">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-mandi-text">Enter Your Delivery Address</p>
-                    <span className="text-[10px] text-red-400 font-semibold">*Required to proceed</span>
+                    <div>
+                      <p className="text-xs font-bold text-mandi-text">Add Delivery Address</p>
+                      <p className="text-[11px] text-mandi-subtle">Instant 10-minute grocery delivery</p>
+                    </div>
+                    <span className="text-[10px] text-red-400 font-semibold bg-red-500/10 px-2 py-0.5 rounded-full">*Required</span>
                   </div>
 
-                  <div className="flex gap-2">
-                    {['Home', 'Office', 'Other'].map(l => (
-                      <button 
-                        key={l} 
-                        type="button"
-                        onClick={() => setNewAddress(a => ({ ...a, label: l }))} 
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                          newAddress.label === l ? 'bg-mandi-green text-black border-mandi-green' : 'border-mandi-border text-mandi-muted'
-                        }`}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-
+                  {/* Save As Tag */}
                   <div>
-                    <label className="text-[11px] font-medium text-mandi-muted mb-1 block">
-                      House / Flat / Building & Street Address *
+                    <label className="text-[11px] font-semibold text-mandi-muted mb-1.5 block">Save Address As</label>
+                    <div className="flex gap-2">
+                      {['Home', 'Work', 'Other'].map(l => (
+                        <button 
+                          key={l} 
+                          type="button"
+                          onClick={() => setNewAddress(a => ({ ...a, label: l }))} 
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                            newAddress.label === l ? 'bg-mandi-green text-black border-mandi-green font-bold' : 'border-mandi-border text-mandi-muted hover:border-mandi-border-light'
+                          }`}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* House / Flat / Building */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">
+                      House / Flat / Floor / Building Name *
                     </label>
                     <input 
-                      placeholder="e.g. Flat 302, Gokul Heights, Station Road" 
+                      placeholder="Flat, house no., building name" 
                       value={newAddress.line1} 
                       onChange={e => { 
                         setNewAddress(a => ({ ...a, line1: e.target.value })); 
@@ -423,11 +440,38 @@ export default function CheckoutPage() {
                     {addressErrors.line1 && <p className="text-red-400 text-xs mt-1">{addressErrors.line1}</p>}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Area / Sector / Street */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">
+                      Area / Sector / Street Address
+                    </label>
+                    <input 
+                      placeholder="Area, street, or sector" 
+                      value={newAddress.area || ''} 
+                      onChange={e => setNewAddress(a => ({ ...a, area: e.target.value }))} 
+                      className="input-field text-sm" 
+                    />
+                  </div>
+
+                  {/* Nearby Landmark */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">
+                      Nearby Landmark (Optional)
+                    </label>
+                    <input 
+                      placeholder="Landmark or famous spot" 
+                      value={newAddress.landmark || ''} 
+                      onChange={e => setNewAddress(a => ({ ...a, landmark: e.target.value }))} 
+                      className="input-field text-sm" 
+                    />
+                  </div>
+
+                  {/* City & Pincode */}
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <label className="text-[11px] font-medium text-mandi-muted mb-1 block">City *</label>
+                      <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">City *</label>
                       <input 
-                        placeholder="City (e.g. Virar West)" 
+                        placeholder="City" 
                         value={newAddress.city} 
                         onChange={e => { 
                           setNewAddress(a => ({ ...a, city: e.target.value })); 
@@ -438,9 +482,9 @@ export default function CheckoutPage() {
                       {addressErrors.city && <p className="text-red-400 text-xs mt-1">{addressErrors.city}</p>}
                     </div>
                     <div>
-                      <label className="text-[11px] font-medium text-mandi-muted mb-1 block">6-Digit Pincode *</label>
+                      <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">6-Digit Pincode *</label>
                       <input 
-                        placeholder="e.g. 401303" 
+                        placeholder="6-digit Pincode" 
                         value={newAddress.pincode} 
                         onChange={e => { 
                           setNewAddress(a => ({ ...a, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })); 
@@ -457,7 +501,7 @@ export default function CheckoutPage() {
                     <button 
                       type="button" 
                       onClick={handleAddAddress} 
-                      className="btn-primary text-xs sm:text-sm py-2.5 flex-1 flex items-center justify-center gap-1.5"
+                      className="btn-primary text-xs sm:text-sm py-2.5 flex-1 flex items-center justify-center gap-1.5 font-bold cursor-pointer"
                     >
                       Save Address & Continue <ChevronRight size={15} />
                     </button>
@@ -465,7 +509,7 @@ export default function CheckoutPage() {
                       <button 
                         type="button" 
                         onClick={() => setShowAddressForm(false)} 
-                        className="btn-ghost text-xs sm:text-sm py-2.5 px-3"
+                        className="btn-ghost text-xs sm:text-sm py-2.5 px-3 cursor-pointer"
                       >
                         Cancel
                       </button>

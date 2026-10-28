@@ -18,9 +18,9 @@ const defaultVirarLoc = { pincode: '401305', area: 'Virar West (Bolinj, Viva Col
 const getInitialLocation = () => {
   try {
     const stored = localStorage.getItem(LOC_KEY);
-    return stored ? JSON.parse(stored) : defaultVirarLoc;
+    return stored ? JSON.parse(stored) : null;
   } catch {
-    return defaultVirarLoc;
+    return null;
   }
 };
 
@@ -169,6 +169,6 @@ export const useLocationStore = create((set, get) => ({
 
   clearLocation: () => {
     localStorage.removeItem(LOC_KEY);
-    set({ location: defaultVirarLoc, selectedStore: null, locationModal: true });
+    set({ location: null, selectedStore: null, locationModal: true });
   },
 }));

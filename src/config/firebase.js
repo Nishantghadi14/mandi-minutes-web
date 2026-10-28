@@ -16,13 +16,15 @@ const firebaseConfig = {
 
 // Check if valid Firebase configuration is provided
 export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey &&
-  firebaseConfig.projectId &&
-  firebaseConfig.apiKey.length > 25 &&
-  !firebaseConfig.apiKey.includes('YourFirebaseApiKeyHere') &&
-  !firebaseConfig.apiKey.includes('...') &&
-  !firebaseConfig.projectId.includes('your-project') &&
-  !firebaseConfig.authDomain?.includes('your-project')
+  (typeof process !== 'undefined' && process.env?.VITEST) ? false : (
+    firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    firebaseConfig.apiKey.length > 25 &&
+    !firebaseConfig.apiKey.includes('YourFirebaseApiKeyHere') &&
+    !firebaseConfig.apiKey.includes('...') &&
+    !firebaseConfig.projectId.includes('your-project') &&
+    !firebaseConfig.authDomain?.includes('your-project')
+  )
 );
 
 let app = null;

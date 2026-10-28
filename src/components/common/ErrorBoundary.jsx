@@ -44,6 +44,13 @@ export default class ErrorBoundary extends React.Component {
             <p className="text-mandi-muted text-sm mb-6">
               An unexpected error occurred while loading this section of Mandi Minutes.
             </p>
+            {Boolean(import.meta.env?.DEV && this.state.error) && (
+              <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-left overflow-auto max-h-40">
+                <p className="text-red-400 font-mono text-xs font-semibold break-words">
+                  {this.state.error.name}: {this.state.error.message}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button

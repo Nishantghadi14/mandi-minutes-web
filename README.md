@@ -35,6 +35,7 @@
 - ⚡ **In-Store Counter POS (Local Sales)** — Dedicated Point-of-Sale module for walk-in customers with instant real-time inventory deduction, printable retail cash memos, and one-tap WhatsApp bill sharing.
 - 🎲 **Local Vendor Catalog Showcase** — Curated staples sold by verified local vendors, complete with store tags, category filters, and seamless search.
 - 💳 **Direct UPI Payments & COD** — Native intent triggers for Google Pay, PhonePe, Paytm, and BHIM (`upi://pay`), dynamic QR codes, and Cash on Delivery with zero client trust verification.
+- 🔑 **Secure Email Password Recovery** — Automated Firebase Auth password reset email messaging with custom branding, one-tap reset links, and cooldown protection.
 - 🗺️ **Live Rider GPS Tracking** — Real-time interactive Leaflet map tracking the rider’s route from Kirana store to customer doorstep.
 - 🌐 **Trilingual Localization (i18n)** — Full native support for **English**, **Hindi (हिंदी)**, and **Marathi (मराठी)**.
 - 📱 **Cross-Platform Native Experience** — High-performance Web App (PWA) + fully packaged **Android APK** with native splash screen, custom adaptive launcher icon, and hardware back-button navigation.
@@ -65,7 +66,7 @@
 | **Push Notifications** | Firebase Cloud Messaging (FCM) + Service Workers |
 | **Maps & Geo** | Leaflet, React Leaflet (OpenStreetMap / CartoDB tiles) |
 | **Data Visualization** | Recharts (Vendor & Admin performance analytics) |
-| **Quality & Tests** | Oxlint (fast linter), Vitest (50 automated unit tests across 4 test suites) |
+| **Quality & Tests** | Oxlint (fast linter), Vitest (55 automated unit tests across 5 test suites) |
 
 ---
 
@@ -177,7 +178,7 @@ mandi-minutes.apk
 | `npm run build` | Builds optimized production static web bundle into `/dist`. |
 | `npm run preview` | Previews the production build locally. |
 | `npm run lint` | Runs Oxlint for code quality and syntax validation. |
-| `npm test` | Runs 50 Vitest unit tests (pricing, search, delivery slots, and local sale POS). |
+| `npm test` | Runs 55 Vitest unit tests (pricing, search, delivery slots, local POS, password reset). |
 | `npm run cap:sync` | Builds web assets and synchronizes Capacitor Android plugins & assets. |
 | `npm run build:apk` | Complete production pipeline: builds web, syncs Capacitor, outputs release APK. |
 | `npm run build:apk:debug` | Debug pipeline: builds web, syncs Capacitor, outputs debug APK. |

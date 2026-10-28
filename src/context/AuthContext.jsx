@@ -20,6 +20,9 @@ export const useAuth = () => {
   const authModal = useAuthStore(state => state.authModal);
   const login = useAuthStore(state => state.login);
   const register = useAuthStore(state => state.register);
+  const resetPassword = useAuthStore(state => state.resetPassword);
+  const verifyResetCode = useAuthStore(state => state.verifyResetCode);
+  const confirmReset = useAuthStore(state => state.confirmReset);
   const sendPhoneOtp = useAuthStore(state => state.sendPhoneOtp);
   const confirmPhoneOtp = useAuthStore(state => state.confirmPhoneOtp);
   const logout = useAuthStore(state => state.logout);
@@ -37,6 +40,9 @@ export const useAuth = () => {
     authModal,
     login,
     register,
+    resetPassword,
+    verifyResetCode,
+    confirmReset,
     registerVendor,
     setVendorStore,
     becomeDeliveryPartner,
