@@ -14,7 +14,7 @@ export default function InvoiceModal({ order, onClose }) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; padding: 20px; color: #111; max-width: 600px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid #00C851; margin-bottom: 20px; }
-        .logo { font-size: 22px; font-weight: 900; color: #00C851; }
+        .logo { font-size: 22px; font-weight: 900; color: #00C851; display: flex; align-items: center; gap: 8px; }
         .title { font-size: 16px; font-weight: 600; color: #555; }
         table { width: 100%; border-collapse: collapse; margin: 16px 0; }
         th { background: #00C851; color: white; padding: 8px 12px; text-align: left; font-size: 13px; }
@@ -22,7 +22,13 @@ export default function InvoiceModal({ order, onClose }) {
         .total-row { font-weight: bold; background: #f5f5f5; }
         .footer { margin-top: 20px; font-size: 12px; color: #777; text-align: center; }
       </style></head><body>
-        <div class="header"><div class="logo">⚡ Mandi Minutes</div><div class="title">${displayTitle} #${orderNumber}</div></div>
+        <div class="header">
+          <div class="logo">
+            <img src="/brand-logo.png" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;" alt="Mandi Minutes" />
+            <span>Mandi Minutes</span>
+          </div>
+          <div class="title">${displayTitle} #${orderNumber}</div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
           <div><strong>Store:</strong> ${order.storeName}<br/><strong>Date:</strong> ${new Date(order.placedAt).toLocaleDateString('en-IN')}</div>
           <div>

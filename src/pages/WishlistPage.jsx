@@ -23,7 +23,7 @@ export default function WishlistPage() {
   const wishlistedProducts = products.filter(p => user.wishlist?.includes(p.id));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+    <div className="max-w-7xl mx-auto px-4 pt-app-content pb-24 md:pb-6">
       <div className="flex items-center gap-2 mb-6">
         <Heart size={24} className="text-red-500 fill-red-500" />
         <h1 className="text-mandi-text font-black text-2xl">My Favourites ({wishlistedProducts.length})</h1>

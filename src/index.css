@@ -17,6 +17,16 @@
   --x: 90%;
   --y: 40px;
 
+  /* Safe Area Insets: Supports iOS env() & Android Capacitor SystemBars injected variables */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+
+  /* Unified Status Bar & System Bar Insets */
+  --app-status-bar-height: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --app-nav-bar-height: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+
   /* Tailwind color aliases - Sleek tactile obsidian slate clay */
   --color-dark:         #0a0e17;   /* ultra-rich deep obsidian midnight page background */
   --color-card:         #131B28;   /* sculpted inflated clay card surface */
@@ -173,6 +183,13 @@
   --selection-bg:   rgba(0, 160, 60, 0.18);
   --selection-fg:   #007E33;
   --icon-circle-bg: rgba(0, 180, 70, 0.12);
+}
+
+/* In native Android/iOS app, guarantee a safe minimum status bar clearance for punch-hole cameras and clock */
+html.is-native-app,
+body.is-native-app {
+  --app-status-bar-height: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px), 38px);
+  --app-nav-bar-height: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), 16px);
 }
 
 @tailwind base;
@@ -561,10 +578,32 @@
   .transition-250 { transition-duration: 250ms; }
 
   /* Safe area helpers for notched devices & navigation bars */
-  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
-  .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+  .pt-safe { padding-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)); }
+  .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px)); }
+  .pl-safe { padding-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px)); }
+  .pr-safe { padding-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px)); }
+
+  /* App Header & Top Content Inset Helpers */
+  .pt-app-header {
+    padding-top: calc(var(--app-status-bar-height, 0px) + 0.75rem);
+  }
+  .pt-app-header-sm {
+    padding-top: calc(var(--app-status-bar-height, 0px) + 0.625rem);
+  }
+  .pt-app-content {
+    padding-top: calc(var(--app-status-bar-height, 0px) + 1rem);
+  }
+  .top-app-header-btn {
+    top: calc(var(--app-status-bar-height, 0px) + 0.875rem);
+  }
+  .pb-app-nav {
+    padding-bottom: calc(var(--app-nav-bar-height, 0px) + 0.5rem);
+  }
+
+  /* Clean Dark Mode Palette for OpenStreetMap Tiles (Zero Watermark & Zero API Key) */
+  .dark-map-tiles {
+    filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(105%) saturate(45%);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Mail, Phone, MapPin, Send, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, MapPin, Send, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/Toast';
@@ -76,8 +76,8 @@ export default function ContactPage() {
               <p className="text-mandi-muted text-xs">Virar West, Maharashtra, 401303</p>
             </div>
             <div className="flex items-center gap-3">
-              <Phone size={16} className="text-mandi-green flex-shrink-0" />
-              <p className="text-mandi-muted text-xs">+91 99209 41603 (24x7 Support)</p>
+              <HelpCircle size={16} className="text-mandi-green flex-shrink-0" />
+              <p className="text-mandi-muted text-xs">In-App Live Support (Daily 7 AM – 11 PM)</p>
             </div>
             <div className="flex items-center gap-3">
               <Mail size={16} className="text-mandi-green flex-shrink-0" />

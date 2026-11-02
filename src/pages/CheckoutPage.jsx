@@ -8,6 +8,7 @@ import { useToast } from '../components/common/Toast';
 import { useNotifications } from '../utils/useNotifications';
 import LazyImage from '../components/common/LazyImage';
 import UPIPaymentModal from '../components/common/UPIPaymentModal';
+import AddressMapPicker from '../components/common/AddressMapPicker';
 import { createSecureOrder } from '../services/orderService';
 import { validateAddress } from '../utils/validators';
 import { getAppHomePath } from '../utils/platform';
@@ -125,7 +126,7 @@ export default function CheckoutPage() {
 
   const [selectedAddress, setSelectedAddress] = useState(getInitialAddress);
   const [showAddressForm, setShowAddressForm] = useState(!getInitialAddress());
-  const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', area: '', landmark: '', city: 'Virar West', pincode: '401305' });
+  const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', area: '', landmark: '', city: '', pincode: '', lat: null, lng: null });
   const [addressErrors, setAddressErrors] = useState({});
   const [deliveryMode, setDeliveryMode] = useState('same-day'); // 'same-day' | 'scheduled'
   const [selectedSameDaySlotId, setSelectedSameDaySlotId] = useState('same-day-express');
@@ -191,11 +192,11 @@ export default function CheckoutPage() {
   }
 
   const handleAddAddress = () => {
-    const check = validateAddress(newAddress);
+    const check = validateAddress(newAddress, { requireCoordinates: true });
     if (!check.valid) {
       setAddressErrors(check.errors);
       const firstErr = Object.values(check.errors)[0];
-      addToast(firstErr || 'Please fill in all required address fields', 'error');
+      addToast(firstErr || 'Please fill in all required address fields and pin your location', 'error');
       return false;
     }
 
@@ -301,7 +302,7 @@ export default function CheckoutPage() {
 
   return (
     <>
-    <div className="max-w-3xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 pb-12 md:pb-8">
+    <div className="max-w-3xl mx-auto px-3.5 sm:px-4 pt-app-content pb-12 md:pb-8">
       <h1 className="text-mandi-text font-black text-xl sm:text-2xl mb-4 sm:mb-6">Checkout</h1>
 
       {/* Progress steps */}
@@ -471,7 +472,7 @@ export default function CheckoutPage() {
                     <div>
                       <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">City *</label>
                       <input 
-                        placeholder="City" 
+                        placeholder="City (e.g. Virar West)" 
                         value={newAddress.city} 
                         onChange={e => { 
                           setNewAddress(a => ({ ...a, city: e.target.value })); 
@@ -496,6 +497,32 @@ export default function CheckoutPage() {
                       {addressErrors.pincode && <p className="text-red-400 text-xs mt-1">{addressErrors.pincode}</p>}
                     </div>
                   </div>
+
+                  {/* Mandatory Interactive Map Pin */}
+                  <AddressMapPicker
+                    lat={newAddress.lat}
+                    lng={newAddress.lng}
+                    initialPincode={newAddress.pincode || '401305'}
+                    onChange={(coords) => {
+                      setNewAddress((a) => ({
+                        ...a,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        ...(coords.isGps && coords.city ? { city: coords.city } : {}),
+                        ...(coords.isGps && coords.pincode ? { pincode: coords.pincode } : {}),
+                        ...(coords.isGps && coords.area && !a.area ? { area: coords.area } : {}),
+                      }));
+                      setAddressErrors((err) => ({
+                        ...err,
+                        coordinates: null,
+                        ...(coords.isGps && coords.city ? { city: null } : {}),
+                        ...(coords.isGps && coords.pincode ? { pincode: null } : {}),
+                      }));
+                    }}
+                    error={addressErrors.coordinates}
+                    pinType="consumer"
+                    height="200px"
+                  />
 
                   <div className="flex gap-2 pt-1">
                     <button 

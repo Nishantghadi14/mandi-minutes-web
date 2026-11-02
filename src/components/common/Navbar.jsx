@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, MapPin, Search, ChevronDown, LogOut, Package, Store, Shield, Zap, Heart, Gift, Sun, Moon, X, User } from 'lucide-react';
+import { ShoppingCart, MapPin, Search, ChevronDown, LogOut, Package, Store, Shield, Heart, X, User, Wallet } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
-import { useTheme } from '../../context/ThemeContext';
-import ReferralModal from './ReferralModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import LiveSearchDropdown from './LiveSearchDropdown';
 import { Link, useNavigate, useLocation as useRouteLocation } from 'react-router-dom';
@@ -15,12 +13,10 @@ export default function Navbar() {
   const { itemCount, setIsOpen } = useCart();
   const { user, loading, logout, openAuthModal } = useAuth();
   const { location, setLocationModal } = useLocation();
-  const { isDark, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [tabletUserMenuOpen, setTabletUserMenuOpen] = useState(false);
-  const [referralModalOpen, setReferralModalOpen] = useState(false);
   const searchContainerRef = useRef(null);
   const mobileSearchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -105,10 +101,16 @@ export default function Navbar() {
           <span className="text-mandi-text text-sm font-semibold">Account & Settings</span>
         </Link>
         {isAdmin && (
-          <Link to="/admin" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 bg-mandi-green bg-opacity-10 hover:bg-opacity-20 text-mandi-green font-semibold transition-colors rounded-lg">
-            <Shield size={16} className="text-mandi-green" />
-            <span className="text-sm">{t('nav.adminPanel')}</span>
-          </Link>
+          <>
+            <Link to="/admin" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 bg-mandi-green bg-opacity-10 hover:bg-opacity-20 text-mandi-green font-semibold transition-colors rounded-lg">
+              <Shield size={16} className="text-mandi-green" />
+              <span className="text-sm">{t('nav.adminPanel')}</span>
+            </Link>
+            <Link to="/admin?tab=settlements" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 hover:bg-mandi-surface transition-colors rounded-lg text-emerald-600 dark:text-mandi-green">
+              <Wallet size={16} />
+              <span className="text-sm">Monthly Settlements</span>
+            </Link>
+          </>
         )}
         {(isVendor || isAdmin) && (
           <Link to="/vendor" onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 bg-orange-500 bg-opacity-10 hover:bg-opacity-20 text-orange-400 font-semibold transition-colors rounded-lg">
@@ -130,13 +132,6 @@ export default function Navbar() {
           <Heart size={16} className="text-mandi-muted" />
           <span className="text-mandi-text text-sm">{t('nav.wishlist')}</span>
         </Link>
-        <button
-          onClick={() => { closeMenu(); setReferralModalOpen(true); }}
-          className="flex items-center gap-2 px-3 py-2 w-full hover:bg-mandi-surface transition-colors rounded-lg text-left"
-        >
-          <Gift size={16} className="text-mandi-green" />
-          <span className="text-mandi-text text-sm font-semibold">{t('nav.refer')}</span>
-        </button>
         <div className="border-t border-mandi-border my-1" />
         <button onClick={() => { logout(); closeMenu(); navigate('/'); }} className="flex items-center gap-2 px-3 py-2 w-full hover:bg-red-500/10 transition-colors rounded-lg text-left">
           <LogOut size={16} className="text-red-500 dark:text-red-400" />
@@ -155,8 +150,8 @@ export default function Navbar() {
           <div className="flex items-center justify-between px-3.5 sm:px-5 pt-2.5 sm:pt-3 pb-1.5 gap-2">
             {/* Left: Brand Logo & Live Badge */}
             <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group" aria-label="Mandi Minutes Home">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-mandi-green rounded-2xl flex items-center justify-center clay-btn-green">
-                <Zap size={18} className="text-black drop-shadow" fill="black" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-black/60 rounded-xl border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-clay-btn">
+                <img src="/brand-logo.png" alt="Mandi Minutes" className="w-full h-full object-contain p-0.5" />
               </div>
               <div className="flex items-center leading-none">
                 <span className="text-base sm:text-lg font-black text-gradient-green">Mandi</span>
@@ -188,17 +183,6 @@ export default function Navbar() {
                 <ChevronDown size={11} className="text-mandi-subtle flex-shrink-0 ml-0.5 group-hover:text-mandi-green transition-colors" />
               </button>
 
-              {/* Mobile / Tablet Quick Theme Toggle */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="lg:hidden p-2 rounded-2xl border border-mandi-border bg-mandi-surface/90 hover:border-mandi-green transition-all duration-200 active:scale-90 shadow-clay-pill text-mandi-green flex-shrink-0"
-                aria-label="Toggle Theme"
-              >
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              </button>
-
               {/* Cart Button — visible on Tablet (sm:flex), on Phone it's in BottomNav */}
               <button
                 onClick={() => setIsOpen(true)}
@@ -224,11 +208,17 @@ export default function Navbar() {
                       className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-2.5 py-1.5 rounded-2xl hover:border-mandi-green transition-all shadow-clay-pill"
                       aria-label="User Account"
                     >
-                      <div className="w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black ring-1 ring-mandi-green ring-opacity-30 shadow-clay-badge">
-                        {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {user?.photoURL ? (
+                          <img src={user.photoURL} alt={user.name || 'User'} className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <div className="w-full h-full bg-mandi-green/20 border border-mandi-green/40 rounded-full flex items-center justify-center text-mandi-green">
+                            <User size={11} className="text-mandi-green" />
+                          </div>
+                        )}
                       </div>
                       <span className="text-mandi-text text-xs font-medium max-w-[70px] truncate">
-                        {(user.name || user.displayName || user.email || 'User').split(' ')[0]}
+                        {t('nav.profile')}
                       </span>
                       <ChevronDown size={11} className={`text-mandi-muted transition-transform duration-200 ${tabletUserMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -298,8 +288,8 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="relative">
-              <div className="w-9 h-9 bg-mandi-green rounded-2xl flex items-center justify-center clay-btn-green transition-all duration-300">
-                <Zap size={20} className="text-black drop-shadow" fill="black" />
+              <div className="w-10 h-10 bg-black/60 rounded-xl border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-clay-btn transition-all duration-300">
+                <img src="/brand-logo.png" alt="Mandi Minutes" className="w-full h-full object-contain p-0.5" />
               </div>
             </div>
             <div className="flex flex-col leading-none">
@@ -371,21 +361,6 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
 
-            {/* Theme toggle */}
-            <button
-              id="theme-toggle-btn"
-              onClick={toggleTheme}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2.5 rounded-2xl border border-mandi-border bg-mandi-surface hover:border-mandi-green transition-all duration-300 active:scale-90 shadow-clay-pill group relative overflow-hidden"
-            >
-              <div key={isDark ? 'sun' : 'moon'} className="transition-transform duration-300 transform group-hover:rotate-45 active:scale-75">
-                {isDark
-                  ? <Sun size={17} className="text-mandi-green group-hover:drop-shadow-[0_0_8px_rgba(0,200,81,0.8)] transition-all duration-200" />
-                  : <Moon size={17} className="text-mandi-green group-hover:drop-shadow-[0_0_8px_rgba(0,200,81,0.8)] transition-all duration-200" />
-                }
-              </div>
-            </button>
-
             {/* Cart button */}
             <button
               onClick={() => setIsOpen(true)}
@@ -409,11 +384,17 @@ export default function Navbar() {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-3.5 py-2 rounded-2xl hover:border-mandi-green transition-all duration-200 shadow-clay-pill"
                 >
-                  <div className="w-6 h-6 bg-mandi-green rounded-full flex items-center justify-center text-xs font-bold text-black ring-2 ring-mandi-green ring-opacity-30 shadow-clay-badge">
-                    {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt={user.name || 'User'} className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      <div className="w-full h-full bg-mandi-green/20 border border-mandi-green/40 rounded-full flex items-center justify-center text-mandi-green">
+                        <User size={13} className="text-mandi-green" />
+                      </div>
+                    )}
                   </div>
                   <span className="text-mandi-text text-sm font-medium max-w-[90px] truncate">
-                    {(user.name || user.displayName || user.email || 'User').split(' ')[0]}
+                    {t('nav.profile')}
                   </span>
                   <ChevronDown size={12} className={`text-mandi-muted transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -431,8 +412,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      <ReferralModal isOpen={referralModalOpen} onClose={() => setReferralModalOpen(false)} />
     </header>
   );
 }

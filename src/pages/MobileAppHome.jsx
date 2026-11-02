@@ -8,10 +8,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/common/Toast';
 import ProductCard from '../components/common/ProductCard';
 import {
-  MapPin, Search, ChevronDown, Clock, ShieldCheck, Sparkles,
+  MapPin, Search, ChevronDown, ShieldCheck, Sparkles,
   Truck, User, Flame, CheckCircle2,
   ChevronRight, BadgePercent, Tag, ArrowUpDown,
-  Copy, Check, Zap, Moon, Sun
+  Copy, Check, Zap
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -96,7 +96,7 @@ const QUICK_CATEGORIES = [
 ];
 
 export default function MobileAppHome() {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const { location, setLocationModal } = useLocation();
   const { user, openAuthModal } = useAuth();
   const { products: allProducts } = useData();
@@ -211,14 +211,14 @@ export default function MobileAppHome() {
       <div className="max-w-md mx-auto min-h-screen bg-mandi-dark relative">
 
         {/* ── Native Shopping App Header ── */}
-        <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-2.5 pb-2.5 shadow-clay-nav rounded-b-3xl">
+        <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-app-header-sm pb-2.5 shadow-clay-nav rounded-b-3xl">
 
           {/* Top Row: Brand & Delivery Promise Badge + Controls */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            {/* Express Delivery Badge */}
+            {/* Express Delivery Badge with Official Brand Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-emerald-500 via-mandi-green to-teal-400 flex items-center justify-center text-black font-black text-xs shadow-clay-btn animate-pulse">
-                ⚡
+              <div className="w-8 h-8 rounded-xl bg-black/70 border border-emerald-500/40 flex items-center justify-center overflow-hidden shadow-clay-btn">
+                <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain p-0.5" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -233,30 +233,18 @@ export default function MobileAppHome() {
               </div>
             </div>
 
-            {/* Right Action Icons: Theme Toggle & Profile Avatar */}
+            {/* Right Action Icons: Profile Avatar */}
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-green flex-shrink-0 active:scale-90 transition-all shadow-clay-pill hover:border-mandi-green/50"
-                aria-label="Toggle Dark / Light Mode"
-                title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              >
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              </button>
-
               {/* Profile Avatar */}
               <button
                 onClick={() => (user ? navigate(getNavPath('/profile')) : openAuthModal('login'))}
-                className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform shadow-clay-pill hover:border-mandi-green/50"
+                className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform shadow-clay-pill hover:border-mandi-green/50 overflow-hidden"
                 aria-label="User Account"
               >
-                {user ? (
-                  <span className="text-xs font-black text-mandi-green">
-                    {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
-                  </span>
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt={user.name || 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  <User size={14} className="text-mandi-muted" />
+                  <User size={15} className={user ? 'text-mandi-green' : 'text-mandi-muted'} />
                 )}
               </button>
             </div>
@@ -282,11 +270,7 @@ export default function MobileAppHome() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0 bg-mandi-green/15 text-mandi-green border border-mandi-green/30 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-clay-badge">
-                <Truck size={10} />
-                <span>Morning 7 AM</span>
-                <ChevronDown size={10} />
-              </div>
+              <ChevronDown size={14} className="text-mandi-muted flex-shrink-0 ml-1" />
             </button>
           </div>
 

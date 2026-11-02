@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -9,6 +9,7 @@ import LocalSaleModal from '../components/vendor/LocalSaleModal';
 import { useToast } from '../components/common/Toast';
 import LazyImage from '../components/common/LazyImage';
 import ImageUploadField from '../components/common/ImageUploadField';
+import AddressMapPicker from '../components/common/AddressMapPicker';
 import { 
   Store, 
   ShoppingBag, 
@@ -34,8 +35,20 @@ import {
   Truck,
   CheckCircle2,
   Shield,
-  ArrowLeft
+  ArrowLeft,
+  Bell,
+  Volume2,
+  VolumeX,
+  Wallet
 } from 'lucide-react';
+import { 
+  isSoundAlertEnabled, 
+  setSoundAlertEnabled, 
+  startOrderAlertLoop, 
+  stopOrderAlertLoop, 
+  testSound, 
+  unlockAudioContext 
+} from '../utils/audioAlert';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const PLATFORM_COMMISSION_RATE = 0.10; // 10% platform fee constant
@@ -106,8 +119,52 @@ export default function VendorDashboard() {
     ).sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
   }, [store?.id, orders]);
 
+  // Vendor Live Order Sound Alerts & Chime State
+  const [soundEnabled, setSoundEnabled] = useState(isSoundAlertEnabled);
+  const [incomingAlertOrder, setIncomingAlertOrder] = useState(null);
+  const [isAlertPlaying, setIsAlertPlaying] = useState(false);
+  const knownOrderIdsRef = useRef(null);
+
+  // Sound alert toggle handler
+  const handleToggleSound = async () => {
+    const nextVal = !soundEnabled;
+    setSoundAlertEnabled(nextVal);
+    setSoundEnabled(nextVal);
+    if (nextVal) {
+      await testSound();
+      addToast('🔊 Vendor Sound Alerts enabled (Sample chime played)', 'success', 2500);
+    } else {
+      stopOrderAlertLoop();
+      setIsAlertPlaying(false);
+      addToast('🔕 Vendor Sound Alerts muted', 'info', 2000);
+    }
+  };
+
+  const handleTestSound = async () => {
+    await testSound();
+    addToast('🔔 Playing sample order alert chime', 'info', 2000);
+  };
+
+  const handleMuteCurrentAlert = () => {
+    stopOrderAlertLoop();
+    setIsAlertPlaying(false);
+    addToast('🔕 Alert chime silenced', 'info', 2000);
+  };
+
+  const handleAcceptIncomingOrder = async (orderId) => {
+    stopOrderAlertLoop();
+    setIsAlertPlaying(false);
+    setIncomingAlertOrder(null);
+    await handleStatusChange(orderId, 'accepted');
+  };
+
   const handleStatusChange = async (orderId, newStatus) => {
     try {
+      if (incomingAlertOrder?.id === orderId) {
+        stopOrderAlertLoop();
+        setIsAlertPlaying(false);
+        setIncomingAlertOrder(null);
+      }
       const noteMap = {
         accepted: 'Store accepted the order and started packing',
         preparing: 'Store is actively packing the fresh items for dispatch',
@@ -120,6 +177,77 @@ export default function VendorDashboard() {
       addToast('Failed to update order status. Please try again.', 'error');
     }
   };
+
+  // Unlock Web Audio API on first user interaction & cleanup loop on unmount
+  useEffect(() => {
+    const handleGesture = () => {
+      unlockAudioContext();
+    };
+    window.addEventListener('click', handleGesture, { once: true });
+    window.addEventListener('touchstart', handleGesture, { once: true });
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+      stopOrderAlertLoop();
+    };
+  }, []);
+
+  // Reactive detection of new incoming online orders
+  useEffect(() => {
+    if (!store?.id || !Array.isArray(storeOrders)) return;
+
+    // First mount: cache existing order IDs to avoid ringing for historical orders
+    if (knownOrderIdsRef.current === null) {
+      knownOrderIdsRef.current = new Set(storeOrders.map(o => o.id));
+
+      // If there is an existing unaccepted online order waiting on load, show banner without ringing
+      const existingUnaccepted = storeOrders.find(o => 
+        !o.isLocalSale && 
+        o.orderType !== 'local_sale' && 
+        o.status === 'placed'
+      );
+      if (existingUnaccepted) {
+        setIncomingAlertOrder(existingUnaccepted);
+      }
+      return;
+    }
+
+    // Subsequent updates: detect newly arrived orders
+    const newPlacedOrders = storeOrders.filter(o => 
+      !knownOrderIdsRef.current.has(o.id) &&
+      !o.isLocalSale &&
+      o.orderType !== 'local_sale' &&
+      o.status === 'placed'
+    );
+
+    // Update known IDs cache
+    storeOrders.forEach(o => knownOrderIdsRef.current.add(o.id));
+
+    if (newPlacedOrders.length > 0) {
+      const latestOrder = newPlacedOrders[0];
+      setIncomingAlertOrder(latestOrder);
+      if (soundEnabled) {
+        startOrderAlertLoop(3500);
+        setIsAlertPlaying(true);
+      }
+      addToast(`🚨 NEW ONLINE ORDER #${latestOrder.id.slice(-6).toUpperCase()} received (₹${latestOrder.total})!`, 'info', 6000);
+    }
+  }, [storeOrders, store?.id, soundEnabled, addToast]);
+
+  // Synchronize incomingAlertOrder with storeOrders status changes
+  useEffect(() => {
+    if (!incomingAlertOrder) {
+      stopOrderAlertLoop();
+      setIsAlertPlaying(false);
+      return;
+    }
+    const currentOrder = storeOrders.find(o => o.id === incomingAlertOrder.id);
+    if (!currentOrder || currentOrder.status !== 'placed') {
+      stopOrderAlertLoop();
+      setIsAlertPlaying(false);
+      setIncomingAlertOrder(null);
+    }
+  }, [storeOrders, incomingAlertOrder]);
 
   const [activeTab, setActiveTab] = useState('orders');
   const [editingProduct, setEditingProduct] = useState(null);
@@ -146,9 +274,12 @@ export default function VendorDashboard() {
     pincodes: '401305, 401303',
     address: '',
     city: 'Virar, Palghar',
+    lat: null,
+    lng: null,
     upiId: '',
     gstin: '',
   });
+  const [storeSettingsError, setStoreSettingsError] = useState(null);
 
   // Sync storeForm when active store loads
   useEffect(() => {
@@ -167,6 +298,8 @@ export default function VendorDashboard() {
         pincodes: Array.isArray(store.pincodes) ? store.pincodes.join(', ') : (store.pincodes || '401305, 401303'),
         address: store.address || '',
         city: store.city || 'Virar, Palghar',
+        lat: store.lat || null,
+        lng: store.lng || null,
         upiId: store.upiId || '',
         gstin: store.gstin || '',
       });
@@ -391,6 +524,15 @@ export default function VendorDashboard() {
         .map(p => p.trim())
         .filter(Boolean);
 
+      const latVal = Number(storeForm.lat);
+      const lngVal = Number(storeForm.lng);
+      if (!storeForm.lat || !storeForm.lng || isNaN(latVal) || isNaN(lngVal) || latVal === 0 || lngVal === 0) {
+        setStoreSettingsError('Please drop a pin on the map to confirm your store physical location');
+        addToast('Please pin your store location on the map', 'error');
+        return;
+      }
+      setStoreSettingsError(null);
+
       const updates = {
         name: storeForm.name,
         ownerName: storeForm.ownerName,
@@ -406,6 +548,8 @@ export default function VendorDashboard() {
         pincodes: pinArray,
         address: storeForm.address,
         city: storeForm.city,
+        lat: latVal,
+        lng: lngVal,
         upiId: storeForm.upiId,
         gstin: storeForm.gstin,
         updatedAt: new Date().toISOString(),
@@ -518,12 +662,20 @@ export default function VendorDashboard() {
               </div>
             </div>
 
-            <Link
-              to="/admin"
-              className="btn-outline text-[11px] py-1 px-2.5 flex items-center gap-1 font-bold whitespace-nowrap flex-shrink-0"
-            >
-              <ArrowLeft size={12} /> Back to Admin Panel
-            </Link>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Link
+                to="/admin?tab=settlements"
+                className="py-1 px-2.5 rounded-lg text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-mandi-green border border-emerald-500/30 hover:bg-emerald-500/20 flex items-center gap-1 transition-all whitespace-nowrap flex-shrink-0"
+              >
+                <Wallet size={12} /> Settlements &amp; Payouts
+              </Link>
+              <Link
+                to="/admin"
+                className="btn-outline text-[11px] py-1 px-2.5 flex items-center gap-1 font-bold whitespace-nowrap flex-shrink-0"
+              >
+                <ArrowLeft size={12} /> Back to Admin Panel
+              </Link>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border rounded-lg px-2.5 py-1.5 text-xs text-mandi-text w-full">
@@ -589,21 +741,152 @@ export default function VendorDashboard() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleToggleStoreStatus}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm cursor-pointer ${
-              store.status === 'closed'
-                ? 'bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25'
-                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
-            }`}
-            title="Tap to toggle Store Open / Paused status"
-          >
-            <span className={`w-2 h-2 rounded-full ${store.status === 'closed' ? 'bg-red-500' : 'bg-emerald-400 animate-pulse'}`} />
-            <span>{store.status === 'closed' ? 'Store Paused' : 'Store Open'}</span>
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Audio Alert Toggle with quick test chime */}
+            <div className="flex items-center bg-mandi-surface border border-mandi-border/80 rounded-full p-0.5 sm:p-1 gap-1">
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                className={`px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                  soundEnabled
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'bg-mandi-card text-mandi-muted hover:text-mandi-text'
+                }`}
+                title={soundEnabled ? 'Live Order Sound Alerts: ON (Click to mute)' : 'Live Order Sound Alerts: OFF (Click to enable)'}
+              >
+                {soundEnabled ? (
+                  <>
+                    <Volume2 size={13} className="text-emerald-400 animate-pulse" />
+                    <span className="hidden sm:inline">Sound ON</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX size={13} className="text-mandi-muted" />
+                    <span className="hidden sm:inline">Sound OFF</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleTestSound}
+                className="p-1 sm:p-1.5 rounded-full hover:bg-mandi-card text-mandi-subtle hover:text-mandi-text transition-all"
+                title="Test Audio Chime"
+              >
+                <Bell size={13} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleStoreStatus}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm cursor-pointer ${
+                store.status === 'closed'
+                  ? 'bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25'
+                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+              }`}
+              title="Tap to toggle Store Open / Paused status"
+            >
+              <span className={`w-2 h-2 rounded-full ${store.status === 'closed' ? 'bg-red-500' : 'bg-emerald-400 animate-pulse'}`} />
+              <span>{store.status === 'closed' ? 'Store Paused' : 'Store Open'}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* 🚨 High-Priority Live Order Alert Banner (Swiggy / Zomato Business Style) */}
+      {incomingAlertOrder && (
+        <div className="mb-3.5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-emerald-900/70 to-emerald-950/90 border-2 border-emerald-500 shadow-xl shadow-emerald-500/20 relative overflow-hidden transition-all">
+          {/* Pulsing indicator tag */}
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-500/30">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                <Bell size={13} className={isAlertPlaying ? 'animate-bounce' : ''} />
+                New Online Order Received
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-emerald-300 font-bold">
+                #{incomingAlertOrder.id.slice(-6).toUpperCase()}
+              </span>
+              {isAlertPlaying && (
+                <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/40 px-1.5 py-0.5 rounded font-black animate-pulse">
+                  🔔 Ringing
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base sm:text-lg font-black text-white">
+                  ₹{incomingAlertOrder.total}
+                </span>
+                <span className="text-xs font-semibold text-emerald-200">
+                  • {incomingAlertOrder.customerName || 'Customer'}
+                </span>
+                {incomingAlertOrder.customerPhone && (
+                  <span className="text-[11px] text-mandi-subtle">
+                    ({incomingAlertOrder.customerPhone})
+                  </span>
+                )}
+                {incomingAlertOrder.deliveryType === 'same-day' && (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                    ⚡ Same-Day ({incomingAlertOrder.scheduledSlot?.label || 'Today'})
+                  </span>
+                )}
+                {incomingAlertOrder.deliveryType === 'scheduled' && (
+                  <span className="text-[10px] font-bold text-blue-300 bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/30">
+                    📅 Scheduled ({incomingAlertOrder.scheduledSlot?.label || incomingAlertOrder.scheduledSlot?.timeWindow || 'Slot'})
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-emerald-100/80 mt-1 line-clamp-1">
+                🛍️ {incomingAlertOrder.items?.length || 0} item{(incomingAlertOrder.items?.length || 0) !== 1 ? 's' : ''}: {incomingAlertOrder.items?.map(it => `${it.name} (${it.quantity || 1})`).slice(0, 4).join(', ')}{(incomingAlertOrder.items?.length || 0) > 4 ? '...' : ''}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+              {isAlertPlaying && (
+                <button
+                  type="button"
+                  onClick={handleMuteCurrentAlert}
+                  className="btn-outline border-amber-500/50 text-amber-400 hover:bg-amber-500/20 text-xs py-2 px-3 flex items-center gap-1.5 font-bold whitespace-nowrap cursor-pointer"
+                  title="Mute alert chime"
+                >
+                  <VolumeX size={14} />
+                  <span>Mute Sound</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('orders');
+                  setOrderFilter('all');
+                }}
+                className="btn-outline text-mandi-text text-xs py-2 px-3 whitespace-nowrap cursor-pointer"
+              >
+                View
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAcceptIncomingOrder(incomingAlertOrder.id)}
+                className="btn-primary bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black py-2.5 px-4 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              >
+                <CheckCircle2 size={16} />
+                <span>Accept Order (Start Packing)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Action Buttons */}
       <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-3.5">
@@ -749,10 +1032,18 @@ export default function VendorDashboard() {
           {filteredOrders.length === 0 ? (
             <div className="card p-8 text-center text-mandi-muted text-xs">No orders matching filter</div>
           ) : (
-            filteredOrders.map(order => (
+            filteredOrders.map(order => {
+              const isAlertTarget = incomingAlertOrder?.id === order.id;
+              return (
               <div 
                 key={order.id} 
-                className={`card p-3.5 sm:p-5 space-y-3 transition-all ${order.slaStatus === 'breached' ? 'border-red-500/40 bg-red-500/10' : ''}`}
+                className={`card p-3.5 sm:p-5 space-y-3 transition-all ${
+                  isAlertTarget 
+                    ? 'border-2 border-emerald-500 shadow-lg shadow-emerald-500/20 bg-emerald-500/5' 
+                    : order.slaStatus === 'breached' 
+                      ? 'border-red-500/40 bg-red-500/10' 
+                      : ''
+                }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-mandi-border">
                   <div>
@@ -807,7 +1098,10 @@ export default function VendorDashboard() {
                     ) : (
                       <>
                         {order.status === 'placed' && (
-                          <button type="button" onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center">Accept Order</button>
+                          <button type="button" onClick={() => handleStatusChange(order.id, 'accepted')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center flex items-center justify-center gap-1.5">
+                            <CheckCircle2 size={13} />
+                            <span>Accept Order</span>
+                          </button>
                         )}
                         {order.status === 'accepted' && (
                           <button type="button" onClick={() => handleStatusChange(order.id, 'preparing')} className="btn-primary py-2 px-4 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-center">Start Packing</button>
@@ -858,7 +1152,8 @@ export default function VendorDashboard() {
                   ))}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -1538,6 +1833,20 @@ export default function VendorDashboard() {
                   />
                 </div>
               </div>
+
+              {/* Mandatory Physical Store Pin */}
+              <AddressMapPicker
+                lat={storeForm.lat}
+                lng={storeForm.lng}
+                initialPincode="401305"
+                onChange={(coords) => {
+                  setStoreForm((f) => ({ ...f, lat: coords.lat, lng: coords.lng }));
+                  setStoreSettingsError(null);
+                }}
+                error={storeSettingsError}
+                pinType="store"
+                height="220px"
+              />
             </div>
 
             {/* Payout & Legal Info */}

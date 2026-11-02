@@ -187,7 +187,7 @@ export default function OrderHistoryPage() {
   return (
     <div className="max-w-md w-full mx-auto min-h-screen bg-mandi-dark text-mandi-text select-none pb-28">
       {/* ── Native Mobile App Header ── */}
-      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 py-3 shadow-md flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-app-header pb-3 shadow-md flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(getAppHomePath())}

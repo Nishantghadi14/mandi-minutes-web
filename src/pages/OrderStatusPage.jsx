@@ -54,7 +54,7 @@ export default function OrderStatusPage() {
   const { waUrl: shareWaUrl } = generateCustomerShareMessage(order);
 
   return (
-    <div className="max-w-3xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 pb-12 md:pb-8">
+    <div className="max-w-3xl mx-auto px-3.5 sm:px-4 pt-app-content pb-12 md:pb-8">
       {/* Network Alert */}
       {hasError && (
         <div className="mb-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-600 dark:text-red-200 text-xs">
@@ -194,6 +194,7 @@ export default function OrderStatusPage() {
           orderId={order.id}
           storeId={order.storeId} 
           customerPincode={order.address?.pincode} 
+          customerCoordinates={order.address?.lat && order.address?.lng ? { lat: order.address.lat, lng: order.address.lng, label: order.address.line1 } : null}
           orderStatus={order.status || 'placed'} 
           liveRiderLocation={order.riderLocation || null}
         />

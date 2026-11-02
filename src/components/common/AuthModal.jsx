@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, Gift, CheckCircle2, ArrowLeft, KeyRound, RotateCw, Clipboard, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, CheckCircle2, ArrowLeft, KeyRound, RotateCw, Clipboard, ArrowRight, AlertCircle, Sparkles, Bike } from 'lucide-react';
 import { RecaptchaVerifier } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useToast } from './Toast';
 import { validateIndianPhone, validateEmail, sanitizeText } from '../../utils/validators';
+import { redirectToRiderApp } from '../../utils/platform';
 
 export default function AuthModal() {
   const { 
@@ -174,6 +175,13 @@ export default function AuthModal() {
         addToast('Account created successfully! Welcome 🎉', 'success');
       }
       closeAuthModal();
+      if (loggedUser?.role === 'rider') {
+        addToast('🛵 Rider account detected! Redirecting to Mandi Rider app...', 'success', 3500);
+        setTimeout(() => {
+          redirectToRiderApp();
+        }, 350);
+        return;
+      }
       if (loggedUser?.role === 'vendor') {
         navigate('/vendor');
       } else if (loggedUser?.role === 'admin') {
@@ -378,6 +386,13 @@ export default function AuthModal() {
         addToast('Phone number verified! Welcome to Mandi Minutes 🎉', 'success', 4500);
       }
       closeAuthModal();
+      if (loggedUser?.role === 'rider') {
+        addToast('🛵 Rider account detected! Redirecting to Mandi Rider app...', 'success', 3500);
+        setTimeout(() => {
+          redirectToRiderApp();
+        }, 350);
+        return;
+      }
       if (loggedUser?.role === 'vendor') {
         navigate('/vendor');
       } else if (loggedUser?.role === 'admin') {
@@ -398,20 +413,25 @@ export default function AuthModal() {
         {/* Mobile drag handle indicator */}
         <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-4 sm:hidden" />
 
-        <div className="flex items-center justify-between mb-5 sm:mb-6">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-mandi-text">
-              {mode === 'forgot' 
-                ? (resetStep === 'new-password' ? 'Create New Password' : resetStep === 'verify' ? 'Enter Verification Code' : 'Reset Password')
-                : mode === 'login' ? 'Welcome Back' : 'Create Account'}
-            </h2>
-            <p className="text-mandi-muted text-xs sm:text-sm">
-              {mode === 'forgot'
-                ? (resetStep === 'new-password' ? 'Create a secure new password' : resetStep === 'verify' ? 'Put the code from your email to verify' : 'Enter email to receive reset code')
-                : mode === 'login' ? 'Login to your verified account' : 'Join Mandi Minutes today'}
-            </p>
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-black border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+              <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain p-0.5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-mandi-text leading-tight">
+                {mode === 'forgot' 
+                  ? (resetStep === 'new-password' ? 'Create New Password' : resetStep === 'verify' ? 'Enter Verification Code' : 'Reset Password')
+                  : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+              </h2>
+              <p className="text-mandi-muted text-[11px] sm:text-xs leading-tight">
+                {mode === 'forgot'
+                  ? (resetStep === 'new-password' ? 'Create a secure new password' : resetStep === 'verify' ? 'Put the code from your email to verify' : 'Enter email to receive reset code')
+                  : mode === 'login' ? 'Login to your verified account' : 'Join Mandi Minutes today'}
+              </p>
+            </div>
           </div>
-          <button onClick={closeAuthModal} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1.5 rounded-lg active:scale-90"><X size={18} /></button>
+          <button onClick={closeAuthModal} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1.5 rounded-lg active:scale-90" aria-label="Close modal"><X size={18} /></button>
         </div>
 
         {/* Security badge */}
@@ -762,19 +782,6 @@ export default function AuthModal() {
                   </div>
                 )}
 
-                {mode === 'register' && (
-                  <div className="relative">
-                    <Gift size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-green" />
-                    <input 
-                      type="text" 
-                      placeholder="Referral code (optional, get ₹50 off)" 
-                      value={form.referralCode} 
-                      onChange={e => upd('referralCode', e.target.value.toUpperCase())} 
-                      className="input-field pl-9 uppercase placeholder:normal-case text-xs" 
-                    />
-                  </div>
-                )}
-
                 {error && <p className="text-red-600 dark:text-red-400 text-xs bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl">{error}</p>}
 
                 <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
@@ -860,6 +867,22 @@ export default function AuthModal() {
                 {mode === 'login' ? 'Sign Up' : 'Log In'}
               </button>
             </p>
+
+            {/* Delivery Partner / Rider Quick Redirect */}
+            <div className="mt-4 pt-3.5 border-t border-mandi-border/60 text-center">
+              <p className="text-[11px] text-mandi-subtle mb-1.5">Are you a delivery partner?</p>
+              <button
+                type="button"
+                onClick={() => {
+                  closeAuthModal();
+                  redirectToRiderApp();
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-sm"
+              >
+                <Bike size={15} />
+                <span>Open & Sign in on Mandi Rider App</span>
+              </button>
+            </div>
           </>
         )}
 

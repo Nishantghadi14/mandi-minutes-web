@@ -9,14 +9,15 @@ import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
-import ReferralModal from '../components/common/ReferralModal';
+import AddressMapPicker from '../components/common/AddressMapPicker';
+import { useTutorialStore } from '../store/useTutorialStore';
 import {
-  User, Package, Heart, ShoppingCart, MapPin, Gift,
-  Moon, Sun, Globe, Shield, Store, Bike, Phone,
-  MessageCircle, HelpCircle, FileText, Lock, ChevronRight,
-  LogOut, Zap, Check, ArrowRight, ArrowLeft, Sparkles, ExternalLink, X, Briefcase, Pencil, Trash2, Plus, Home as HomeIcon
+  User, Package, Heart, ShoppingCart, MapPin,
+  Moon, Sun, Globe, Shield, Store, Bike, Wallet,
+  HelpCircle, FileText, Lock, ChevronRight,
+  LogOut, Zap, Check, ArrowRight, ArrowLeft, Sparkles, ExternalLink, X, Briefcase, Pencil, Trash2, Plus, Home as HomeIcon, Mail
 } from 'lucide-react';
-import { getAppHomePath } from '../utils/platform';
+import { getAppHomePath, redirectToRiderApp } from '../utils/platform';
 
 export default function ProfilePage() {
   const { user, logout, openAuthModal, resetPassword, updateUser } = useAuth();
@@ -27,8 +28,8 @@ export default function ProfilePage() {
   const { addToast } = useToast();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { openTutorial } = useTutorialStore();
 
-  const [referralOpen, setReferralOpen] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetCooldown, setResetCooldown] = useState(0);
 
@@ -39,8 +40,10 @@ export default function ProfilePage() {
     line1: '',
     area: '',
     landmark: '',
-    city: 'Virar West',
-    pincode: location?.pincode || '401305',
+    city: '',
+    pincode: '',
+    lat: null,
+    lng: null,
   });
   const [addressErrors, setAddressErrors] = useState({});
   const [savingAddress, setSavingAddress] = useState(false);
@@ -54,8 +57,10 @@ export default function ProfilePage() {
       line1: '',
       area: '',
       landmark: '',
-      city: 'Virar West',
-      pincode: location?.pincode || '401305',
+      city: '',
+      pincode: '',
+      lat: null,
+      lng: null,
     });
     setAddressErrors({});
     setShowAddressModal(true);
@@ -68,8 +73,10 @@ export default function ProfilePage() {
       line1: addr.line1 || '',
       area: addr.area || '',
       landmark: addr.landmark || '',
-      city: addr.city || 'Virar West',
-      pincode: addr.pincode || '401305',
+      city: addr.city || '',
+      pincode: addr.pincode || '',
+      lat: addr.lat || null,
+      lng: addr.lng || null,
     });
     setAddressErrors({});
     setShowAddressModal(true);
@@ -100,11 +107,11 @@ export default function ProfilePage() {
 
   const handleSaveAddress = async (e) => {
     e.preventDefault();
-    const check = validateAddress(addressForm);
+    const check = validateAddress(addressForm, { requireCoordinates: true });
     if (!check.valid) {
       setAddressErrors(check.errors);
       const first = Object.values(check.errors)[0];
-      addToast(first || 'Please fill in required fields', 'error');
+      addToast(first || 'Please fill in required fields and pin your location', 'error');
       return;
     }
 
@@ -192,7 +199,7 @@ export default function ProfilePage() {
   const isVendor = user && (user.role === 'vendor' || isAdmin);
 
   return (
-    <div className="max-w-md w-full mx-auto px-3.5 py-3 pb-28 text-mandi-text select-none">
+    <div className="max-w-md w-full mx-auto px-3.5 pt-app-content pb-28 text-mandi-text select-none">
       <Helmet>
         <title>Account & Settings — Mandi Minutes</title>
         <meta name="description" content="Manage your Mandi Minutes account, view orders, wishlist, delivery address, and app preferences." />
@@ -216,8 +223,12 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-mandi-green to-emerald-400 flex items-center justify-center text-black font-black text-2xl shadow-green glow-green-sm">
-                {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-mandi-green to-emerald-400 flex items-center justify-center text-black font-black text-2xl shadow-green glow-green-sm overflow-hidden">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  <User size={32} className="text-black" />
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-mandi-card rounded-full flex items-center justify-center border border-mandi-border">
                 <span className="w-2.5 h-2.5 rounded-full bg-mandi-green animate-pulse" />
@@ -487,7 +498,7 @@ export default function ProfilePage() {
                   <label className="text-[11px] font-semibold text-mandi-muted mb-1 block">City *</label>
                   <input
                     type="text"
-                    placeholder="City"
+                    placeholder="City (e.g. Virar West)"
                     value={addressForm.city}
                     onChange={e => {
                       setAddressForm(f => ({ ...f, city: e.target.value }));
@@ -515,6 +526,32 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* Mandatory Interactive Map Pin */}
+              <AddressMapPicker
+                lat={addressForm.lat}
+                lng={addressForm.lng}
+                initialPincode={addressForm.pincode || '401305'}
+                onChange={(coords) => {
+                  setAddressForm((f) => ({
+                    ...f,
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    ...(coords.isGps && coords.city ? { city: coords.city } : {}),
+                    ...(coords.isGps && coords.pincode ? { pincode: coords.pincode } : {}),
+                    ...(coords.isGps && coords.area && !f.area ? { area: coords.area } : {}),
+                  }));
+                  setAddressErrors((err) => ({
+                    ...err,
+                    coordinates: null,
+                    ...(coords.isGps && coords.city ? { city: null } : {}),
+                    ...(coords.isGps && coords.pincode ? { pincode: null } : {}),
+                  }));
+                }}
+                error={addressErrors.coordinates}
+                pinType="consumer"
+                height="200px"
+              />
+
               <div className="flex gap-2.5 pt-2">
                 <button
                   type="submit"
@@ -537,80 +574,61 @@ export default function ProfilePage() {
       )}
 
       {/* ─── Quick Shortcuts Grid ─── */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-3 gap-2.5 mb-4">
         {/* My Orders */}
         <Link
           to="/orders"
-          className="card p-3.5 flex flex-col justify-between hover:border-mandi-green transition-all group active:scale-95"
+          className="card p-3 flex flex-col justify-between hover:border-mandi-green transition-all group active:scale-95"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Package size={18} />
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Package size={16} />
             </div>
             {userOrders.length > 0 && (
-              <span className="badge-green text-[10px]">{userOrders.length}</span>
+              <span className="badge-green text-[10px] px-1.5">{userOrders.length}</span>
             )}
           </div>
           <div>
-            <p className="text-mandi-text font-bold text-sm">My Orders</p>
-            <p className="text-mandi-subtle text-[11px] mt-0.5">Track & reorder items</p>
+            <p className="text-mandi-text font-bold text-xs sm:text-sm line-clamp-1">My Orders</p>
+            <p className="text-mandi-subtle text-[10px] sm:text-[11px] mt-0.5 line-clamp-1">Track orders</p>
           </div>
         </Link>
 
         {/* Wishlist */}
         <Link
           to="/wishlist"
-          className="card p-3.5 flex flex-col justify-between hover:border-mandi-green transition-all group active:scale-95"
+          className="card p-3 flex flex-col justify-between hover:border-mandi-green transition-all group active:scale-95"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Heart size={18} />
+            <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Heart size={16} />
             </div>
             {wishlistCount > 0 && (
-              <span className="badge-green text-[10px]">{wishlistCount}</span>
+              <span className="badge-green text-[10px] px-1.5">{wishlistCount}</span>
             )}
           </div>
           <div>
-            <p className="text-mandi-text font-bold text-sm">My Favourites</p>
-            <p className="text-mandi-subtle text-[11px] mt-0.5">Saved grocery staples</p>
+            <p className="text-mandi-text font-bold text-xs sm:text-sm line-clamp-1">Favourites</p>
+            <p className="text-mandi-subtle text-[10px] sm:text-[11px] mt-0.5 line-clamp-1">Saved items</p>
           </div>
         </Link>
 
         {/* Cart */}
         <button
           onClick={() => setIsOpen(true)}
-          className="card p-3.5 flex flex-col justify-between text-left hover:border-mandi-green transition-all group active:scale-95"
+          className="card p-3 flex flex-col justify-between text-left hover:border-mandi-green transition-all group active:scale-95"
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-mandi-green flex items-center justify-center group-hover:scale-110 transition-transform">
-              <ShoppingCart size={18} />
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-mandi-green flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ShoppingCart size={16} />
             </div>
             {itemCount > 0 && (
-              <span className="badge-green text-[10px]">{itemCount} items</span>
+              <span className="badge-green text-[10px] px-1.5">{itemCount}</span>
             )}
           </div>
           <div>
-            <p className="text-mandi-text font-bold text-sm">Active Cart</p>
-            <p className="text-mandi-subtle text-[11px] mt-0.5">View & checkout</p>
-          </div>
-        </button>
-
-        {/* Refer & Earn */}
-        <button
-          onClick={() => setReferralOpen(true)}
-          className="card p-3.5 flex flex-col justify-between text-left hover:border-mandi-green transition-all group active:scale-95 bg-gradient-to-br from-mandi-card to-mandi-green/5"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Gift size={18} />
-            </div>
-            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
-              ₹50 FREE
-            </span>
-          </div>
-          <div>
-            <p className="text-mandi-text font-bold text-sm">Refer & Earn</p>
-            <p className="text-mandi-subtle text-[11px] mt-0.5">Invite neighbors</p>
+            <p className="text-mandi-text font-bold text-xs sm:text-sm line-clamp-1">Active Cart</p>
+            <p className="text-mandi-subtle text-[10px] sm:text-[11px] mt-0.5 line-clamp-1">Checkout</p>
           </div>
         </button>
       </div>
@@ -621,18 +639,51 @@ export default function ProfilePage() {
           Partner & Portals
         </h2>
         <div className="space-y-1">
-          {isAdmin && (
+          {isAdmin ? (
+            <>
+              <Link
+                to="/admin"
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-mandi-green flex items-center justify-center">
+                    <Shield size={16} />
+                  </div>
+                  <div>
+                    <p className="text-mandi-text font-semibold text-xs sm:text-sm">Admin Control Center</p>
+                    <p className="text-mandi-subtle text-[11px]">System metrics, stores, orders</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                to="/admin?tab=settlements"
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-mandi-green flex items-center justify-center">
+                    <Wallet size={16} />
+                  </div>
+                  <div>
+                    <p className="text-mandi-text font-semibold text-xs sm:text-sm">Monthly Settlements &amp; Payouts</p>
+                    <p className="text-mandi-subtle text-[11px]">Store GMV, platform fees &amp; vendor payouts</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </>
+          ) : (
             <Link
-              to="/admin"
+              to="/admin?tab=settlements"
               className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-mandi-green flex items-center justify-center">
-                  <Shield size={16} />
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-mandi-green flex items-center justify-center">
+                  <Wallet size={16} />
                 </div>
                 <div>
-                  <p className="text-mandi-text font-semibold text-xs sm:text-sm">Admin Control Center</p>
-                  <p className="text-mandi-subtle text-[11px]">System metrics, stores, orders</p>
+                  <p className="text-mandi-text font-semibold text-xs sm:text-sm">Monthly Settlements &amp; Payouts</p>
+                  <p className="text-mandi-subtle text-[11px]">Store monthly sales &amp; payout statements</p>
                 </div>
               </div>
               <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
@@ -673,21 +724,28 @@ export default function ProfilePage() {
             </Link>
           )}
 
-          <Link
-            to="/rider"
-            className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
+          <button
+            type="button"
+            onClick={() => redirectToRiderApp()}
+            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group text-left"
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
                 <Bike size={16} />
               </div>
               <div>
-                <p className="text-mandi-text font-semibold text-xs sm:text-sm">Rider Delivery Portal</p>
-                <p className="text-mandi-subtle text-[11px]">Earn delivering local neighborhood orders</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-mandi-text font-semibold text-xs sm:text-sm">Rider Delivery App</p>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400">PARTNER APP</span>
+                </div>
+                <p className="text-mandi-subtle text-[11px]">Sign in & earn delivering local orders</p>
               </div>
             </div>
-            <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
-          </Link>
+            <div className="flex items-center gap-1 text-sky-400 font-semibold text-xs group-hover:translate-x-0.5 transition-transform">
+              <span>Open</span>
+              <ExternalLink size={14} />
+            </div>
+          </button>
         </div>
       </div>
 
@@ -709,8 +767,9 @@ export default function ProfilePage() {
             </div>
           </div>
           <button
+            id="theme-toggle-btn"
             onClick={toggleTheme}
-            className="px-3 py-1.5 rounded-lg border border-mandi-border bg-mandi-card text-xs font-bold text-mandi-text hover:border-mandi-green transition-all active:scale-95"
+            className="px-3 py-1.5 rounded-lg border border-mandi-border bg-mandi-card text-xs font-bold text-mandi-text hover:border-mandi-green transition-all active:scale-95 cursor-pointer"
           >
             {isDark ? '🌙 Dark' : '☀️ Light'}
           </button>
@@ -757,6 +816,24 @@ export default function ProfilePage() {
           Help & Information
         </h2>
         <div className="space-y-1">
+          {/* Interactive App Tutorial & Tour */}
+          <button
+            type="button"
+            onClick={() => openTutorial(0)}
+            className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-mandi-green flex items-center justify-center">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <p className="text-mandi-text font-semibold text-xs sm:text-sm">App Quick Tour & Guide</p>
+                <p className="text-mandi-subtle text-[11px]">Learn how to order, choose slots & track riders</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
+          </button>
+
           <Link
             to="/contact"
             className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
@@ -773,40 +850,21 @@ export default function ProfilePage() {
             <ChevronRight size={16} className="text-mandi-subtle group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
-          {/* Direct WhatsApp Support */}
+          {/* Direct Email Support */}
           <a
-            href="https://wa.me/919920941603?text=Hi%20Mandi%20Minutes%20Support"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="mailto:support@mandiminutes.com?subject=Mandi%20Minutes%20Support%20Request"
             className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
-                <MessageCircle size={16} />
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-mandi-green flex items-center justify-center">
+                <Mail size={16} />
               </div>
               <div>
-                <p className="text-mandi-text font-semibold text-xs sm:text-sm">Chat on WhatsApp</p>
-                <p className="text-mandi-subtle text-[11px]">+91 99209 41603 (Instant reply)</p>
+                <p className="text-mandi-text font-semibold text-xs sm:text-sm">Email Support</p>
+                <p className="text-mandi-subtle text-[11px]">support@mandiminutes.com (24x7)</p>
               </div>
             </div>
-            <ExternalLink size={14} className="text-mandi-subtle group-hover:text-green-400 transition-colors" />
-          </a>
-
-          {/* Direct Call Support */}
-          <a
-            href="tel:+919920941603"
-            className="flex items-center justify-between p-2.5 rounded-xl hover:bg-mandi-surface transition-colors group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
-                <Phone size={16} />
-              </div>
-              <div>
-                <p className="text-mandi-text font-semibold text-xs sm:text-sm">Call Us</p>
-                <p className="text-mandi-subtle text-[11px]">Available 7 AM to 11 PM</p>
-              </div>
-            </div>
-            <ExternalLink size={14} className="text-mandi-subtle group-hover:text-sky-400 transition-colors" />
+            <ExternalLink size={14} className="text-mandi-subtle group-hover:text-mandi-green transition-colors" />
           </a>
 
           <Link
@@ -907,9 +965,6 @@ export default function ProfilePage() {
           Made with ❤️ for Local Kiranas in Virar, Palghar
         </p>
       </div>
-
-      {/* Referral Modal */}
-      <ReferralModal isOpen={referralOpen} onClose={() => setReferralOpen(false)} />
     </div>
   );
 }

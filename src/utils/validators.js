@@ -82,7 +82,7 @@ export function sanitizeText(str, maxLength = 500) {
 /**
  * Validates address fields for delivery.
  */
-export function validateAddress(address) {
+export function validateAddress(address, options = {}) {
   const errors = {};
 
   if (!address.line1 || sanitizeText(address.line1).length < 3) {
@@ -98,6 +98,14 @@ export function validateAddress(address) {
     errors.pincode = pinCheck.error;
   }
 
+  if (options.requireCoordinates || address.requireCoordinates) {
+    const lat = Number(address.lat);
+    const lng = Number(address.lng);
+    if (!address.lat || !address.lng || isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+      errors.coordinates = 'Please drop a pin on the map to confirm your doorstep location';
+    }
+  }
+
   return {
     valid: Object.keys(errors).length === 0,
     errors,
@@ -108,6 +116,8 @@ export function validateAddress(address) {
       landmark: sanitizeText(address.landmark || '', 100),
       city: sanitizeText(address.city, 50),
       pincode: pinCheck.value || '',
+      lat: address.lat ? Number(Number(address.lat).toFixed(6)) : null,
+      lng: address.lng ? Number(Number(address.lng).toFixed(6)) : null,
     }
   };
 }

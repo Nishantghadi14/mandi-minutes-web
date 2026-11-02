@@ -7,6 +7,10 @@
     "cleartext": false
   },
   "plugins": {
+    "SystemBars": {
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK"
+    },
     "SplashScreen": {
       "launchShowDuration": 1500,
       "launchAutoHide": true,

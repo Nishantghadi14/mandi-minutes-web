@@ -26,7 +26,7 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
   return (
     <nav
       aria-label="Mobile navigation"
-      className={`fixed bottom-0 left-0 right-0 ${isApp ? 'block' : 'md:hidden'} glass-dark border-t border-mandi-border z-40 px-3 pt-2 pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] select-none rounded-t-3xl shadow-clay-nav`}
+      className={`fixed bottom-0 left-0 right-0 ${isApp ? 'block' : 'md:hidden'} glass-dark border-t border-mandi-border z-40 px-3 pt-2 pb-app-nav select-none rounded-t-3xl shadow-clay-nav`}
     >
       <div className="flex items-center justify-around max-w-md mx-auto">
         {/* 1. Home */}
@@ -101,18 +101,22 @@ export default function BottomNav({ inAppMode: propInAppMode }) {
           aria-label={t('nav.profile')}
         >
           <div className={`p-1.5 rounded-2xl transition-all duration-200 ${isActive('/profile') ? 'bg-mandi-green/20 text-mandi-green shadow-clay-badge' : ''}`}>
-            {user ? (
-              <div className={`w-5 h-5 bg-mandi-green rounded-full flex items-center justify-center text-[10px] font-bold text-black shadow-clay-badge ${isActive('/profile') ? 'ring-2 ring-mandi-green ring-offset-1 ring-offset-mandi-dark' : ''
-                }`}>
-                {(user.name || user.displayName || user.email || 'U')[0].toUpperCase()}
-              </div>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.name || 'Profile'}
+                className={`w-5 h-5 rounded-full object-cover ${isActive('/profile') ? 'ring-2 ring-mandi-green ring-offset-1 ring-offset-mandi-dark' : ''}`}
+              />
             ) : (
-              <User size={20} className={isActive('/profile') ? 'drop-shadow-green stroke-[2.3]' : 'stroke-[1.8]'} />
+              <User
+                size={20}
+                className={isActive('/profile') ? 'drop-shadow-green stroke-[2.3] text-mandi-green' : (user ? 'text-mandi-green stroke-[2]' : 'stroke-[1.8]')}
+              />
             )}
           </div>
           <span className={`text-[10px] font-medium leading-none max-w-[55px] truncate ${isActive('/profile') ? 'text-mandi-green font-extrabold' : ''
             }`}>
-            {user ? (user.name || user.displayName || 'Profile').split(' ')[0] : t('nav.profile')}
+            {t('nav.profile')}
           </span>
         </Link>
       </div>

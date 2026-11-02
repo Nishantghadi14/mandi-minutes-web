@@ -11,8 +11,7 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Mail, 
-  RotateCw, 
-  ShoppingBag
+  RotateCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/Toast';
@@ -159,8 +158,8 @@ export default function ResetPasswordPage() {
         {/* Brand Header */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center gap-2 group mb-3">
-            <div className="w-12 h-12 bg-mandi-green/10 border border-mandi-green/30 rounded-2xl flex items-center justify-center text-mandi-green group-hover:scale-105 transition-transform shadow-glow">
-              <ShoppingBag size={24} />
+            <div className="w-12 h-12 bg-mandi-green/10 border border-mandi-green/30 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-glow overflow-hidden">
+              <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain p-1" />
             </div>
           </Link>
           <div className="flex items-center justify-center gap-2 mb-1">

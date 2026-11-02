@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Zap, MapPin, Phone, Mail, Camera, MessageCircle, Share2, ArrowRight } from 'lucide-react';
+import { MapPin, Phone, Mail, Camera, MessageCircle, Share2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -73,8 +73,8 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2.5 mb-4 group w-fit">
-              <div className="w-10 h-10 bg-mandi-green rounded-xl flex items-center justify-center shadow-green glow-green-sm group-hover:glow-green transition-all duration-300">
-                <Zap size={22} className="text-black" fill="black" />
+              <div className="w-11 h-11 bg-black/80 rounded-xl border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-green glow-green-sm group-hover:glow-green transition-all duration-300">
+                <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain p-1" />
               </div>
               <div>
                 <span className="text-xl font-black text-gradient-green">Mandi</span>

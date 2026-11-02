@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MapPin, Navigation, X, Search } from 'lucide-react';
 import { useLocation } from '../../context/LocationContext';
 import { useToast } from './Toast';
@@ -13,11 +13,25 @@ const popularVirarPincodes = [
 ];
 
 export default function LocationModal() {
-  const { locationModal, setLocationModal, setLocationByPincode, detectLocation, location } = useLocation();
+  const { locationModal, setLocationModal, setLocationByPincode, detectLocation } = useLocation();
   const { addToast } = useToast();
   const [pincode, setPincode] = useState('');
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState('');
+
+  const handleClose = useCallback(() => {
+    setLocationModal(false);
+  }, [setLocationModal]);
+
+  // Keyboard Escape listener to dismiss location modal
+  useEffect(() => {
+    if (!locationModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [locationModal, handleClose]);
 
   if (!locationModal) return null;
 
@@ -42,20 +56,41 @@ export default function LocationModal() {
   };
 
   return (
-    <div className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-clay-floating">
+    <div 
+      className="overlay flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fade-in"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="location-modal-title"
+    >
+      <div 
+        className="bg-mandi-card border border-mandi-border rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 w-full max-w-md animate-slide-in-up sm:animate-fade-in max-h-[90dvh] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-clay-floating relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Mobile drag handle indicator */}
-        <div className="w-12 h-1.5 bg-mandi-border-light rounded-full mx-auto mb-4 sm:hidden" />
+        <div 
+          onClick={handleClose}
+          className="w-12 h-1.5 bg-mandi-border-light hover:bg-mandi-muted/60 rounded-full mx-auto mb-4 sm:hidden cursor-pointer"
+          title="Dismiss"
+        />
 
         <div className="flex items-center justify-between mb-5 sm:mb-6">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="bg-mandi-green-muted p-2.5 rounded-2xl shadow-clay-pill"><MapPin size={20} className="text-mandi-green" /></div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-mandi-text">Set Delivery Location</h2>
+              <h2 id="location-modal-title" className="text-base sm:text-lg font-bold text-mandi-text">Set Delivery Location</h2>
               <p className="text-[11px] sm:text-xs text-mandi-muted">Palghar District, Maharashtra</p>
             </div>
           </div>
-          {location && <button onClick={() => setLocationModal(false)} className="text-mandi-subtle hover:text-mandi-text transition-colors p-1.5 active:scale-90"><X size={18} /></button>}
+          <button 
+            type="button"
+            onClick={handleClose} 
+            className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border hover:border-mandi-green/50 flex items-center justify-center text-mandi-muted hover:text-mandi-text transition-all active:scale-90 cursor-pointer shadow-clay-pill"
+            aria-label="Close location selector"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <button onClick={handleDetect} disabled={detecting} className="w-full flex items-center justify-center gap-3 border border-mandi-green text-mandi-green font-bold py-3.5 px-4 rounded-2xl mb-4 bg-mandi-surface hover:bg-mandi-green hover:text-black transition-all duration-200 disabled:opacity-50 shadow-clay-pill active:scale-[0.98]">
@@ -95,6 +130,17 @@ export default function LocationModal() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Bottom Dismiss / Cancel Button */}
+        <div className="mt-4 pt-3 border-t border-mandi-border/60">
+          <button 
+            type="button" 
+            onClick={handleClose}
+            className="w-full py-2.5 rounded-xl border border-mandi-border bg-mandi-surface/80 hover:bg-mandi-surface text-xs font-bold text-mandi-muted hover:text-mandi-text transition-all active:scale-[0.99] cursor-pointer"
+          >
+            Cancel & Keep Current Location
+          </button>
         </div>
       </div>
     </div>

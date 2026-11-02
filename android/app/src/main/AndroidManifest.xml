@@ -23,6 +23,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep linking & Custom Schemes for Mandi Rider & Consumer Apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mandirider" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.mandiminutes.rider" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -38,6 +52,14 @@
 
     <!-- Query schemes for UPI Payment (GPay, PhonePe, Paytm, BHIM), phone dialing, and external links -->
     <queries>
+        <!-- Package queries for cross-app redirection and native Google Maps navigation -->
+        <package android:name="com.mandiminutes.rider" />
+        <package android:name="com.mandiminutes.app" />
+        <package android:name="com.google.android.apps.maps" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mandirider" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="upi" />

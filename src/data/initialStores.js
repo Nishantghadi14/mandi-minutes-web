@@ -7,6 +7,8 @@ export const initialStores = [
     ownerEmail: 'mahalaxmi.kirana@mandiminutes.com',
     address: 'Virar West, Maharashtra, 401303',
     city: 'Virar West',
+    lat: 19.4674,
+    lng: 72.8055,
     pincodes: ['401305', '401303', '401301', '401309', '401209', '401208'],
     rating: 4.9,
     totalRatings: 348,

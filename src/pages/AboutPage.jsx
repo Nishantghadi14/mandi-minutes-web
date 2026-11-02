@@ -14,8 +14,8 @@ export default function AboutPage() {
 
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <div className="w-14 h-14 bg-mandi-green rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Zap size={32} className="text-black" fill="black" />
+        <div className="w-16 h-16 bg-black/80 rounded-2xl border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 overflow-hidden shadow-green glow-green-sm p-1.5">
+          <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-4xl font-black text-mandi-text mb-3">About <span className="text-gradient-green">Mandi Minutes</span></h1>
         <p className="text-mandi-muted text-base leading-relaxed">Empowering local Kirana stores with lightning-fast quick commerce capabilities. Bringing neighborhood freshness directly to your doorstep in 10-20 minutes.</p>

@@ -43,6 +43,7 @@ export default defineConfig({
 
   test: {
     testTimeout: 15000,
+    setupFiles: ['./tests/setup.js'],
   },
 
   build: {

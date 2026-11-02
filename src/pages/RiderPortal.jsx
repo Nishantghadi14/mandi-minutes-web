@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 import RiderTrackerMap from '../components/common/RiderTrackerMap';
+import { openGoogleMapsNavigation } from '../utils/platform';
 
 export default function RiderPortal() {
   const { orders, updateOrderStatus } = useData();
@@ -30,6 +31,7 @@ export default function RiderPortal() {
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [showSosModal, setShowSosModal] = useState(false);
   const [dropsFilter, setDropsFilter] = useState('active'); // 'active' | 'completed'
+  const [liveRouteInfo, setLiveRouteInfo] = useState(null);
 
   // Doorstep Verification Anti-Fraud States
   const [verifyingOrder, setVerifyingOrder] = useState(null);
@@ -166,7 +168,7 @@ export default function RiderPortal() {
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-mandi-dark text-mandi-text flex flex-col relative select-none pb-36 shadow-2xl">
       {/* ─── NATIVE APP TOP BAR ─── */}
-      <header className="sticky top-0 z-40 bg-mandi-card/95 backdrop-blur-md border-b border-mandi-border/80 px-4 pt-3 pb-3">
+      <header className="sticky top-0 z-40 bg-mandi-card/95 backdrop-blur-md border-b border-mandi-border/80 px-4 pt-app-header pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {activeRider.avatar ? (
@@ -421,7 +423,14 @@ export default function RiderPortal() {
                             <MapPin size={11} />
                           </div>
                           <div>
-                            <p className="text-[11px] text-mandi-muted font-medium">CUSTOMER DROP</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[11px] text-mandi-muted font-medium">CUSTOMER DROP</p>
+                              {order.address?.lat && order.address?.lng && (
+                                <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 px-1 py-0.5 rounded border border-emerald-500/30 flex items-center gap-0.5">
+                                  <MapPin size={9} /> GPS PINNED
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs font-bold text-mandi-text">{order.customerName}</p>
                             <p className="text-[11px] text-mandi-text leading-tight mt-0.5">
                               {order.address?.line1}, {order.address?.city} - {order.address?.pincode}
@@ -470,17 +479,19 @@ export default function RiderPortal() {
 
                       {/* Mobile Driver Action Buttons */}
                       <div className="grid grid-cols-3 gap-2 pt-1">
-                        <a 
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                            `${order.address?.line1 || ''}, ${order.address?.city || 'Virar'}, ${order.address?.pincode || '401305'}`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="py-2 px-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 font-bold text-xs flex items-center justify-center gap-1 active:scale-95"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const lat = order.address?.lat;
+                            const lng = order.address?.lng;
+                            const label = `${order.address?.line1 || ''}, ${order.address?.city || 'Virar'}, ${order.address?.pincode || '401305'}`;
+                            openGoogleMapsNavigation(lat, lng, label);
+                          }}
+                          className="py-2 px-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 cursor-pointer"
                         >
                           <Navigation size={13} />
                           <span>Maps</span>
-                        </a>
+                        </button>
 
                         <a 
                           href={`tel:${order.customerPhone || '+919820112345'}`}
@@ -580,7 +591,9 @@ export default function RiderPortal() {
           <div className="bg-mandi-card border border-mandi-border rounded-2xl p-3 shadow-md space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="badge-green text-[10px]">CURRENT TARGET DROP</span>
-              <span className="font-mono font-bold text-sky-400">1.4 km • ~6 mins</span>
+              <span className="font-mono font-bold text-sky-400">
+                {liveRouteInfo ? `${liveRouteInfo.distanceKm} km • ~${liveRouteInfo.durationMins} mins` : '1.4 km • ~6 mins'}
+              </span>
             </div>
             <p className="text-xs font-bold text-mandi-text line-clamp-1">
               {currentFocusOrder?.customerName || 'Customer Drop'}
@@ -593,24 +606,28 @@ export default function RiderPortal() {
           <div className="flex-1 rounded-2xl overflow-hidden border border-mandi-border min-h-[360px] shadow-inner">
             <RiderTrackerMap
               orderId={currentFocusOrder?.id || ''}
-              storeId="store-mahalaxmi-1"
-              customerPincode={currentFocusOrder?.customerPincode || '401305'}
+              storeId={currentFocusOrder?.storeId || 'store-mahalaxmi-1'}
+              customerPincode={currentFocusOrder?.customerPincode || currentFocusOrder?.address?.pincode || '401305'}
+              customerCoordinates={currentFocusOrder?.address?.lat && currentFocusOrder?.address?.lng ? { lat: currentFocusOrder.address.lat, lng: currentFocusOrder.address.lng, label: currentFocusOrder.address.line1 } : null}
               orderStatus={currentFocusOrder?.status || 'out_for_delivery'}
+              onRouteCalculated={setLiveRouteInfo}
             />
           </div>
 
           {/* Quick Turn-by-turn Navigation Button */}
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-              `${currentFocusOrder?.address?.line1 || ''}, ${currentFocusOrder?.address?.city || 'Virar'}, Maharashtra ${currentFocusOrder?.address?.pincode || '401305'}`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full btn-primary py-3 px-4 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-mandi-green/20"
+          <button
+            type="button"
+            onClick={() => {
+              const lat = currentFocusOrder?.address?.lat;
+              const lng = currentFocusOrder?.address?.lng;
+              const label = `${currentFocusOrder?.address?.line1 || ''}, ${currentFocusOrder?.address?.city || 'Virar'}, Maharashtra ${currentFocusOrder?.address?.pincode || '401305'}`;
+              openGoogleMapsNavigation(lat, lng, label);
+            }}
+            className="w-full btn-primary py-3 px-4 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-mandi-green/20 cursor-pointer"
           >
             <Navigation size={14} />
             <span>Open Live Google Maps Navigation</span>
-          </a>
+          </button>
         </main>
       )}
 
@@ -783,7 +800,7 @@ export default function RiderPortal() {
       )}
 
       {/* ─── NATIVE FIXED BOTTOM TAB NAVIGATION BAR (Like Swiggy / Zepto Partner) ─── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-mandi-card/95 backdrop-blur-lg border-t border-mandi-border px-3 py-2 flex items-center justify-around shadow-2xl">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-mandi-card/95 backdrop-blur-lg border-t border-mandi-border px-3 pt-2 pb-app-nav flex items-center justify-around shadow-2xl">
         <button
           id="nav-tab-drops"
           onClick={() => { triggerHaptic([30]); setActiveTab('drops'); }}

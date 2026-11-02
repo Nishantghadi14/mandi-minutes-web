@@ -10,7 +10,7 @@ function ScrollToTop() {
   return null;
 }
 import { HelmetProvider } from 'react-helmet-async';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LocationProvider } from './context/LocationContext';
 import { DataProvider } from './context/DataContext';
@@ -24,8 +24,10 @@ import CartDrawer from './components/common/CartDrawer';
 import FloatingCartBar from './components/common/FloatingCartBar';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
+import AppTutorialModal from './components/common/AppTutorialModal';
+import { useTutorialStore } from './store/useTutorialStore';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { isNativeApp, isInAppMode, isRiderApp } from './utils/platform';
+import { isNativeApp, isInAppMode, isRiderApp, redirectToRiderApp } from './utils/platform';
 
 // Lazy load pages for chunk splitting & mobile optimization
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -76,12 +78,43 @@ function PageLoader() {
 }
 
 function AppContent() {
+  const { user } = useAuth();
   const location = useLocation();
   const { pathname, search } = location;
   const isRider = isRiderApp() || pathname.startsWith('/rider');
   const inAppMode = isInAppMode(pathname) || isRider;
   const isNoBottomNav = isRider || (!inAppMode && (['/checkout', '/admin', '/rider', '/reset-password', '/auth/action'].includes(pathname) || pathname.startsWith('/order-status') || pathname.startsWith('/vendor')));
   const hideNavbar = isRider || inAppMode;
+
+  // Auto-redirect authenticated riders to the dedicated Rider app/portal
+  useEffect(() => {
+    if (user?.role === 'rider' && !isRiderApp() && !pathname.startsWith('/rider')) {
+      redirectToRiderApp();
+    }
+  }, [user, pathname]);
+
+  // Auto-trigger tutorial on first launch for guest / new users
+  const { hasSeenTutorial, openTutorial } = useTutorialStore();
+
+  useEffect(() => {
+    if (isNativeApp()) {
+      document.documentElement.classList.add('is-native-app');
+      document.body.classList.add('is-native-app');
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only auto-trigger for customer-facing views (not rider, vendor, admin, or reset)
+    const isSpecialPortal = isRider || pathname.startsWith('/vendor') || pathname.startsWith('/admin') || pathname.startsWith('/reset-password') || pathname.startsWith('/auth/action');
+    if (isSpecialPortal) return;
+
+    if (!hasSeenTutorial()) {
+      const timer = setTimeout(() => {
+        openTutorial(0);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, isRider, hasSeenTutorial, openTutorial]);
 
   // Intercept any password reset or email action links landing on generic URLs
   const searchParams = new URLSearchParams(search);
@@ -136,6 +169,7 @@ function AppContent() {
       {!isRider && <CartDrawer />}
       {!isRider && <LocationModal />}
       <AuthModal />
+      <AppTutorialModal />
     </div>
   );
 }

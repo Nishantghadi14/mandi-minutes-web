@@ -320,16 +320,22 @@ describe('Enhanced Dark Mode Architecture & Tokens', () => {
     expect(indexCss).toContain('--clay-card-shadow:');
   });
 
-  it('guarantees mobile and app headers provide accessible theme toggles', async () => {
+  it('guarantees theme toggle is preserved in settings/profile while kept hidden from headers', async () => {
     const fs = await import('fs');
     const path = await import('path');
     const navbarContent = fs.readFileSync(path.resolve(__dirname, '../src/components/common/Navbar.jsx'), 'utf-8');
     const appHomeContent = fs.readFileSync(path.resolve(__dirname, '../src/pages/MobileAppHome.jsx'), 'utf-8');
+    const profileContent = fs.readFileSync(path.resolve(__dirname, '../src/pages/ProfilePage.jsx'), 'utf-8');
 
-    expect(navbarContent).toContain('toggleTheme');
-    expect(navbarContent).toContain('lg:hidden'); // Mobile/tablet quick theme button
-    expect(appHomeContent).toContain('toggleTheme');
-    expect(appHomeContent).toContain('Toggle Dark / Light Mode');
+    // Headers should not clutter UI with duplicate theme toggles
+    expect(navbarContent).not.toContain('id="theme-toggle-btn"');
+    expect(navbarContent).not.toContain('Toggle Theme');
+    expect(appHomeContent).not.toContain('Toggle Dark / Light Mode');
+
+    // Settings (ProfilePage) must preserve the theme toggle
+    expect(profileContent).toContain('Theme Mode');
+    expect(profileContent).toContain('toggleTheme');
+    expect(profileContent).toContain('id="theme-toggle-btn"');
   });
 
   it('guarantees product quantity pill and counter have no white outlines in dark mode', async () => {

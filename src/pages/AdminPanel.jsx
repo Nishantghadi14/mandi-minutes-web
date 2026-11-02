@@ -1,15 +1,18 @@
-import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import { useTheme } from '../context/ThemeContext';
 import LazyImage from '../components/common/LazyImage';
 import ImageUploadField from '../components/common/ImageUploadField';
 import { isFirebaseConfigured } from '../config/firebase';
+import { getAppHomePath } from '../utils/platform';
 import {
   Shield, Store, Megaphone, HelpCircle, Check, X, Plus, Trash2, RefreshCw,
   ShieldAlert, Activity, TrendingUp, Database, XCircle, Search,
   Users, Tag, Ban, RotateCcw, ExternalLink, Sun, Moon,
+  Wallet, Calendar, Download, CheckCircle2, Clock, Percent, MessageCircle,
+  ArrowLeft, Home
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -105,10 +108,27 @@ export default function AdminPanel() {
     retryFetch, loadingStates, errorStates,
   } = useData();
   const { addToast } = useToast();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('orders');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromQuery = searchParams.get('tab');
+  const [activeTab, setActiveTabState] = useState(() => tabFromQuery || 'orders');
+
+  const setActiveTab = (tabId) => {
+    setActiveTabState(tabId);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tabId);
+      return next;
+    }, { replace: true });
+  };
+
+  useEffect(() => {
+    if (tabFromQuery && tabFromQuery !== activeTab) {
+      setActiveTabState(tabFromQuery);
+    }
+  }, [tabFromQuery, activeTab]);
   const [showAddStoreModal, setShowAddStoreModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -292,9 +312,325 @@ export default function AdminPanel() {
   const refundLabel = (r) => ({ none: 'No Refund', pending: 'Refund Pending', issued: 'Refund Issued' }[r] || r);
   const refundColor = (r) => ({ none: 'text-mandi-muted', pending: 'text-amber-600 dark:text-yellow-400 font-semibold', issued: 'text-emerald-600 dark:text-mandi-green font-semibold' }[r] || '');
 
+  // ── Store Monthly Settlements & Vendor Payouts ──────────────────────────────
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [commissionRate, setCommissionRate] = useState(5); // Default 5% platform commission fee
+  const [settlementSearch, setSettlementSearch] = useState('');
+  const [settlementFilter, setSettlementFilter] = useState('all'); // 'all', 'pending', 'settled'
+  const [settledStores, setSettledStores] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mandi_settled_stores') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleSettleStore = (storeId, storeName = 'Store Partner', amount = 0) => {
+    const key = `${selectedMonth}_${storeId}`;
+    setSettledStores(prev => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+        addToast(`Marked payout for ${storeName} as pending`, 'info');
+      } else {
+        const numAmount = Number(amount) || 0;
+        next[key] = {
+          date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+          amount: numAmount,
+          month: selectedMonth,
+        };
+        addToast(`Marked ₹${numAmount.toLocaleString('en-IN')} payout as settled for ${storeName}!`, 'success');
+      }
+      try {
+        localStorage.setItem('mandi_settled_stores', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set();
+    const now = new Date();
+    const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    monthsSet.add(curKey);
+
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    orders.forEach(o => {
+      if (o.placedAt) {
+        const d = new Date(o.placedAt);
+        if (!isNaN(d.getTime())) {
+          monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+      }
+    });
+
+    return Array.from(monthsSet).sort().reverse();
+  }, [orders]);
+
+  const formatMonthLabel = (mKey) => {
+    const [yStr, mStr] = mKey.split('-');
+    const date = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, 1);
+    const now = new Date();
+    const isCurrent = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    const formatted = date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    return isCurrent ? `${formatted} (Current Month)` : formatted;
+  };
+
+  const monthDueDate = useMemo(() => {
+    const [yStr, mStr] = selectedMonth.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10);
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthName = new Date(year, month - 1, 1).toLocaleString('en-IN', { month: 'short' });
+    return `${lastDay} ${monthName} ${year}`;
+  }, [selectedMonth]);
+
+  const monthlySettlements = useMemo(() => {
+    const [yStr, mStr] = selectedMonth.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    const storeMap = {};
+    stores.forEach(s => {
+      storeMap[s.id] = {
+        storeId: s.id,
+        storeName: s.name,
+        ownerName: s.ownerName || 'Kirana Partner',
+        phone: s.ownerPhone || s.phone || '—',
+        email: s.ownerEmail || s.email || '—',
+        city: s.city || 'Virar',
+        address: s.address || 'Virar West',
+        image: s.image || '',
+        status: s.status || 'approved',
+        vendorUrl: `/vendor?storeId=${s.id}`,
+        ordersCount: 0,
+        deliveredOrdersCount: 0,
+        cancelledOrdersCount: 0,
+        itemsSold: 0,
+        grossSales: 0,
+        commissionFee: 0,
+        netPayable: 0,
+        topItems: {},
+      };
+    });
+
+    orders.forEach(o => {
+      if (!o.placedAt) return;
+      const d = new Date(o.placedAt);
+      if (isNaN(d.getTime()) || d < startDate || d > endDate) return;
+
+      const sid = o.storeId || 'default-store';
+      if (!storeMap[sid]) {
+        storeMap[sid] = {
+          storeId: sid,
+          storeName: o.storeName || `Store #${sid}`,
+          ownerName: 'Kirana Partner',
+          phone: '—',
+          email: '—',
+          city: 'Virar',
+          address: 'Virar West',
+          image: '',
+          status: 'approved',
+          vendorUrl: `/vendor?storeId=${sid}`,
+          ordersCount: 0,
+          deliveredOrdersCount: 0,
+          cancelledOrdersCount: 0,
+          itemsSold: 0,
+          grossSales: 0,
+          commissionFee: 0,
+          netPayable: 0,
+          topItems: {},
+        };
+      }
+
+      const st = storeMap[sid];
+      st.ordersCount += 1;
+
+      if (o.status !== 'cancelled') {
+        const orderTotal = Number(o.total) || 0;
+        st.grossSales += orderTotal;
+        if (o.status === 'delivered') st.deliveredOrdersCount += 1;
+
+        if (Array.isArray(o.items)) {
+          o.items.forEach(it => {
+            const qty = Number(it.quantity) || 1;
+            st.itemsSold += qty;
+            const iname = it.name || 'Item';
+            st.topItems[iname] = (st.topItems[iname] || 0) + qty;
+          });
+        }
+      } else {
+        st.cancelledOrdersCount += 1;
+      }
+    });
+
+    const parsedCommRate = Math.max(0, Math.min(100, Number(commissionRate) || 0));
+
+    return Object.values(storeMap).map(st => {
+      const comm = Math.round(st.grossSales * (parsedCommRate / 100));
+      const payable = Math.max(0, st.grossSales - comm);
+      const settleKey = `${selectedMonth}_${st.storeId}`;
+      const isSettled = Boolean(settledStores[settleKey]);
+      const settledDate = settledStores[settleKey]?.date || null;
+
+      const sortedItems = Object.entries(st.topItems)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, qty]) => `${name} (${qty})`);
+
+      return {
+        ...st,
+        commissionFee: comm,
+        netPayable: payable,
+        isSettled,
+        settledDate,
+        topItemsSummary: sortedItems.join(', '),
+      };
+    }).sort((a, b) => b.grossSales - a.grossSales);
+  }, [stores, orders, selectedMonth, commissionRate, settledStores]);
+
+  const filteredSettlements = useMemo(() => {
+    return monthlySettlements.filter(s => {
+      const q = settlementSearch.toLowerCase().trim();
+      if (q) {
+        const matchName = s.storeName.toLowerCase().includes(q);
+        const matchOwner = s.ownerName.toLowerCase().includes(q);
+        const matchPhone = s.phone.includes(q);
+        if (!matchName && !matchOwner && !matchPhone) return false;
+      }
+      if (settlementFilter === 'pending' && s.isSettled) return false;
+      if (settlementFilter === 'settled' && !s.isSettled) return false;
+      return true;
+    });
+  }, [monthlySettlements, settlementSearch, settlementFilter]);
+
+  const settlementTotals = useMemo(() => {
+    return (monthlySettlements || []).reduce(
+      (acc, s) => {
+        const net = Number(s?.netPayable) || 0;
+        acc.totalGrossSales += (Number(s?.grossSales) || 0);
+        acc.totalItemsSold += (Number(s?.itemsSold) || 0);
+        acc.totalOrders += (Number(s?.ordersCount) || 0);
+        acc.totalCommission += (Number(s?.commissionFee) || 0);
+        acc.totalNetPayable += net;
+        if (s?.isSettled) {
+          acc.totalPaid += net;
+          acc.settledPayable += net;
+          acc.settledCount += 1;
+        } else {
+          acc.totalPending += net;
+          acc.pendingPayable += net;
+          acc.pendingCount += 1;
+        }
+        return acc;
+      },
+      {
+        totalGrossSales: 0,
+        totalItemsSold: 0,
+        totalOrders: 0,
+        totalCommission: 0,
+        totalNetPayable: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        pendingPayable: 0,
+        settledPayable: 0,
+        settledCount: 0,
+        pendingCount: 0,
+      }
+    );
+  }, [monthlySettlements]);
+
+  const handleExportSettlementsCSV = () => {
+    const headers = [
+      'Store ID',
+      'Store Name',
+      'Owner Name',
+      'Phone',
+      'Month',
+      'Items Sold',
+      'Delivered Orders',
+      'Total Orders',
+      'Gross Sales (INR)',
+      'Commission Rate (%)',
+      'Platform Fee (INR)',
+      'Net Payable (INR)',
+      'Due Date',
+      'Settlement Status',
+      'Settled Date',
+    ];
+
+    const rows = monthlySettlements.map(s => [
+      s.storeId,
+      `"${s.storeName.replace(/"/g, '""')}"`,
+      `"${s.ownerName.replace(/"/g, '""')}"`,
+      `"${s.phone}"`,
+      selectedMonth,
+      s.itemsSold,
+      s.deliveredOrdersCount,
+      s.ordersCount,
+      s.grossSales,
+      commissionRate,
+      s.commissionFee,
+      s.netPayable,
+      `"${monthDueDate}"`,
+      s.isSettled ? 'Settled' : 'Pending',
+      s.settledDate || '—',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `mandi_settlements_${selectedMonth}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    addToast(`Settlement statement exported for ${selectedMonth}!`, 'success');
+  };
+
+  const handleShareStatement = (store) => {
+    const [yStr, mStr] = selectedMonth.split('-');
+    const monthName = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    const text = `*Mandi Minutes Monthly Settlement Statement*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏪 *Store:* ${store.storeName}\n` +
+      `👤 *Partner:* ${store.ownerName}\n` +
+      `📅 *Billing Period:* ${monthName}\n` +
+      `📦 *Items Sold:* ${store.itemsSold} units (${store.ordersCount} orders)\n` +
+      `💰 *Gross Sales:* ₹${(store?.grossSales || 0).toLocaleString('en-IN')}\n` +
+      `⚡ *Platform Fee (${commissionRate}%):* -₹${(store?.commissionFee || 0).toLocaleString('en-IN')}\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `💵 *NET AMOUNT PAYABLE TO YOU: ₹${(store?.netPayable || 0).toLocaleString('en-IN')}*\n` +
+      `⏰ *Due Date:* By ${monthDueDate}\n` +
+      `📌 *Status:* ${store.isSettled ? `✅ Settled on ${store.settledDate}` : '⏳ Pending End-of-Month Settlement'}\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `Thank you for being a valued Mandi Minutes partner! 🚀`;
+
+    if (store.phone && store.phone !== '—') {
+      const cleanPhone = store.phone.replace(/\D/g, '');
+      const waUrl = `https://api.whatsapp.com/send?phone=91${cleanPhone.slice(-10)}&text=${encodeURIComponent(text)}`;
+      window.open(waUrl, '_blank');
+    } else {
+      navigator.clipboard.writeText(text);
+      addToast('Statement copied to clipboard!', 'success');
+    }
+  };
+
   const TABS = [
-    { id: 'analytics', label: 'Analytics & SLA' },
-    { id: 'orders',    label: `Orders (${orders.length})` },
+    { id: 'analytics',   label: 'Analytics & SLA' },
+    { id: 'settlements', label: 'Monthly Settlements & Payouts' },
+    { id: 'orders',      label: `Orders (${orders.length})` },
     { id: 'stores',    label: `Stores (${stores.length})` },
     { id: 'products',  label: `Products (${products.length})` },
     { id: 'users',     label: `Users (${customerList.length})` },
@@ -317,6 +653,21 @@ export default function AdminPanel() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(getAppHomePath());
+              }
+            }}
+            className="w-10 h-10 rounded-xl bg-mandi-surface hover:bg-mandi-surface/80 border border-mandi-border hover:border-emerald-500 text-mandi-muted hover:text-mandi-text flex items-center justify-center transition-all shadow-sm flex-shrink-0 cursor-pointer active:scale-95 group"
+            title="Go back"
+            aria-label="Back"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
+          </button>
           <div className="w-10 h-10 bg-mandi-green rounded-xl flex items-center justify-center text-black font-black flex-shrink-0 shadow-clay-badge">
             <Shield size={22} />
           </div>
@@ -331,6 +682,15 @@ export default function AdminPanel() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
+          {/* Quick Return to Storefront */}
+          <Link
+            to={getAppHomePath()}
+            className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-mandi-border text-mandi-text hover:border-mandi-green hover:text-emerald-600 dark:hover:text-mandi-green transition-all shadow-sm font-semibold"
+            title="Return to Customer Storefront"
+          >
+            <Home size={14} /> Storefront
+          </Link>
+
           {/* Quick Theme Mode Switcher */}
           <button
             onClick={toggleTheme}
@@ -380,7 +740,7 @@ export default function AdminPanel() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <div className="card p-4 transition-transform hover:-translate-y-0.5">
           <span className="text-mandi-muted text-xs font-medium">Platform GMV</span>
           <p className="text-2xl font-black text-emerald-600 dark:text-mandi-green mt-1">₹{totalGMV.toLocaleString('en-IN')}</p>
@@ -406,6 +766,19 @@ export default function AdminPanel() {
           <p className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">{cancelledOrders.length}</p>
           <span className="text-red-600/70 dark:text-red-400/70 text-[11px]">{cancellationRate}% cancellation rate</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('settlements')}
+          className="card p-4 transition-transform hover:-translate-y-0.5 text-left border border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/60 dark:hover:border-mandi-green/60 cursor-pointer group"
+          title="View Monthly Store Settlements & Payouts"
+        >
+          <span className="text-emerald-600 dark:text-mandi-green text-xs font-bold flex items-center justify-between">
+            <span className="flex items-center gap-1"><Wallet size={12} /> Month Payout Due</span>
+            <ExternalLink size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+          </span>
+          <p className="text-2xl font-black text-emerald-600 dark:text-mandi-green mt-1">₹{(settlementTotals?.totalNetPayable || 0).toLocaleString('en-IN')}</p>
+          <span className="text-mandi-subtle text-[11px]">Due {monthDueDate}</span>
+        </button>
       </div>
 
       {/* Tabs */}
@@ -526,6 +899,276 @@ export default function AdminPanel() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* TAB: Monthly Settlements & Payouts */}
+      {activeTab === 'settlements' && (
+        <div className="space-y-6">
+          {/* Header & Controls */}
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-mandi-border">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-mandi-green flex items-center justify-center">
+                    <Wallet size={18} />
+                  </div>
+                  <h3 className="text-mandi-text font-black text-lg">Monthly Store Sales &amp; Partner Settlements</h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-500/30">
+                    <Clock size={11} /> Due by: {monthDueDate}
+                  </span>
+                </div>
+                <p className="text-mandi-muted text-xs mt-1">
+                  Track total units sold, gross sales, platform fees, and net vendor payout owed to each kirana store partner by month-end.
+                </p>
+              </div>
+
+              {/* Month Selector & Actions */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center gap-2 bg-mandi-surface border border-mandi-border px-3 py-1.5 rounded-xl text-xs">
+                  <Calendar size={14} className="text-emerald-600 dark:text-mandi-green flex-shrink-0" />
+                  <span className="text-mandi-muted font-medium">Month:</span>
+                  <select
+                    value={selectedMonth}
+                    onChange={e => setSelectedMonth(e.target.value)}
+                    className="bg-transparent font-bold text-mandi-text outline-none cursor-pointer"
+                  >
+                    {availableMonths.map(m => (
+                      <option key={m} value={m} className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">
+                        {formatMonthLabel(m)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-mandi-surface border border-mandi-border px-3 py-1.5 rounded-xl text-xs">
+                  <Percent size={13} className="text-mandi-muted" />
+                  <span className="text-mandi-muted font-medium">Fee:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={commissionRate}
+                    onChange={e => setCommissionRate(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="w-12 bg-transparent font-bold text-mandi-text text-center outline-none border-b border-mandi-border focus:border-mandi-green"
+                    title="Platform commission percentage deducted from gross sales"
+                  />
+                  <span className="font-bold text-mandi-text">%</span>
+                </div>
+
+                <button
+                  onClick={handleExportSettlementsCSV}
+                  className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 border-emerald-500/40 text-emerald-700 dark:text-mandi-green hover:bg-emerald-500/10 font-bold transition-all shadow-sm"
+                  title="Export monthly settlement statement to CSV"
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+              </div>
+            </div>
+
+            {/* Monthly Summary KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+              <div className="p-3.5 rounded-xl bg-mandi-surface/60 border border-mandi-border">
+                <span className="text-mandi-muted text-[11px] font-semibold uppercase tracking-wider">Things / Items Sold</span>
+                <p className="text-2xl font-black text-mandi-text mt-1">{(settlementTotals?.totalItemsSold || 0).toLocaleString('en-IN')}</p>
+                <span className="text-mandi-subtle text-[11px]">Across {settlementTotals?.totalOrders || 0} delivered orders</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-mandi-surface/60 border border-mandi-border">
+                <span className="text-mandi-muted text-[11px] font-semibold uppercase tracking-wider">Store Gross Sales</span>
+                <p className="text-2xl font-black text-emerald-600 dark:text-mandi-green mt-1">₹{(settlementTotals?.totalGrossSales || 0).toLocaleString('en-IN')}</p>
+                <span className="text-mandi-subtle text-[11px]">Delivered GMV for {formatMonthLabel(selectedMonth)}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-mandi-surface/60 border border-mandi-border">
+                <span className="text-mandi-muted text-[11px] font-semibold uppercase tracking-wider">Platform Fee ({commissionRate}%)</span>
+                <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">₹{(settlementTotals?.totalCommission || 0).toLocaleString('en-IN')}</p>
+                <span className="text-mandi-subtle text-[11px]">Platform commission revenue</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <span className="text-emerald-700 dark:text-mandi-green text-[11px] font-bold uppercase tracking-wider">Total Net Payable</span>
+                <p className="text-2xl font-black text-emerald-600 dark:text-mandi-green mt-1">₹{(settlementTotals?.totalNetPayable || 0).toLocaleString('en-IN')}</p>
+                <div className="flex items-center gap-2 text-[11px] text-mandi-subtle mt-0.5 font-medium">
+                  <span className="text-amber-600 dark:text-amber-400">⏳ ₹{(settlementTotals?.pendingPayable ?? settlementTotals?.totalPending ?? 0).toLocaleString('en-IN')} pending</span>
+                  <span>·</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">✓ ₹{(settlementTotals?.settledPayable ?? settlementTotals?.totalPaid ?? 0).toLocaleString('en-IN')} settled</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="relative w-full sm:w-80">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-mandi-subtle pointer-events-none" />
+                <input
+                  type="text"
+                  value={settlementSearch}
+                  onChange={e => setSettlementSearch(e.target.value)}
+                  placeholder="Search store name, partner or phone..."
+                  className="input-field pl-9 text-xs w-full py-2"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <select
+                  value={settlementFilter}
+                  onChange={e => setSettlementFilter(e.target.value)}
+                  className="input-field text-xs py-1.5 px-3 bg-mandi-surface text-mandi-text border-mandi-border"
+                >
+                  <option value="all" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">All Stores ({monthlySettlements.length})</option>
+                  <option value="pending" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Pending Payout</option>
+                  <option value="settled" className="bg-white dark:bg-[#131B28] text-slate-900 dark:text-slate-100">Settled Only</option>
+                </select>
+
+                {(settlementSearch || settlementFilter !== 'all') && (
+                  <button
+                    onClick={() => { setSettlementSearch(''); setSettlementFilter('all'); }}
+                    className="text-xs text-mandi-muted hover:text-red-500 transition-colors flex items-center gap-1 px-2 py-1.5"
+                  >
+                    <X size={13} /> Reset
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="text-mandi-subtle text-xs">
+              Showing settlement statements for {filteredSettlements.length} of {monthlySettlements.length} kirana stores
+            </p>
+          </div>
+
+          {/* Settlements Store Breakdown List / Table */}
+          {filteredSettlements.length === 0 ? (
+            <div className="card p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-mandi-surface rounded-full flex items-center justify-center mx-auto text-mandi-muted">
+                <Wallet size={24} />
+              </div>
+              <h3 className="text-mandi-text font-bold text-base">No Store Settlements Found</h3>
+              <p className="text-mandi-muted text-xs max-w-sm mx-auto">
+                No stores match your current filters or selected billing month. Try clearing search filters or changing the month.
+              </p>
+            </div>
+          ) : (
+            <div className="card overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-mandi-surface text-mandi-muted uppercase tracking-wider text-[11px] border-b border-mandi-border">
+                  <tr>
+                    <th className="p-3.5">Store / Partner</th>
+                    <th className="p-3.5 text-center">Items Sold</th>
+                    <th className="p-3.5 text-right">Gross Sales</th>
+                    <th className="p-3.5 text-right">Fee ({commissionRate}%)</th>
+                    <th className="p-3.5 text-right">Net Payable by End of Month</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-mandi-border">
+                  {filteredSettlements.map(st => (
+                    <tr key={st.storeId} className="hover:bg-mandi-surface/60 transition-colors">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-3">
+                          <LazyImage
+                            src={st.image}
+                            alt={st.storeName}
+                            className="w-full h-full object-cover rounded-lg"
+                            containerClass="w-10 h-10 rounded-lg flex-shrink-0"
+                            width={80}
+                            quality={50}
+                          />
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-bold text-mandi-text text-sm">{st.storeName}</p>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${st.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-500/30' : 'bg-mandi-surface text-mandi-muted border-mandi-border'}`}>
+                                {st.status}
+                              </span>
+                            </div>
+                            <p className="text-mandi-muted text-[11px] mt-0.5">
+                              Partner: <strong className="text-mandi-text">{st.ownerName}</strong> · 📞 {st.phone}
+                            </p>
+                            <p className="text-mandi-subtle text-[11px]">{st.address}, {st.city}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        <span className="inline-flex flex-col items-center">
+                          <span className="font-black text-sm text-mandi-text px-2 py-0.5 bg-mandi-surface rounded-md border border-mandi-border">
+                            {st.itemsSold} items
+                          </span>
+                          <span className="text-[10px] text-mandi-subtle mt-1">{st.ordersCount} orders</span>
+                        </span>
+                      </td>
+
+                      <td className="p-3.5 text-right font-bold text-mandi-text text-sm">
+                        ₹{(st?.grossSales || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="p-3.5 text-right text-amber-600 dark:text-amber-400 font-semibold text-xs">
+                        -₹{(st?.commissionFee || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="p-3.5 text-right">
+                        <p className="text-base font-black text-emerald-600 dark:text-mandi-green">
+                          ₹{(st?.netPayable || 0).toLocaleString('en-IN')}
+                        </p>
+                        <span className="text-[10px] text-mandi-subtle">Due {monthDueDate}</span>
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        {st.isSettled ? (
+                          <div className="inline-flex flex-col items-center">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-500/30">
+                              <CheckCircle2 size={12} /> Settled
+                            </span>
+                            <span className="text-[10px] text-mandi-subtle mt-0.5">{st.settledDate}</span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-500/30">
+                            <Clock size={12} /> Pending Payout
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleSettleStore(st.storeId, st.storeName, st.netPayable)}
+                            className={`py-1 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm ${st.isSettled ? 'bg-mandi-surface hover:bg-amber-50 text-amber-700 border border-mandi-border hover:border-amber-300 dark:hover:bg-amber-950/40 dark:text-amber-300' : 'btn-primary'}`}
+                            title={st.isSettled ? 'Revert to Pending' : 'Record store payout as settled'}
+                          >
+                            {st.isSettled ? (
+                              <>
+                                <RotateCcw size={12} /> Undo
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={12} /> Mark Paid
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleShareStatement(st)}
+                            className="py-1 px-2.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-500/30 dark:hover:bg-emerald-900/40 transition-all flex items-center gap-1"
+                            title="Share or copy settlement summary statement"
+                          >
+                            <MessageCircle size={12} /> Slip
+                          </button>
+
+                          <Link
+                            to={st.vendorUrl || `/vendor?storeId=${st.storeId}`}
+                            className="p-1.5 rounded-lg bg-mandi-surface hover:bg-mandi-surface/80 text-mandi-muted hover:text-mandi-text border border-mandi-border transition-all"
+                            title="Open Vendor Dashboard"
+                          >
+                            <ExternalLink size={13} />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -680,6 +1323,17 @@ export default function AdminPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('settlements');
+                    setSettlementSearch(s.name);
+                  }}
+                  className="py-1.5 px-3 text-xs flex items-center gap-1.5 bg-mandi-surface hover:bg-emerald-50 text-emerald-700 dark:text-mandi-green border border-mandi-border hover:border-emerald-500 rounded-xl transition-all font-semibold"
+                  title={`View monthly settlement for ${s.name}`}
+                >
+                  <Wallet size={13} /> Payout Slip
+                </button>
                 <Link
                   to={`/vendor?storeId=${s.id}`}
                   className="py-1.5 px-3 text-xs flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white dark:bg-mandi-green/10 dark:text-mandi-green dark:border-mandi-green/30 dark:hover:bg-mandi-green dark:hover:text-black rounded-xl transition-all font-bold shadow-sm"

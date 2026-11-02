@@ -105,3 +105,84 @@ export const getAppHomePath = () => {
 export const isAndroid = () => {
   return Capacitor.getPlatform() === 'android';
 };
+
+/**
+ * Redirects or launches the dedicated Mandi Rider Partner app.
+ * - On native Android / Capacitor, dispatches an Android Intent to launch com.mandiminutes.rider.
+ * - If not installed or running in a web browser, seamlessly routes to /rider?target=rider.
+ */
+export const redirectToRiderApp = () => {
+  if (typeof window === 'undefined') return;
+
+  const fallbackUrl = `${window.location.origin}/rider?target=rider`;
+
+  // 1. If running natively in Android or on an Android mobile device:
+  if (isNativeApp() || /Android/i.test(navigator?.userAgent || '')) {
+    // Android Intent URI targeting package com.mandiminutes.rider with fallback URL
+    const intentUri = `intent:#Intent;package=com.mandiminutes.rider;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;scheme=mandirider;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+
+    try {
+      window.location.href = intentUri;
+    } catch {
+      window.location.href = fallbackUrl;
+    }
+
+    // Safety fallback: if native app didn't launch within 1.5s (e.g. not installed), redirect to web target
+    setTimeout(() => {
+      try {
+        if (!document.hidden && window.location.pathname !== '/rider') {
+          window.location.href = fallbackUrl;
+        }
+      } catch {}
+    }, 1500);
+    return;
+  }
+
+  // 2. On desktop / web browser / non-Android:
+  window.location.href = fallbackUrl;
+};
+
+/**
+ * Returns a web or app URL for Google Maps turn-by-turn driving navigation.
+ * Uses exact latitude & longitude when available, otherwise falls back to address query.
+ */
+export const getGoogleMapsNavUrl = (lat, lng, addressLabel = 'Customer Doorstep') => {
+  const numLat = Number(lat);
+  const numLng = Number(lng);
+  if (numLat && numLng && !isNaN(numLat) && !isNaN(numLng) && numLat !== 0 && numLng !== 0) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${numLat},${numLng}&travelmode=driving`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressLabel)}&travelmode=driving`;
+};
+
+/**
+ * Launches turn-by-turn driving navigation in Google Maps:
+ * - On native Android / Android devices, triggers direct voice navigation (`google.navigation:q=lat,lng&mode=d`).
+ * - On desktop or mobile browsers, opens Google Maps driving directions in a new tab.
+ */
+export const openGoogleMapsNavigation = (lat, lng, addressLabel = 'Customer Doorstep') => {
+  if (typeof window === 'undefined') return;
+
+  const numLat = Number(lat);
+  const numLng = Number(lng);
+  const hasExactCoords = numLat && numLng && !isNaN(numLat) && !isNaN(numLng) && numLat !== 0 && numLng !== 0;
+  const webUrl = getGoogleMapsNavUrl(lat, lng, addressLabel);
+
+  if (isAndroid() || /Android/i.test(navigator?.userAgent || '')) {
+    if (hasExactCoords) {
+      // Direct native turn-by-turn navigation intent in Google Maps app
+      window.location.href = `google.navigation:q=${numLat},${numLng}&mode=d`;
+      setTimeout(() => {
+        try {
+          if (!document.hidden) {
+            window.open(webUrl, '_blank', 'noopener,noreferrer');
+          }
+        } catch {}
+      }, 1200);
+      return;
+    }
+  }
+
+  window.open(webUrl, '_blank', 'noopener,noreferrer');
+};
+

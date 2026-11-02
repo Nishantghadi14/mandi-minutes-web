@@ -96,7 +96,7 @@ export default function StorePage() {
       <div className="relative h-44 sm:h-56 md:h-72 overflow-hidden bg-mandi-surface">
         <LazyImage src={store.coverImage} alt={`${store.name} cover`} className="w-full h-full object-cover" containerClass="w-full h-full" width={1200} quality={70} />
         <div className="absolute inset-0 bg-gradient-to-t from-mandi-dark via-mandi-dark/30 to-transparent pointer-events-none" />
-        <button onClick={() => navigate(-1)} className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 w-9 h-9 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white active:scale-90">
+        <button onClick={() => navigate(-1)} className="absolute top-app-header-btn left-3.5 sm:left-4 w-9 h-9 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-full flex items-center justify-center transition-all z-20 shadow-md text-white active:scale-90">
           <ArrowLeft size={18} className="text-white" />
         </button>
       </div>

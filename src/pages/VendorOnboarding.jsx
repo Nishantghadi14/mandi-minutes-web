@@ -3,6 +3,7 @@ import { Store, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common/Toast';
 import ImageUploadField from '../components/common/ImageUploadField';
+import AddressMapPicker from '../components/common/AddressMapPicker';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { validateIndianPhone, validateEmail, validatePincode, validateUPI, sanitizeText } from '../utils/validators';
@@ -28,6 +29,8 @@ export default function VendorOnboarding() {
     description: '',
     image: '',
     coverImage: '',
+    lat: null,
+    lng: null,
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -90,6 +93,12 @@ export default function VendorOnboarding() {
       newErrors.upiId = upiCheck.error;
     }
 
+    const latVal = Number(form.lat);
+    const lngVal = Number(form.lng);
+    if (!form.lat || !form.lng || isNaN(latVal) || isNaN(lngVal) || latVal === 0 || lngVal === 0) {
+      newErrors.coordinates = 'Please drop a pin on the map to confirm your physical store location';
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       addToast('Please correct the errors in the form', 'error');
@@ -104,6 +113,8 @@ export default function VendorOnboarding() {
         ownerEmail: emailCheck.value,
         ownerPhone: phoneCheck.value,
         address: address,
+        lat: latVal,
+        lng: lngVal,
         city: sanitizeText(form.city || 'Virar, Palghar', 50),
         pincodes: rawPincodes,
         status: 'approved',
@@ -305,6 +316,31 @@ export default function VendorOnboarding() {
                   {errors.pincodes && <p className="text-red-400 text-xs mt-1">{errors.pincodes}</p>}
                 </div>
               </div>
+
+              {/* Mandatory Physical Store Pin */}
+              <AddressMapPicker
+                lat={form.lat}
+                lng={form.lng}
+                initialPincode="401305"
+                onChange={(coords) => {
+                  setForm((f) => ({
+                    ...f,
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    ...(coords.isGps && coords.city ? { city: coords.city } : {}),
+                    ...(coords.isGps && coords.pincode ? { pincodes: coords.pincode } : {}),
+                  }));
+                  setErrors((err) => ({
+                    ...err,
+                    coordinates: null,
+                    ...(coords.isGps && coords.city ? { city: null } : {}),
+                    ...(coords.isGps && coords.pincode ? { pincodes: null } : {}),
+                  }));
+                }}
+                error={errors.coordinates}
+                pinType="store"
+                height="220px"
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

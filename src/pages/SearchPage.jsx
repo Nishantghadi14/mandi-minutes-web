@@ -113,7 +113,7 @@ export default function SearchPage() {
       </Helmet>
 
       {/* ── Native Zepto / Blinkit App Search Header ── */}
-      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-3 pb-2.5 shadow-md">
+      <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-app-header pb-2.5 shadow-md">
         {/* Row 1: Borderless Modern Back Button + Refined Search Bar Capsule */}
         <div className="flex items-center gap-2">
           {/* Circular modern back button */}

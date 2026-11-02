@@ -13,13 +13,16 @@
     content="Connect with your nearby kirana stores and local vendors for 10-20 minute grocery delivery. Fresh produce, daily essentials, and snacks at local prices." />
   <link rel="canonical" href="https://mandiminutes.com/" />
 
-  <!-- Instant Theme Sync (Prevents Flash of Unstyled Content) -->
+  <!-- Instant Theme & Native Platform Sync (Prevents FOUC & Layout Shift) -->
   <script>
     try {
       const savedTheme = localStorage.getItem('mandi-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
       document.documentElement.classList.toggle('dark', savedTheme === 'dark');
       document.documentElement.classList.toggle('light', savedTheme === 'light');
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        document.documentElement.classList.add('is-native-app');
+      }
     } catch (e) {}
   </script>
 
