@@ -353,4 +353,104 @@ describe('Enhanced Dark Mode Architecture & Tokens', () => {
   });
 });
 
+describe('Time-Aware Delivery Preferences & Live Slot Availability', () => {
+  it('correctly reports store operating status across different hours of the day', async () => {
+    const { getStoreOperatingStatus } = await import('../src/utils/deliverySlots');
+
+    // Daytime 10:30 AM
+    const dayDate = new Date('2026-11-08T10:30:00');
+    const dayStatus = getStoreOperatingStatus(dayDate);
+    expect(dayStatus.isOpen).toBe(true);
+    expect(dayStatus.isSameDayAvailable).toBe(true);
+    expect(dayStatus.status).toBe('open');
+
+    // Late evening 9:15 PM (closing soon)
+    const closingDate = new Date('2026-11-08T21:15:00');
+    const closingStatus = getStoreOperatingStatus(closingDate);
+    expect(closingStatus.isOpen).toBe(true);
+    expect(closingStatus.status).toBe('closing_soon');
+
+    // Night 11:30 PM (stores closed for tonight)
+    const nightDate = new Date('2026-11-08T23:30:00');
+    const nightStatus = getStoreOperatingStatus(nightDate);
+    expect(nightStatus.isOpen).toBe(false);
+    expect(nightStatus.isSameDayAvailable).toBe(false);
+    expect(nightStatus.status).toBe('night_closed');
+    expect(nightStatus.nextOpenTime).toContain('Tomorrow 7:00 AM');
+
+    // Early morning 6:45 AM
+    const earlyDate = new Date('2026-11-08T06:45:00');
+    const earlyStatus = getStoreOperatingStatus(earlyDate);
+    expect(earlyStatus.isOpen).toBe(false);
+    expect(earlyStatus.status).toBe('early_morning');
+  });
+
+  it('dynamically marks expired same-day slots as ended based on cutoff time', async () => {
+    const { getDecoratedSameDaySlots } = await import('../src/utils/deliverySlots');
+
+    // At 2:00 PM, all same-day slots are open
+    const afternoonDate = new Date('2026-11-08T14:00:00');
+    const afternoonSlots = getDecoratedSameDaySlots(afternoonDate);
+    expect(afternoonSlots.every(s => s.isAvailable)).toBe(true);
+
+    // At 8:15 PM, today evening (5PM-8:30PM, cutoff 7:45 PM) has ended
+    const eveningDate = new Date('2026-11-08T20:15:00');
+    const eveningSlots = getDecoratedSameDaySlots(eveningDate);
+    const eveSlot = eveningSlots.find(s => s.id === 'same-day-eve');
+    const nightSlot = eveningSlots.find(s => s.id === 'same-day-night');
+    expect(eveSlot.isAvailable).toBe(false);
+    expect(eveSlot.statusBadge).toContain('Slot Ended');
+    expect(nightSlot.isAvailable).toBe(true);
+
+    // At 10:15 PM, all same-day slots have closed
+    const nightDate = new Date('2026-11-08T22:15:00');
+    const nightSlots = getDecoratedSameDaySlots(nightDate);
+    expect(nightSlots.every(s => !s.isAvailable)).toBe(true);
+  });
+
+  it('resolves smart initial delivery preferences: same-day during daytime, scheduled at night', async () => {
+    const { resolveDeliveryPreference } = await import('../src/utils/deliverySlots');
+
+    // Afternoon: defaults to same-day delivery
+    const afternoon = new Date('2026-11-08T15:00:00');
+    const dayPref = resolveDeliveryPreference(afternoon);
+    expect(dayPref.deliveryMode).toBe('same-day');
+    expect(dayPref.recommendedSameDaySlotId).toBe('same-day-express');
+    expect(dayPref.isNightClosed).toBe(false);
+
+    // Late Night: defaults to scheduled delivery for tomorrow morning
+    const lateNight = new Date('2026-11-08T23:45:00');
+    const nightPref = resolveDeliveryPreference(lateNight);
+    expect(nightPref.deliveryMode).toBe('scheduled');
+    expect(nightPref.recommendedScheduledSlotId).toBe('tom-morn');
+    expect(nightPref.isNightClosed).toBe(true);
+  });
+
+  it('strictly limits same-day delivery availability till 10:00 PM', async () => {
+    const { getStoreOperatingStatus, getDecoratedSameDaySlots } = await import('../src/utils/deliverySlots');
+
+    // 9:30 PM: Same-day delivery is still open (closing soon)
+    const openDate = new Date('2026-11-08T21:30:00');
+    const openStatus = getStoreOperatingStatus(openDate);
+    expect(openStatus.isSameDayAvailable).toBe(true);
+    expect(openStatus.message).toContain('10:00 PM');
+
+    const openSlots = getDecoratedSameDaySlots(openDate);
+    const nightSlot = openSlots.find(s => s.id === 'same-day-night');
+    expect(nightSlot.timeWindow).toContain('10:00 PM');
+    expect(nightSlot.isAvailable).toBe(true);
+
+    // 10:00 PM: Same-day delivery is closed
+    const closedDate = new Date('2026-11-08T22:00:00');
+    const closedStatus = getStoreOperatingStatus(closedDate);
+    expect(closedStatus.isOpen).toBe(false);
+    expect(closedStatus.isSameDayAvailable).toBe(false);
+    expect(closedStatus.status).toBe('night_closed');
+    expect(closedStatus.message).toContain('till 10:00 PM');
+
+    const closedSlots = getDecoratedSameDaySlots(closedDate);
+    expect(closedSlots.every(s => !s.isAvailable)).toBe(true);
+  });
+});
+
 

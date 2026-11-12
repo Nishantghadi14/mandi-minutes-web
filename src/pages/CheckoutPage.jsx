@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useCart } from '../context/CartContext';
@@ -13,6 +13,15 @@ import { createSecureOrder } from '../services/orderService';
 import { validateAddress } from '../utils/validators';
 import { getAppHomePath } from '../utils/platform';
 import { MapPin, Plus, Zap, Clock, Smartphone, Wallet, ChevronRight, Check, AlertCircle, Loader2, Truck } from 'lucide-react';
+import {
+  SAME_DAY_SLOTS,
+  SCHEDULED_SLOTS,
+  getStoreOperatingStatus,
+  getDecoratedSameDaySlots,
+  resolveDeliveryPreference
+} from '../utils/deliverySlots';
+
+export { SAME_DAY_SLOTS, SCHEDULED_SLOTS } from '../utils/deliverySlots';
 
 const PAYMENT_METHODS = [
   { 
@@ -26,75 +35,6 @@ const PAYMENT_METHODS = [
     label: 'Direct UPI Payment (Pay Now)', 
     icon: Smartphone, 
     desc: 'Pay instantly via Google Pay, PhonePe, Paytm, or BHIM to our account' 
-  },
-];
-
-export const SAME_DAY_SLOTS = [
-  {
-    id: 'same-day-express',
-    type: 'same-day',
-    date: 'Today',
-    timeWindow: '15–30 Mins',
-    label: 'Express Instant (15-30 Mins)',
-    desc: 'Hyperlocal rider assigned immediately from store',
-    badge: 'Fastest ⚡',
-  },
-  {
-    id: 'same-day-eve',
-    type: 'same-day',
-    date: 'Today',
-    timeWindow: '05:00 PM – 08:30 PM',
-    label: 'Today Evening (5PM–8:30PM)',
-    desc: 'Fresh doorstep delivery before dinner',
-    badge: 'Popular',
-  },
-  {
-    id: 'same-day-night',
-    type: 'same-day',
-    date: 'Today',
-    timeWindow: '08:30 PM – 10:30 PM',
-    label: 'Tonight (8:30PM–10:30PM)',
-    desc: 'Late evening relaxed doorstep drop',
-    badge: null,
-  },
-];
-
-export const SCHEDULED_SLOTS = [
-  {
-    id: 'tom-morn',
-    type: 'scheduled',
-    date: 'Tomorrow',
-    timeWindow: '07:00 AM – 11:00 AM',
-    label: 'Tomorrow Morning (7AM–11AM)',
-    desc: 'Direct fresh harvest drop right to your door',
-    badge: 'Recommended 🌅',
-  },
-  {
-    id: 'tom-noon',
-    type: 'scheduled',
-    date: 'Tomorrow',
-    timeWindow: '12:00 PM – 04:00 PM',
-    label: 'Tomorrow Afternoon (12PM–4PM)',
-    desc: 'Standard mid-day grocery slot',
-    badge: null,
-  },
-  {
-    id: 'tom-eve',
-    type: 'scheduled',
-    date: 'Tomorrow',
-    timeWindow: '05:00 PM – 08:30 PM',
-    label: 'Tomorrow Evening (5PM–8:30PM)',
-    desc: 'Convenient after-work delivery',
-    badge: null,
-  },
-  {
-    id: 'day-after-morn',
-    type: 'scheduled',
-    date: 'Day After Tomorrow',
-    timeWindow: '08:00 AM – 01:00 PM',
-    label: 'Day After Tomorrow (8AM–1PM)',
-    desc: 'Advance planned weekly groceries',
-    badge: 'Advance 📅',
   },
 ];
 
@@ -128,9 +68,13 @@ export default function CheckoutPage() {
   const [showAddressForm, setShowAddressForm] = useState(!getInitialAddress());
   const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', area: '', landmark: '', city: '', pincode: '', lat: null, lng: null });
   const [addressErrors, setAddressErrors] = useState({});
-  const [deliveryMode, setDeliveryMode] = useState('same-day'); // 'same-day' | 'scheduled'
-  const [selectedSameDaySlotId, setSelectedSameDaySlotId] = useState('same-day-express');
-  const [selectedScheduledSlotId, setSelectedScheduledSlotId] = useState('tom-morn');
+  const initialPref = useMemo(() => resolveDeliveryPreference(), []);
+  const [deliveryMode, setDeliveryMode] = useState(initialPref.deliveryMode); // 'same-day' | 'scheduled'
+  const [selectedSameDaySlotId, setSelectedSameDaySlotId] = useState(initialPref.recommendedSameDaySlotId);
+  const [selectedScheduledSlotId, setSelectedScheduledSlotId] = useState(initialPref.recommendedScheduledSlotId);
+  const operatingStatus = useMemo(() => getStoreOperatingStatus(), []);
+  const liveSameDaySlots = useMemo(() => getDecoratedSameDaySlots(), []);
+
   const [selectedPayment, setSelectedPayment] = useState('cod');
   const [placing, setPlacing] = useState(false);
   const [step, setStep] = useState(1);
@@ -138,7 +82,9 @@ export default function CheckoutPage() {
   const [pendingOrder, setPendingOrder] = useState(null);
 
   const currentSlot = deliveryMode === 'same-day'
-    ? (SAME_DAY_SLOTS.find(s => s.id === selectedSameDaySlotId) || SAME_DAY_SLOTS[0])
+    ? (liveSameDaySlots.find(s => s.id === selectedSameDaySlotId && s.isAvailable)
+        || liveSameDaySlots.find(s => s.isAvailable)
+        || SAME_DAY_SLOTS[0])
     : (SCHEDULED_SLOTS.find(s => s.id === selectedScheduledSlotId) || SCHEDULED_SLOTS[0]);
 
   // Sync saved address when user profile loads - never wipe out valid local address
@@ -204,6 +150,7 @@ export default function CheckoutPage() {
     const addr = { ...check.sanitized, id: `addr-${Date.now()}`, isDefault: true };
     try {
       localStorage.setItem('mandi_checkout_address', JSON.stringify(addr));
+      localStorage.setItem('mandi_active_address', JSON.stringify(addr));
     } catch {}
 
     const updated = [addr, ...(user?.addresses || [])];
@@ -361,7 +308,13 @@ export default function CheckoutPage() {
                   {user.addresses.map(addr => (
                     <div 
                       key={addr.id} 
-                      onClick={() => setSelectedAddress(addr)} 
+                      onClick={() => {
+                        setSelectedAddress(addr);
+                        try {
+                          localStorage.setItem('mandi_checkout_address', JSON.stringify(addr));
+                          localStorage.setItem('mandi_active_address', JSON.stringify(addr));
+                        } catch {}
+                      }} 
                       className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                         selectedAddress?.id === addr.id 
                           ? 'border-mandi-green bg-mandi-green-muted ring-1 ring-mandi-green' 
@@ -591,12 +544,20 @@ export default function CheckoutPage() {
                         <Zap size={15} className={deliveryMode === 'same-day' ? 'text-mandi-green' : 'text-mandi-muted'} />
                         Same-Day Delivery
                       </span>
-                      <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-1.5 py-0.5 rounded">
-                        Today
+                      <span className={`${
+                        operatingStatus.isSameDayAvailable
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      } text-[10px] font-black px-1.5 py-0.5 rounded border`}>
+                        {operatingStatus.isSameDayAvailable
+                          ? (operatingStatus.status === 'closing_soon' ? 'Closing Soon' : 'Today')
+                          : 'Opens 7 AM'}
                       </span>
                     </div>
                     <p className="text-[11px] text-mandi-muted leading-tight">
-                      Instant 15–30 min or evening drop today
+                      {operatingStatus.isSameDayAvailable
+                        ? 'Instant 15–30 min or evening drop till 10 PM'
+                        : 'Delivery closed for tonight (available till 10 PM) • Opens 7 AM'}
                     </p>
                   </button>
 
@@ -614,8 +575,8 @@ export default function CheckoutPage() {
                         <Clock size={15} className={deliveryMode === 'scheduled' ? 'text-mandi-green' : 'text-mandi-muted'} />
                         Schedule Delivery
                       </span>
-                      <span className="bg-amber-500/20 text-amber-300 text-[10px] font-black px-1.5 py-0.5 rounded">
-                        Pick Slot
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black px-1.5 py-0.5 rounded">
+                        Tomorrow 7 AM
                       </span>
                     </div>
                     <p className="text-[11px] text-mandi-muted leading-tight">
@@ -623,6 +584,27 @@ export default function CheckoutPage() {
                     </p>
                   </button>
                 </div>
+
+                {/* Operating Status Alert */}
+                {!operatingStatus.isSameDayAvailable && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-3">
+                    <Clock size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-amber-200">
+                        {operatingStatus.status === 'night_closed' ? 'Delivery Closed for Tonight (Available till 10:00 PM)' : 'Opening Soon at 7:00 AM'}
+                      </p>
+                      <p className="text-[11px] text-amber-300/80 mt-0.5">
+                        {operatingStatus.message}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {operatingStatus.status === 'closing_soon' && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs mb-3">
+                    <Zap size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
+                    <span className="font-semibold">{operatingStatus.message}</span>
+                  </div>
+                )}
 
                 {/* Slot Selection Grid for Active Mode */}
                 <div className="space-y-2">
@@ -636,47 +618,74 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(deliveryMode === 'same-day' ? SAME_DAY_SLOTS : SCHEDULED_SLOTS).map(slot => {
+                    {(deliveryMode === 'same-day' ? liveSameDaySlots : SCHEDULED_SLOTS).map(slot => {
                       const isSelected = deliveryMode === 'same-day'
                         ? selectedSameDaySlotId === slot.id
                         : selectedScheduledSlotId === slot.id;
+                      const isSlotDisabled = deliveryMode === 'same-day' && slot.isAvailable === false;
 
                       return (
                         <div
                           key={slot.id}
                           onClick={() => {
+                            if (isSlotDisabled) {
+                              addToast(`${slot.label} has ended for today. Please select an active delivery window.`, 'info');
+                              return;
+                            }
                             if (deliveryMode === 'same-day') {
                               setSelectedSameDaySlotId(slot.id);
                             } else {
                               setSelectedScheduledSlotId(slot.id);
                             }
                           }}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                            isSelected
-                              ? 'border-mandi-green bg-mandi-green-muted ring-1 ring-mandi-green shadow-clay-badge'
-                              : 'border-mandi-border hover:border-mandi-border-light bg-mandi-surface/50'
+                          className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+                            isSlotDisabled
+                              ? 'border-mandi-border/40 bg-mandi-surface/30 opacity-60 cursor-not-allowed select-none'
+                              : isSelected
+                                ? 'border-mandi-green bg-mandi-green-muted ring-1 ring-mandi-green shadow-clay-badge cursor-pointer'
+                                : 'border-mandi-border hover:border-mandi-border-light bg-mandi-surface/50 cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                              isSelected ? 'border-mandi-green bg-mandi-green' : 'border-mandi-border'
+                              isSlotDisabled
+                                ? 'border-mandi-border bg-transparent'
+                                : isSelected
+                                  ? 'border-mandi-green bg-mandi-green'
+                                  : 'border-mandi-border'
                             }`}>
-                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                              {isSelected && !isSlotDisabled && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-xs text-mandi-text">{slot.label}</span>
-                                {slot.badge && (
+                                <span className={`font-bold text-xs ${isSlotDisabled ? 'text-mandi-muted line-through' : 'text-mandi-text'}`}>
+                                  {slot.label}
+                                </span>
+                                {slot.statusBadge ? (
+                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                                    isSlotDisabled
+                                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                      : slot.statusBadge.includes('Closing')
+                                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                  }`}>
+                                    {slot.statusBadge}
+                                  </span>
+                                ) : slot.badge ? (
                                   <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-1.5 py-0.5 rounded">
                                     {slot.badge}
                                   </span>
-                                )}
+                                ) : null}
                               </div>
-                              <p className="text-mandi-muted text-[11px] truncate mt-0.5">{slot.desc}</p>
+                              <p className="text-mandi-muted text-[11px] truncate mt-0.5">
+                                {isSlotDisabled ? (slot.statusReason || 'Slot closed for today') : slot.desc}
+                              </p>
                             </div>
                           </div>
-                          <span className="text-[11px] font-bold text-mandi-green ml-2 flex-shrink-0">
-                            {deliveryCharge === 0 ? 'FREE' : '₹' + deliveryCharge}
+                          <span className={`text-[11px] font-bold ml-2 flex-shrink-0 ${
+                            isSlotDisabled ? 'text-mandi-muted' : 'text-mandi-green'
+                          }`}>
+                            {isSlotDisabled ? '—' : deliveryCharge === 0 ? 'FREE' : '₹' + deliveryCharge}
                           </span>
                         </div>
                       );

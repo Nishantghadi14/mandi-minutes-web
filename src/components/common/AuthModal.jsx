@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, CheckCircle2, ArrowLeft, KeyRound, RotateCw, Clipboard, ArrowRight, AlertCircle, Sparkles, Bike } from 'lucide-react';
+import { X, Eye, EyeOff, Phone, Mail, Lock, User, ShieldCheck, CheckCircle2, ArrowLeft, KeyRound, RotateCw, Clipboard, ArrowRight, AlertCircle, Bike } from 'lucide-react';
 import { RecaptchaVerifier } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,10 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from './Toast';
 import { validateIndianPhone, validateEmail, sanitizeText } from '../../utils/validators';
 import { redirectToRiderApp } from '../../utils/platform';
+
+// Feature toggles (temporarily disabled as per user request)
+const ENABLE_PHONE_OTP = false;
+const ENABLE_SIGN_UP = false;
 
 export default function AuthModal() {
   const { 
@@ -25,7 +29,8 @@ export default function AuthModal() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [tab, setTab] = useState('email');
-  const [mode, setMode] = useState(authModal.mode || 'login');
+  const initialMode = (!ENABLE_SIGN_UP && authModal.mode === 'register') ? 'login' : (authModal.mode || 'login');
+  const [mode, setMode] = useState(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -107,7 +112,10 @@ export default function AuthModal() {
 
   useEffect(() => {
     // Reset confirmation and recaptcha when modal is closed
-    if (!authModal.open) {
+    if (authModal.open) {
+      const nextMode = (!ENABLE_SIGN_UP && authModal.mode === 'register') ? 'login' : (authModal.mode || 'login');
+      setMode(nextMode);
+    } else {
       setOtpSent(false);
       setPhoneResendCooldown(0);
       setConfirmationResult(null);
@@ -126,7 +134,7 @@ export default function AuthModal() {
         }
       }
     }
-  }, [authModal.open]);
+  }, [authModal.open, authModal.mode]);
 
   if (!authModal.open) return null;
 
@@ -313,17 +321,25 @@ export default function AuthModal() {
 
   const setupRecaptcha = () => {
     if (!isFirebaseConfigured || !auth) return null;
-    if (!recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          setError('reCAPTCHA expired. Please try sending OTP again.');
-        },
-      });
+    if (typeof window === 'undefined') return null;
+
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch {}
+      recaptchaVerifierRef.current = null;
     }
+
+    recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        // reCAPTCHA solved
+      },
+      'expired-callback': () => {
+        setError('reCAPTCHA security check expired. Please tap Resend OTP.');
+      },
+    });
+
     return recaptchaVerifierRef.current;
   };
 
@@ -338,20 +354,16 @@ export default function AuthModal() {
     setLoading(true);
     setError('');
     try {
-      const isDev = import.meta.env.DEV || (typeof process !== 'undefined' && process.env?.VITEST);
-      const appVerifier = isDev ? null : setupRecaptcha();
+      const isTestRunner = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+      const appVerifier = isTestRunner ? null : setupRecaptcha();
       const confirmResult = await sendPhoneOtp(phoneCheck.value, appVerifier);
       setConfirmationResult(confirmResult);
       setOtpSent(true);
       setPhoneResendCooldown(30);
 
-      if (isDev) {
-        addToast(`Dev OTP generated! Check your terminal for +91 ${phoneCheck.value}`, 'success', 5000);
-      } else {
-        addToast(`OTP sent to +91 ${phoneCheck.value}`, 'info', 5000);
-      }
+      addToast(`Verification code sent via SMS to +91 ${phoneCheck.value}`, 'success', 5000);
     } catch (err) {
-      setError(err.message || 'Failed to send OTP. Please check your phone number.');
+      setError(err.message || 'Failed to send SMS OTP. Please check your mobile number.');
       if (recaptchaVerifierRef.current) {
         try {
           recaptchaVerifierRef.current.clear();
@@ -422,12 +434,12 @@ export default function AuthModal() {
               <h2 className="text-base sm:text-lg font-black text-mandi-text leading-tight">
                 {mode === 'forgot' 
                   ? (resetStep === 'new-password' ? 'Create New Password' : resetStep === 'verify' ? 'Enter Verification Code' : 'Reset Password')
-                  : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                  : (ENABLE_SIGN_UP && mode === 'register') ? 'Create Account' : 'Welcome Back'}
               </h2>
               <p className="text-mandi-muted text-[11px] sm:text-xs leading-tight">
                 {mode === 'forgot'
                   ? (resetStep === 'new-password' ? 'Create a secure new password' : resetStep === 'verify' ? 'Put the code from your email to verify' : 'Enter email to receive reset code')
-                  : mode === 'login' ? 'Login to your verified account' : 'Join Mandi Minutes today'}
+                  : (ENABLE_SIGN_UP && mode === 'register') ? 'Join Mandi Minutes today' : 'Log in to your account'}
               </p>
             </div>
           </div>
@@ -697,25 +709,27 @@ export default function AuthModal() {
           )
         ) : (
           <>
-            {/* Tabs */}
-            <div className="flex bg-mandi-surface rounded-2xl p-1 mb-4 shadow-clay-inset">
-              {[{id:'email',label:'Email & Password'},{id:'phone',label:'Phone OTP'}].map(t=>(
-                <button 
-                  key={t.id} 
-                  onClick={() => { setTab(t.id); setError(''); }} 
-                  className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${tab === t.id ? 'bg-mandi-green text-black clay-btn-green' : 'text-mandi-muted hover:text-mandi-text'}`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {/* Tabs (only shown when Phone OTP is enabled) */}
+            {ENABLE_PHONE_OTP && (
+              <div className="flex bg-mandi-surface rounded-2xl p-1 mb-4 shadow-clay-inset">
+                {[{id:'email',label:'Email & Password'},{id:'phone',label:'Phone OTP'}].map(t=>(
+                  <button 
+                    key={t.id} 
+                    onClick={() => { setTab(t.id); setError(''); }} 
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${tab === t.id ? 'bg-mandi-green text-black clay-btn-green' : 'text-mandi-muted hover:text-mandi-text'}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Invisible Recaptcha Container for Phone Auth */}
-            <div id="recaptcha-container"></div>
+            {ENABLE_PHONE_OTP && <div id="recaptcha-container"></div>}
 
-            {tab === 'email' ? (
+            {(!ENABLE_PHONE_OTP || tab === 'email') ? (
               <form onSubmit={handleEmailAuth} className="space-y-3">
-                {mode === 'register' && (
+                {ENABLE_SIGN_UP && mode === 'register' && (
                   <div className="relative">
                     <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-subtle" />
                     <input 
@@ -738,7 +752,7 @@ export default function AuthModal() {
                     required 
                   />
                 </div>
-                {mode === 'register' && (
+                {ENABLE_SIGN_UP && mode === 'register' && (
                   <div className="relative">
                     <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-mandi-subtle" />
                     <input 
@@ -770,22 +784,20 @@ export default function AuthModal() {
                   </button>
                 </div>
 
-                {mode === 'login' && (
-                  <div className="flex justify-end -mt-1">
-                    <button
-                      type="button"
-                      onClick={() => { setMode('forgot'); setError(''); }}
-                      className="text-xs text-mandi-green hover:underline font-semibold"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                )}
+                <div className="flex justify-end -mt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('forgot'); setError(''); }}
+                    className="text-xs text-mandi-green hover:underline font-semibold"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
 
                 {error && <p className="text-red-600 dark:text-red-400 text-xs bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl">{error}</p>}
 
                 <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
-                  {loading ? 'Authenticating...' : mode === 'login' ? 'Login' : 'Create Account'}
+                  {loading ? 'Authenticating...' : (ENABLE_SIGN_UP && mode === 'register') ? 'Create Account' : 'Log In'}
                 </button>
               </form>
             ) : (
@@ -807,12 +819,10 @@ export default function AuthModal() {
 
                 {otpSent && (
                   <div className="space-y-2 animate-fade-in">
-                    {import.meta.env.DEV && (
-                      <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[11px] text-mandi-green">
-                        <Sparkles size={14} className="flex-shrink-0 animate-pulse text-mandi-green" />
-                        <span><strong>Dev Mode:</strong> 6-digit OTP code printed in your <strong>terminal</strong> &amp; console.</span>
-                      </div>
-                    )}
+                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-[11px] text-mandi-green">
+                      <Phone size={14} className="flex-shrink-0 text-mandi-green" />
+                      <span>6-digit OTP sent to <strong>+91 {form.phone}</strong> via SMS. Enter it below to log in.</span>
+                    </div>
 
                     <div className="relative">
                       <input 
@@ -860,13 +870,15 @@ export default function AuthModal() {
               </form>
             )}
 
-            <p className="text-center text-mandi-muted text-sm mt-4">
-              {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
-              {' '}
-              <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }} className="text-mandi-green font-semibold hover:underline">
-                {mode === 'login' ? 'Sign Up' : 'Log In'}
-              </button>
-            </p>
+            {ENABLE_SIGN_UP && (
+              <p className="text-center text-mandi-muted text-sm mt-4">
+                {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
+                {' '}
+                <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }} className="text-mandi-green font-semibold hover:underline">
+                  {mode === 'login' ? 'Sign Up' : 'Log In'}
+                </button>
+              </p>
+            )}
 
             {/* Delivery Partner / Rider Quick Redirect */}
             <div className="mt-4 pt-3.5 border-t border-mandi-border/60 text-center">

@@ -1,78 +1,126 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 const ThemeContext = createContext(null);
 
+const applyThemeToDOM = (themeName) => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.setAttribute('data-theme', themeName);
+  document.documentElement.classList.toggle('dark', themeName === 'dark');
+  document.documentElement.classList.toggle('light', themeName === 'light');
+  try {
+    localStorage.setItem('mandi-theme', themeName);
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
+
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', themeName === 'dark' ? '#0a0e17' : '#EEF3F8');
+  }
+};
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('mandi-theme') || 'dark';
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('mandi-theme')) || 'dark';
   });
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.classList.toggle('light', theme === 'light');
-    localStorage.setItem('mandi-theme', theme);
+  const isTransitioningRef = useRef(false);
 
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', theme === 'dark' ? '#0a0e17' : '#EEF3F8');
-    }
+  // Sync initial and external theme changes to the DOM immediately
+  useEffect(() => {
+    applyThemeToDOM(theme);
   }, [theme]);
 
   const toggleTheme = (e) => {
+    if (isTransitioningRef.current) return;
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
-    // Calculate click / button position for dynamic circular reveal center
-    let x = window.innerWidth - 60;
-    let y = 30;
+    // 1. Determine origin coordinates (x, y) for circular reveal ripple
+    let x = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+    let y = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
 
-    if (e && typeof e.clientX === 'number' && (e.clientX !== 0 || e.clientY !== 0)) {
-      x = e.clientX;
-      y = e.clientY;
-    } else {
-      const btn = document.getElementById('theme-toggle-btn');
-      if (btn) {
-        const rect = btn.getBoundingClientRect();
-        x = rect.left + rect.width / 2;
-        y = rect.top + rect.height / 2;
-      }
+    const target =
+      (e && e.currentTarget) ||
+      (e && e.target) ||
+      (typeof document !== 'undefined' && document.getElementById('theme-toggle-btn'));
+
+    if (target && typeof target.getBoundingClientRect === 'function') {
+      const rect = target.getBoundingClientRect();
+      x = Math.round(rect.left + rect.width / 2);
+      y = Math.round(rect.top + rect.height / 2);
+    } else if (e && typeof e.clientX === 'number' && (e.clientX !== 0 || e.clientY !== 0)) {
+      x = Math.round(e.clientX);
+      y = Math.round(e.clientY);
     }
 
-    document.documentElement.style.setProperty('--x', `${x}px`);
-    document.documentElement.style.setProperty('--y', `${y}px`);
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--x', `${x}px`);
+      document.documentElement.style.setProperty('--y', `${y}px`);
+    }
 
-    if (typeof document.startViewTransition === 'function') {
-      const transition = document.startViewTransition(() => {
-        setTheme(nextTheme);
-      });
+    // 2. If View Transitions API is supported, run GPU-accelerated circular reveal
+    const supportsViewTransition =
+      typeof document !== 'undefined' &&
+      typeof document.startViewTransition === 'function' &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (supportsViewTransition) {
+      isTransitioningRef.current = true;
 
       const endRadius = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
       );
 
-      transition.ready.then(() => {
-        // Both directions expand cleanly outward from the button position
-        document.documentElement.animate(
-          {
-            clipPath: [
-              `circle(0px at ${x}px ${y}px)`,
-              `circle(${endRadius}px at ${x}px ${y}px)`
-            ]
-          },
-          {
-            duration: 850, // Smooth 850ms transition
-            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-            pseudoElement: '::view-transition-new(root)'
-          }
-        );
-      });
+      try {
+        const transition = document.startViewTransition(() => {
+          // Synchronously commit DOM changes so the view transition snapshot
+          // captures the finished new theme without tearing or deferred effect lag
+          flushSync(() => {
+            applyThemeToDOM(nextTheme);
+            setTheme(nextTheme);
+          });
+        });
+
+        transition.ready.then(() => {
+          const anim = document.documentElement.animate(
+            {
+              clipPath: [
+                `circle(0px at ${x}px ${y}px)`,
+                `circle(${endRadius}px at ${x}px ${y}px)`
+              ]
+            },
+            {
+              duration: 380,
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              pseudoElement: '::view-transition-new(root)'
+            }
+          );
+
+          anim.onfinish = () => {
+            isTransitioningRef.current = false;
+          };
+          anim.oncancel = () => {
+            isTransitioningRef.current = false;
+          };
+        }).catch(() => {
+          isTransitioningRef.current = false;
+        });
+
+        transition.finished.finally(() => {
+          isTransitioningRef.current = false;
+        });
+      } catch {
+        // Safe synchronous fallback if startViewTransition throws
+        applyThemeToDOM(nextTheme);
+        setTheme(nextTheme);
+        isTransitioningRef.current = false;
+      }
     } else {
-      document.documentElement.classList.add('theme-transitioning');
+      // Instant synchronous fallback for unsupported browsers
+      applyThemeToDOM(nextTheme);
       setTheme(nextTheme);
-      setTimeout(() => {
-        document.documentElement.classList.remove('theme-transitioning');
-      }, 850);
     }
   };
 

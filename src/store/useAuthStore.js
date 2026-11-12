@@ -138,7 +138,7 @@ export const useAuthStore = create((set, get) => ({
   authModal: { open: false, mode: 'login' },
   unsubscribeAuth: null,
 
-  openAuthModal: (mode = 'login') => set({ authModal: { open: true, mode } }),
+  openAuthModal: (mode = 'login') => set({ authModal: { open: true, mode: mode === 'register' ? 'login' : mode } }),
   closeAuthModal: () => set({ authModal: { open: false, mode: 'login' } }),
 
   // Helper to fetch or create user profile from Firestore and immediately sync Zustand state
@@ -510,7 +510,7 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Real Phone Authentication with Terminal OTP (Dev) & Recaptcha (Prod)
+  // Real Phone Authentication with Firebase SMS OTP (Live) & Test Mock (Vitest only)
   sendPhoneOtp: async (phoneNumber, appVerifier) => {
     const cleanPhone = normalizePhoneNumber(phoneNumber);
     if (!cleanPhone || !isValidIndianPhone(cleanPhone)) {
@@ -518,10 +518,10 @@ export const useAuthStore = create((set, get) => ({
     }
 
     const formattedPhone = `+91${cleanPhone}`;
-    const isDev = import.meta.env.DEV || (typeof process !== 'undefined' && process.env?.VITEST);
+    const isTestRunner = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
 
-    // Development Mode: Generate OTP and send directly to active Terminal CLI & Console
-    if (isDev) {
+    // Vitest Test Runner: Mock OTP in headless Node.js environment
+    if (isTestRunner) {
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
       if (typeof window !== 'undefined') {
@@ -532,20 +532,7 @@ export const useAuthStore = create((set, get) => ({
         };
       }
 
-      // Dispatch to Vite dev server middleware to print on active terminal
-      if (typeof fetch === 'function') {
-        try {
-          fetch('/api/dev-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: cleanPhone, otp: generatedOtp }),
-          }).catch(() => {});
-        } catch {
-          // Dev middleware might not be present in test runners
-        }
-      }
-
-      // Output directly to browser developer console
+      // Output directly to test logs
       console.info(
         `%c⚡ MANDI MINUTES DEV OTP: ${generatedOtp} (Mobile: +91 ${cleanPhone})`,
         'background: #00C851; color: #000; font-weight: bold; font-size: 14px; padding: 4px 8px; border-radius: 4px;'
@@ -559,7 +546,7 @@ export const useAuthStore = create((set, get) => ({
           const session = typeof window !== 'undefined' ? window._mandiDevOtps?.[cleanPhone] : null;
           const validOtp = session?.otp || generatedOtp;
           if (enteredOtp !== validOtp && enteredOtp !== '123456') {
-            const err = new Error('Invalid OTP code. Please enter the 6-digit code shown in your terminal.');
+            const err = new Error('Invalid OTP code. Please enter the correct code.');
             err.code = 'auth/invalid-verification-code';
             throw err;
           }
@@ -578,18 +565,28 @@ export const useAuthStore = create((set, get) => ({
     }
 
     if (!isFirebaseConfigured || !auth) {
-      throw new Error('Firebase Authentication is required in production.');
+      throw new Error('Firebase Authentication is required to send real SMS OTPs.');
+    }
+
+    if (!appVerifier) {
+      throw new Error('Security verification (reCAPTCHA) is required to send real SMS OTP.');
     }
 
     try {
       const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       return confirmationResult;
     } catch (err) {
-      let message = 'Could not send verification code. Please check the mobile number.';
+      let message = 'Could not send verification SMS. Please check your mobile number.';
       if (err.code === 'auth/invalid-phone-number') {
-        message = 'Invalid phone number format.';
+        message = 'Invalid mobile number format. Please enter a valid 10-digit Indian mobile number.';
       } else if (err.code === 'auth/quota-exceeded') {
-        message = 'SMS quota exceeded. Please try again later.';
+        message = 'SMS quota reached. Please try again later or sign in with email.';
+      } else if (err.code === 'auth/captcha-check-failed') {
+        message = 'Security check (reCAPTCHA) failed. Please try again.';
+      } else if (err.code === 'auth/too-many-requests') {
+        message = 'Too many SMS requests sent to this number. Please wait a few minutes before trying again.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        message = 'Phone authentication is not enabled in Firebase Console. Please enable Phone provider under Firebase Auth -> Sign-in method.';
       } else if (err.message) {
         message = err.message;
       }
@@ -617,9 +614,9 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false });
       let message = 'Invalid or expired OTP code.';
       if (err.code === 'auth/invalid-verification-code') {
-        message = 'Invalid OTP code. Please enter the correct code shown in your terminal.';
+        message = 'Invalid OTP code. Please enter the 6-digit code received on your mobile via SMS.';
       } else if (err.code === 'auth/code-expired') {
-        message = 'OTP has expired. Please request a new one.';
+        message = 'The OTP code has expired. Please tap Resend OTP to request a new code.';
       } else if (err.message) {
         message = err.message;
       }

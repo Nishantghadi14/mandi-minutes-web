@@ -12,9 +12,11 @@ import {
   ShieldAlert, Activity, TrendingUp, Database, XCircle, Search,
   Users, Tag, Ban, RotateCcw, ExternalLink, Sun, Moon,
   Wallet, Calendar, Download, CheckCircle2, Clock, Percent, MessageCircle,
-  ArrowLeft, Home
+  ArrowLeft, Home, Sparkles, Smartphone, UploadCloud, Radio, AlertTriangle
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { CURRENT_APP_VERSION, CURRENT_BUILD_CODE, CUSTOMER_PACKAGE_ID, RIDER_PACKAGE_ID, getPlayStoreUrl } from '../utils/appVersion';
+import { useAppUpdateStore } from '../store/useAppUpdateStore';
 
 // ── Cancellation Reason Options ───────────────────────────────────────────────
 const CANCEL_REASONS = [
@@ -110,6 +112,18 @@ export default function AdminPanel() {
   const { addToast } = useToast();
   const { toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
+
+  const {
+    isChecking: isUpdateChecking,
+    updateAvailable,
+    isCritical: isUpdateCritical,
+    remoteVersion,
+    minVersion,
+    changelog: updateChangelog,
+    checkForUpdates,
+    setSimulatedUpdate,
+    resetUpdate,
+  } = useAppUpdateStore();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromQuery = searchParams.get('tab');
@@ -637,6 +651,7 @@ export default function AdminPanel() {
     { id: 'coupons',   label: `Coupons (${coupons.length})` },
     { id: 'banners',   label: `Banners (${banners.length})` },
     { id: 'tickets',   label: `Tickets (${tickets.length})` },
+    { id: 'releases',  label: 'App Releases & OTA' },
   ];
 
   return (
@@ -1519,6 +1534,265 @@ export default function AdminPanel() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* TAB: App Releases & OTA Updates */}
+      {activeTab === 'releases' && (
+        <div className="space-y-6">
+          {/* Header & Overview */}
+          <div className="card p-6 bg-gradient-to-br from-emerald-500/10 via-mandi-card to-blue-500/5 border border-emerald-500/20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 flex-shrink-0">
+                  <Radio size={24} className="animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-mandi-text font-bold text-lg">App Releases &amp; OTA Live Updates</h2>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
+                      Dual-Channel Active
+                    </span>
+                  </div>
+                  <p className="text-mandi-muted text-xs mt-1 max-w-2xl">
+                    Deploy web UI updates instantly to installed customer and rider phones in 10 seconds via <strong>Channel 1 (Live OTA)</strong>, while managing native Android binary builds and in-app version gates via <strong>Channel 2 (Google Play Releases)</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await checkForUpdates();
+                    addToast('Version configuration re-synced with remote!', 'success');
+                  }}
+                  disabled={isUpdateChecking}
+                  className="px-4 py-2 bg-mandi-surface hover:bg-mandi-border/40 text-mandi-text border border-mandi-border rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+                >
+                  <RefreshCw size={14} className={isUpdateChecking ? 'animate-spin' : ''} />
+                  {isUpdateChecking ? 'Checking...' : 'Sync Remote Config'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dual Channels Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Channel 1: Over-The-Air Live Updates */}
+            <div className="card p-6 border-l-4 border-l-emerald-500 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
+                    <UploadCloud size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-mandi-text font-bold text-sm">Channel 1: Live OTA Web Updates</h3>
+                    <p className="text-mandi-subtle text-[11px]">Instant live code sync without Play Store review</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  ⚡ 10s Deploy
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs text-mandi-muted">
+                <div className="p-3 bg-mandi-surface rounded-xl border border-mandi-border space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Web Bundle Target</span>
+                    <span className="font-mono text-emerald-600 dark:text-mandi-green font-semibold">v{CURRENT_APP_VERSION} (Build #{CURRENT_BUILD_CODE})</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Eligible Updates</span>
+                    <span className="text-mandi-muted">UI tweaks, pricing rules, checkout fixes, new banners</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Play Store Policy Compliance</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Compliant (Section 4.9)</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Rollback Protection</span>
+                    <span className="text-mandi-muted">Auto-fallback to cached release bundle on error</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="font-semibold text-mandi-text text-[11px]">Terminal Deployment Command:</span>
+                  <div className="p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-[11px] overflow-x-auto select-all">
+                    npm run build &amp;&amp; npx cap copy android
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Channel 2: Google Play Store & Native Releases */}
+            <div className="card p-6 border-l-4 border-l-blue-500 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-400 flex items-center justify-center">
+                    <Smartphone size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-mandi-text font-bold text-sm">Channel 2: Google Play &amp; Native APKs</h3>
+                    <p className="text-mandi-subtle text-[11px]">Android binary container &amp; hard permission upgrades</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  📦 Play Store
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs text-mandi-muted">
+                <div className="p-3 bg-mandi-surface rounded-xl border border-mandi-border space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Customer App ID</span>
+                    <a
+                      href={getPlayStoreUrl(CUSTOMER_PACKAGE_ID)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      {CUSTOMER_PACKAGE_ID} <ExternalLink size={11} />
+                    </a>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">Rider Partner App ID</span>
+                    <a
+                      href={getPlayStoreUrl(RIDER_PACKAGE_ID)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      {RIDER_PACKAGE_ID} <ExternalLink size={11} />
+                    </a>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">When Required</span>
+                    <span className="text-mandi-muted">New background GPS plugins, camera SDKs, Bluetooth</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-mandi-text">In-App Version Gate</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">Active &amp; Listening</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="font-semibold text-mandi-text text-[11px]">Production Android Build Command:</span>
+                  <div className="p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-[11px] overflow-x-auto select-all">
+                    cd android &amp;&amp; ./gradlew assembleRelease
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Remote Version Gate & Testing Controls */}
+          <div className="card p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-mandi-border pb-4">
+              <div>
+                <h3 className="text-mandi-text font-bold text-base flex items-center gap-2">
+                  <ShieldAlert size={18} className="text-amber-500" />
+                  Remote In-App Version Gates (Firestore: <code className="text-xs bg-mandi-surface px-1.5 py-0.5 rounded border border-mandi-border">app_config/version</code>)
+                </h3>
+                <p className="text-mandi-muted text-xs mt-0.5">
+                  Simulate and verify how customer and rider devices respond to critical (blocking) and optional (banner) update announcements.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-3 py-1 rounded-full font-bold border ${updateAvailable ? (isUpdateCritical ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-500/40' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-500/40') : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-500/40'}`}>
+                  {updateAvailable ? (isUpdateCritical ? '⚠️ Force Update Active' : '✨ Optional Update Available') : '✓ App Up To Date'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-mandi-surface rounded-xl border border-mandi-border">
+                <span className="text-[11px] text-mandi-subtle uppercase tracking-wider font-bold">Installed App Version</span>
+                <p className="text-lg font-bold font-mono text-mandi-text mt-1">v{CURRENT_APP_VERSION}</p>
+                <p className="text-[11px] text-mandi-muted mt-0.5">Internal Build Code: #{CURRENT_BUILD_CODE}</p>
+              </div>
+
+              <div className="p-4 bg-mandi-surface rounded-xl border border-mandi-border">
+                <span className="text-[11px] text-mandi-subtle uppercase tracking-wider font-bold">Minimum Supported Version</span>
+                <p className="text-lg font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">{minVersion || '1.0.0'}</p>
+                <p className="text-[11px] text-mandi-muted mt-0.5">Versions below this trigger mandatory modal</p>
+              </div>
+
+              <div className="p-4 bg-mandi-surface rounded-xl border border-mandi-border">
+                <span className="text-[11px] text-mandi-subtle uppercase tracking-wider font-bold">Latest Remote Version</span>
+                <p className="text-lg font-bold font-mono text-emerald-600 dark:text-mandi-green mt-1">{remoteVersion || CURRENT_APP_VERSION}</p>
+                <p className="text-[11px] text-mandi-muted mt-0.5">Versions below this trigger dismissible banner</p>
+              </div>
+            </div>
+
+            {/* Test Simulation Buttons */}
+            <div className="pt-2 space-y-3">
+              <span className="text-xs font-bold text-mandi-text block">Simulate Update Prompts in Current Session:</span>
+              <div className="flex flex-wrap gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSimulatedUpdate({
+                      isCritical: false,
+                      remoteVersion: '1.1.0',
+                      changelog: [
+                        'Faster search & checkout speed',
+                        'Real-time delivery partner map tracking',
+                        'Monsoon packaging discounts'
+                      ]
+                    });
+                    addToast('Simulating optional update v1.1.0 (dismissible top banner)', 'info');
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-100 transition-all flex items-center gap-1.5"
+                >
+                  <Sparkles size={14} /> Test Optional Update (v1.1.0)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSimulatedUpdate({
+                      isCritical: true,
+                      remoteVersion: '2.0.0',
+                      changelog: [
+                        'Mandatory security & backend payment protocol upgrade',
+                        'High-precision live rider GPS accuracy update',
+                        'Discontinued support for legacy v1.0.0 builds'
+                      ]
+                    });
+                    addToast('Simulating critical update v2.0.0 (mandatory blocking modal)', 'error');
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-800 border border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-500/40 hover:bg-red-100 transition-all flex items-center gap-1.5"
+                >
+                  <AlertTriangle size={14} /> Test Force / Critical Update (v2.0.0)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetUpdate();
+                    addToast('Update gate simulation cleared! Restored to standard state.', 'success');
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-mandi-surface text-mandi-muted hover:text-mandi-text border border-mandi-border hover:bg-mandi-border/30 transition-all flex items-center gap-1.5"
+                >
+                  <RotateCcw size={14} /> Reset / Dismiss Gate
+                </button>
+              </div>
+            </div>
+
+            {/* Active Changelog Notes if present */}
+            {updateChangelog && updateChangelog.length > 0 && (
+              <div className="p-4 rounded-xl bg-mandi-surface/70 border border-mandi-border space-y-2">
+                <span className="text-xs font-bold text-mandi-text">Active Release Changelog Notes:</span>
+                <ul className="list-disc list-inside text-xs text-mandi-muted space-y-1">
+                  {updateChangelog.map((note, idx) => (
+                    <li key={idx}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

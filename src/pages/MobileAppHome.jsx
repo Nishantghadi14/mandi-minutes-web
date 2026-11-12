@@ -7,8 +7,9 @@ import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../components/common/Toast';
 import ProductCard from '../components/common/ProductCard';
+import { getTimeBasedBanner } from '../utils/deliverySlots';
 import {
-  MapPin, Search, ChevronDown, ShieldCheck, Sparkles,
+  Search, ChevronDown, ShieldCheck,
   Truck, User, Flame, CheckCircle2,
   ChevronRight, BadgePercent, Tag, ArrowUpDown,
   Copy, Check, Zap
@@ -97,7 +98,7 @@ const QUICK_CATEGORIES = [
 
 export default function MobileAppHome() {
   const { isDark } = useTheme();
-  const { location, setLocationModal } = useLocation();
+  const { setLocationModal } = useLocation();
   const { user, openAuthModal } = useAuth();
   const { products: allProducts } = useData();
   const { total } = useCart();
@@ -120,12 +121,65 @@ export default function MobileAppHome() {
     return () => clearInterval(timer);
   }, []);
 
+  const promoBanners = useMemo(() => {
+    const heroBanner = getTimeBasedBanner();
+    return [heroBanner, ...PROMO_BANNERS.slice(1)];
+  }, []);
+
   const getNavPath = (path) => {
     if (typeof window !== 'undefined' && window.location.search.includes('mode=app')) {
       return path.includes('?') ? `${path}&mode=app` : `${path}?mode=app`;
     }
     return path;
   };
+
+  // Dynamic address resolution: checks user account saved addresses, active selection, or checkout storage
+  const activeAddress = useMemo(() => {
+    // 1. Check logged-in user's saved addresses
+    if (user?.addresses && Array.isArray(user.addresses) && user.addresses.length > 0) {
+      const valid = user.addresses.filter(a => a && (a.line1 || a.street) && a.line1 !== 'Virar West, Maharashtra, 401303');
+      if (valid.length > 0) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('mandi_active_address') || 'null');
+          if (stored?.id) {
+            const matched = valid.find(a => a.id === stored.id);
+            if (matched) return matched;
+          }
+        } catch {}
+        return valid.find(a => a.isDefault) || valid[0];
+      }
+    }
+
+    // 2. Check active address explicitly selected in localStorage
+    try {
+      const storedActive = JSON.parse(localStorage.getItem('mandi_active_address') || 'null');
+      if (storedActive && (storedActive.line1 || storedActive.street) && storedActive.line1 !== 'Virar West, Maharashtra, 401303') {
+        return storedActive;
+      }
+    } catch {}
+
+    // 3. Check checkout address in localStorage
+    try {
+      const storedCheckout = JSON.parse(localStorage.getItem('mandi_checkout_address') || 'null');
+      if (storedCheckout && (storedCheckout.line1 || storedCheckout.street) && storedCheckout.line1 !== 'Virar West, Maharashtra, 401303') {
+        return storedCheckout;
+      }
+    } catch {}
+
+    return null;
+  }, [user]);
+
+  const hasAddressInputted = Boolean(activeAddress);
+
+  const displayAddress = useMemo(() => {
+    if (!activeAddress) return '';
+    const parts = [
+      activeAddress.line1 || activeAddress.street,
+      activeAddress.area,
+      activeAddress.city,
+    ].filter(Boolean);
+    return parts.join(', ');
+  }, [activeAddress]);
 
   // Filter available products
   const availableProducts = useMemo(() => {
@@ -213,65 +267,53 @@ export default function MobileAppHome() {
         {/* ── Native Shopping App Header ── */}
         <header className="sticky top-0 z-30 bg-mandi-dark/95 backdrop-blur-md border-b border-mandi-border px-3.5 pt-app-header-sm pb-2.5 shadow-clay-nav rounded-b-3xl">
 
-          {/* Top Row: Brand & Delivery Promise Badge + Controls */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            {/* Express Delivery Badge with Official Brand Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-black/70 border border-emerald-500/40 flex items-center justify-center overflow-hidden shadow-clay-btn">
-                <img src="/brand-logo.png" alt="Mandi Minutes Logo" className="w-full h-full object-contain p-0.5" />
+          {/* Top Row: Zepto-Style Delivery Location Dropdown on Left, Profile on Right */}
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            {/* Zepto-Style Delivery Location Dropdown */}
+            <button
+              onClick={() => setLocationModal(true)}
+              className="flex flex-col items-start text-left min-w-0 flex-1 active:opacity-80 transition-opacity group cursor-pointer"
+              aria-label={hasAddressInputted ? 'Change delivery address' : 'Add delivery address'}
+            >
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-[14px] sm:text-[15px] font-black tracking-tight text-mandi-text">
+                  Delivering to
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black tracking-tight text-mandi-text">
-                    MANDI MINUTES
+              <div className="flex items-center gap-1 mt-1 text-xs text-mandi-muted leading-tight">
+                {hasAddressInputted ? (
+                  <>
+                    <span className="font-bold text-mandi-text text-[13px] flex-shrink-0">
+                      {activeAddress.label || 'Home'}
+                    </span>
+                    <span className="text-mandi-subtle text-[11px]">-</span>
+                    <span className="text-mandi-muted text-[12px] font-medium truncate max-w-[200px] sm:max-w-[260px]">
+                      {displayAddress}
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-bold text-emerald-500 dark:text-mandi-green text-[13px] flex items-center gap-1 group-hover:underline">
+                    Tap to add address
                   </span>
-                  <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-clay-badge flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    10-15m
-                  </span>
-                </div>
+                )}
+                <ChevronDown size={13} className="text-emerald-500 dark:text-mandi-green flex-shrink-0 group-hover:translate-y-0.5 transition-transform ml-0.5" />
               </div>
-            </div>
+            </button>
 
             {/* Right Action Icons: Profile Avatar */}
-            <div className="flex items-center gap-1.5">
-              {/* Profile Avatar */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => (user ? navigate(getNavPath('/profile')) : openAuthModal('login'))}
-                className="w-8 h-8 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform shadow-clay-pill hover:border-mandi-green/50 overflow-hidden"
+                className="w-9 h-9 rounded-full bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-text flex-shrink-0 active:scale-90 transition-transform shadow-clay-pill hover:border-mandi-green/50 overflow-hidden"
                 aria-label="User Account"
               >
                 {user?.photoURL ? (
                   <img src={user.photoURL} alt={user.name || 'User'} className="w-full h-full object-cover" />
                 ) : (
-                  <User size={15} className={user ? 'text-mandi-green' : 'text-mandi-muted'} />
+                  <User size={16} className={user ? 'text-mandi-green' : 'text-mandi-muted'} />
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Location Selector Pill */}
-          <div className="mb-2">
-            <button
-              onClick={() => setLocationModal(true)}
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-2xl bg-mandi-surface border border-mandi-border hover:border-mandi-green/40 active:scale-[0.99] transition-all shadow-clay-pill text-left"
-              aria-label="Select delivery address"
-            >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div className="w-6 h-6 rounded-full bg-mandi-green/15 flex items-center justify-center flex-shrink-0 border border-mandi-green/30 text-mandi-green shadow-clay-badge">
-                  <MapPin size={12} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black text-mandi-text truncate leading-tight">
-                    {location ? location.area.split(',')[0] : 'Virar East (Manvelpada)'}
-                  </p>
-                  <p className="text-[10px] text-mandi-muted font-medium truncate leading-tight">
-                    {location ? (location.area.split(',').slice(1).join(', ') || 'Delivering to your doorstep') : 'Tap to change delivery location'}
-                  </p>
-                </div>
-              </div>
-              <ChevronDown size={14} className="text-mandi-muted flex-shrink-0 ml-1" />
-            </button>
           </div>
 
           {/* Interactive Free Delivery Progress Meter (Zepto / Blinkit Signature UX) */}
@@ -314,10 +356,6 @@ export default function MobileAppHome() {
               <span key={placeholderIdx} className="text-xs text-mandi-muted font-semibold truncate block transition-all duration-300">
                 {SEARCH_PLACEHOLDERS[placeholderIdx]}
               </span>
-            </div>
-            <div className="flex items-center gap-1 bg-mandi-card/80 border border-mandi-border px-2 py-0.5 rounded-full text-[10px] font-bold text-mandi-muted shadow-clay-badge">
-              <Sparkles size={11} className="text-amber-400" />
-              <span>Fast</span>
             </div>
           </div>
 
@@ -380,7 +418,7 @@ export default function MobileAppHome() {
               onScroll={handleBannerScroll}
               className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-none no-scrollbar -mx-3.5 px-3.5"
             >
-              {PROMO_BANNERS.map((banner) => (
+              {promoBanners.map((banner) => (
                 <div
                   key={banner.id}
                   onClick={() => banner.code && handleCopyCode(banner.code)}
@@ -419,7 +457,7 @@ export default function MobileAppHome() {
 
             {/* Dots Indicator */}
             <div className="flex justify-center gap-1.5 mt-2">
-              {PROMO_BANNERS.map((_, i) => (
+              {promoBanners.map((_, i) => (
                 <div
                   key={i}
                   className={`h-1.5 rounded-full transition-all duration-300 ${activeBannerIdx === i ? 'w-5 bg-mandi-green shadow-clay-badge' : 'w-1.5 bg-mandi-border'

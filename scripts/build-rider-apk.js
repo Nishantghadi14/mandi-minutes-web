@@ -8,8 +8,10 @@ const rootDir = path.resolve(__dirname, '..');
 
 const isRelease = process.argv.includes('--release');
 const gradleTask = isRelease ? 'assembleRelease' : 'assembleDebug';
+const releaseSignedApk = path.join(rootDir, 'android/app/build/outputs/apk/release/app-release.apk');
+const releaseUnsignedApk = path.join(rootDir, 'android/app/build/outputs/apk/release/app-release-unsigned.apk');
 const apkSource = isRelease
-  ? path.join(rootDir, 'android/app/build/outputs/apk/release/app-release-unsigned.apk')
+  ? (fs.existsSync(releaseSignedApk) ? releaseSignedApk : releaseUnsignedApk)
   : path.join(rootDir, 'android/app/build/outputs/apk/debug/app-debug.apk');
 const apkOutput = path.join(rootDir, isRelease ? 'mandi-rider.apk' : 'mandi-rider-debug.apk');
 

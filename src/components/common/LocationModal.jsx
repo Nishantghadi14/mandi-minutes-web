@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { MapPin, Navigation, X, Search } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { MapPin, Navigation, X, Search, Plus, Check, Home, Briefcase } from 'lucide-react';
 import { useLocation } from '../../context/LocationContext';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from './Toast';
 
 const popularVirarPincodes = [
@@ -14,10 +16,49 @@ const popularVirarPincodes = [
 
 export default function LocationModal() {
   const { locationModal, setLocationModal, setLocationByPincode, detectLocation } = useLocation();
+  const { user, openAuthModal } = useAuth();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [pincode, setPincode] = useState('');
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState('');
+
+  const savedAddresses = useMemo(() => {
+    if (!user?.addresses || !Array.isArray(user.addresses)) return [];
+    return user.addresses.filter(a => a && (a.line1 || a.street) && a.line1 !== 'Virar West, Maharashtra, 401303');
+  }, [user]);
+
+  const activeSavedAddressId = useMemo(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('mandi_active_address') || 'null');
+      if (stored?.id) return stored.id;
+    } catch {}
+    const def = savedAddresses.find(a => a.isDefault);
+    return def ? def.id : savedAddresses[0]?.id;
+  }, [savedAddresses]);
+
+  const handleSelectSavedAddress = (addr) => {
+    try {
+      localStorage.setItem('mandi_active_address', JSON.stringify(addr));
+    } catch {}
+    if (addr.pincode && typeof setLocationByPincode === 'function') {
+      setLocationByPincode(addr.pincode);
+    }
+    handleClose();
+    addToast(`Delivery set to ${addr.label || 'Saved Address'}`, 'success');
+  };
+
+  const handleAddNewAddress = () => {
+    handleClose();
+    const isApp = typeof window !== 'undefined' && window.location.search.includes('mode=app');
+    const path = isApp ? '/profile?action=add-address&mode=app' : '/profile?action=add-address';
+    if (user) {
+      navigate(path);
+    } else {
+      openAuthModal('login');
+      addToast('Please sign in to add your delivery address', 'info');
+    }
+  };
 
   const handleClose = useCallback(() => {
     setLocationModal(false);
@@ -92,6 +133,63 @@ export default function LocationModal() {
             <X size={16} />
           </button>
         </div>
+
+        {/* Primary Action: Add Detailed Delivery Address */}
+        <button
+          type="button"
+          onClick={handleAddNewAddress}
+          className="w-full flex items-center justify-center gap-2.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-mandi-green border border-emerald-500/40 font-black py-3.5 px-4 rounded-2xl mb-4 transition-all active:scale-[0.98] shadow-clay-badge cursor-pointer"
+        >
+          <Plus size={18} />
+          <span>Add Detailed Delivery Address</span>
+        </button>
+
+        {/* Saved Addresses List (if available) */}
+        {savedAddresses.length > 0 && (
+          <div className="mb-4">
+            <p className="text-mandi-subtle text-xs mb-2 font-bold tracking-wide uppercase">Your Saved Addresses</p>
+            <div className="space-y-2">
+              {savedAddresses.map(addr => {
+                const IconComp = addr.label === 'Work' ? Briefcase : addr.label === 'Home' ? Home : MapPin;
+                const isSelected = activeSavedAddressId === addr.id;
+                return (
+                  <button
+                    key={addr.id}
+                    type="button"
+                    onClick={() => handleSelectSavedAddress(addr)}
+                    className={`w-full flex items-center justify-between text-left p-3 rounded-2xl border transition-all active:scale-[0.99] cursor-pointer shadow-clay-badge ${
+                      isSelected
+                        ? 'bg-mandi-green/10 border-mandi-green'
+                        : 'bg-mandi-surface border-mandi-border hover:border-mandi-green/40'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1 mr-2">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        isSelected ? 'bg-mandi-green text-black' : 'bg-mandi-card text-mandi-muted'
+                      }`}>
+                        <IconComp size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-xs font-bold text-mandi-text">{addr.label || 'Home'}</span>
+                          {addr.isDefault && (
+                            <span className="text-[9px] font-bold text-mandi-green bg-mandi-green/15 px-1.5 py-0.2 rounded-full">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-mandi-muted truncate">
+                          {addr.line1 || addr.street}{addr.area ? `, ${addr.area}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {isSelected && <Check size={16} className="text-mandi-green flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <button onClick={handleDetect} disabled={detecting} className="w-full flex items-center justify-center gap-3 border border-mandi-green text-mandi-green font-bold py-3.5 px-4 rounded-2xl mb-4 bg-mandi-surface hover:bg-mandi-green hover:text-black transition-all duration-200 disabled:opacity-50 shadow-clay-pill active:scale-[0.98]">
           <Navigation size={18} />

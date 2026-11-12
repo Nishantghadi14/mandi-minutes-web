@@ -23,4 +23,25 @@ describe('LocationModal Dismissibility & Accessibility Contracts', () => {
     // 5. Mobile top drag handle indicator with dismiss action
     expect(content).toContain('Mobile drag handle indicator');
   });
+
+  it('guarantees LocationModal includes detailed address creation and saved address selection', () => {
+    const modalPath = path.resolve(process.cwd(), 'src/components/common/LocationModal.jsx');
+    const content = fs.readFileSync(modalPath, 'utf-8');
+
+    expect(content).toContain('Add Detailed Delivery Address');
+    expect(content).toContain('Your Saved Addresses');
+    expect(content).toContain('handleAddNewAddress');
+    expect(content).toContain('handleSelectSavedAddress');
+  });
+
+  it('guarantees MobileAppHome renders Zepto-style Delivering To header and dynamic address prompt', () => {
+    const homePath = path.resolve(process.cwd(), 'src/pages/MobileAppHome.jsx');
+    const content = fs.readFileSync(homePath, 'utf-8');
+
+    expect(content).toContain('Delivering to');
+    expect(content).toContain('Tap to add address');
+    expect(content).toContain('activeAddress');
+    expect(content).toContain('hasAddressInputted');
+    expect(content).not.toContain('⚡ 10-15m');
+  });
 });

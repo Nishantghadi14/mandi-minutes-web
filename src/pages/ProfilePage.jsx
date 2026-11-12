@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
@@ -15,19 +15,22 @@ import {
   User, Package, Heart, ShoppingCart, MapPin,
   Moon, Sun, Globe, Shield, Store, Bike, Wallet,
   HelpCircle, FileText, Lock, ChevronRight,
-  LogOut, Zap, Check, ArrowRight, ArrowLeft, Sparkles, ExternalLink, X, Briefcase, Pencil, Trash2, Plus, Home as HomeIcon, Mail
+  LogOut, Zap, ArrowRight, ArrowLeft, Sparkles, ExternalLink, X, Briefcase, Pencil, Trash2, Plus, Home as HomeIcon, Mail
 } from 'lucide-react';
 import { getAppHomePath, redirectToRiderApp } from '../utils/platform';
+import { CURRENT_APP_VERSION } from '../utils/appVersion';
+import { useAppUpdateStore } from '../store/useAppUpdateStore';
 
 export default function ProfilePage() {
   const { user, logout, openAuthModal, resetPassword, updateUser } = useAuth();
-  const { location, setLocationModal, setLocationByPincode } = useLocation();
+  const { setLocationByPincode } = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const { itemCount, setIsOpen } = useCart();
   const { orders = [] } = useData();
   const { addToast } = useToast();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { openTutorial } = useTutorialStore();
 
   const [isSendingReset, setIsSendingReset] = useState(false);
@@ -66,6 +69,18 @@ export default function ProfilePage() {
     setShowAddressModal(true);
   };
 
+  // Open address modal if triggered with ?action=add-address
+  useEffect(() => {
+    if (searchParams.get('action') === 'add-address') {
+      handleOpenAddAddress();
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('action');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const handleOpenEditAddress = (addr) => {
     setEditingAddressId(addr.id);
     setAddressForm({
@@ -87,6 +102,16 @@ export default function ProfilePage() {
     if (typeof updateUser === 'function') {
       await updateUser({ addresses: updated });
     }
+    try {
+      const active = JSON.parse(localStorage.getItem('mandi_active_address') || 'null');
+      if (active?.id === addrId) {
+        if (updated.length > 0) {
+          localStorage.setItem('mandi_active_address', JSON.stringify(updated[0]));
+        } else {
+          localStorage.removeItem('mandi_active_address');
+        }
+      }
+    } catch {}
     addToast('Address removed from saved list', 'info');
   };
 
@@ -101,6 +126,11 @@ export default function ProfilePage() {
     const defaultAddr = updated.find(a => a.id === addrId);
     if (defaultAddr?.pincode && typeof setLocationByPincode === 'function') {
       setLocationByPincode(defaultAddr.pincode);
+    }
+    if (defaultAddr) {
+      try {
+        localStorage.setItem('mandi_active_address', JSON.stringify(defaultAddr));
+      } catch {}
     }
     addToast('Default delivery address updated! 📍', 'success');
   };
@@ -137,6 +167,9 @@ export default function ProfilePage() {
       if (check.sanitized.pincode && typeof setLocationByPincode === 'function') {
         setLocationByPincode(check.sanitized.pincode);
       }
+      try {
+        localStorage.setItem('mandi_active_address', JSON.stringify(newAddr));
+      } catch {}
       setShowAddressModal(false);
       addToast(isExisting ? 'Address updated successfully! 🎉' : 'Delivery address saved! 🎉', 'success');
     } catch (err) {
@@ -165,6 +198,15 @@ export default function ProfilePage() {
       addToast(err.message || 'Could not send reset email', 'error');
     } finally {
       setIsSendingReset(false);
+    }
+  };
+
+  const { checkForUpdates, isChecking: isCheckingUpdates, updateAvailable } = useAppUpdateStore();
+
+  const handleManualCheckUpdate = async () => {
+    await checkForUpdates();
+    if (!useAppUpdateStore.getState().updateAvailable) {
+      addToast(`🎉 You are running the latest version (v${CURRENT_APP_VERSION})!`, 'success');
     }
   };
 
@@ -274,7 +316,7 @@ export default function ProfilePage() {
                 onClick={() => openAuthModal('login')}
                 className="btn-primary py-2.5 px-6 text-sm font-bold shadow-green glow-green-sm inline-flex items-center gap-2"
               >
-                <span>{t('nav.login')} / Sign Up</span>
+                <span>{t('nav.login')}</span>
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -756,7 +798,10 @@ export default function ProfilePage() {
         </h2>
 
         {/* Theme Toggle */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-mandi-surface/60 mb-2">
+        <div 
+          onClick={toggleTheme}
+          className="flex items-center justify-between p-2.5 rounded-xl bg-mandi-surface/60 mb-2 cursor-pointer active:scale-[0.99] transition-transform select-none"
+        >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-mandi-surface border border-mandi-border flex items-center justify-center text-mandi-green">
               {isDark ? <Moon size={16} /> : <Sun size={16} />}
@@ -768,8 +813,12 @@ export default function ProfilePage() {
           </div>
           <button
             id="theme-toggle-btn"
-            onClick={toggleTheme}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTheme(e);
+            }}
             className="px-3 py-1.5 rounded-lg border border-mandi-border bg-mandi-card text-xs font-bold text-mandi-text hover:border-mandi-green transition-all active:scale-95 cursor-pointer"
+            aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {isDark ? '🌙 Dark' : '☀️ Light'}
           </button>
@@ -956,12 +1005,24 @@ export default function ProfilePage() {
         </button>
       )}
 
-      {/* ─── App Footprint Badge ─── */}
-      <div className="text-center py-4 select-none opacity-60">
-        <p className="text-xs font-semibold text-mandi-text">
-          Mandi Minutes App • v1.0.0
-        </p>
-        <p className="text-[11px] text-mandi-subtle mt-0.5">
+      {/* ─── App Footprint Badge & Update Checker ─── */}
+      <div className="text-center py-4 select-none space-y-1.5">
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-xs font-semibold text-mandi-text opacity-70">
+            Mandi Minutes • v{CURRENT_APP_VERSION}
+          </p>
+          <span className="text-mandi-subtle text-xs">•</span>
+          <button
+            type="button"
+            disabled={isCheckingUpdates}
+            onClick={handleManualCheckUpdate}
+            className="text-[11px] font-bold text-emerald-600 dark:text-mandi-green hover:underline flex items-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            title="Check for app updates"
+          >
+            {isCheckingUpdates ? 'Checking...' : updateAvailable ? '⚡ Update Available' : 'Check for Updates'}
+          </button>
+        </div>
+        <p className="text-[11px] text-mandi-subtle opacity-60">
           Made with ❤️ for Local Kiranas in Virar, Palghar
         </p>
       </div>

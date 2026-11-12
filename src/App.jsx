@@ -25,6 +25,7 @@ import FloatingCartBar from './components/common/FloatingCartBar';
 import LocationModal from './components/common/LocationModal';
 import AuthModal from './components/common/AuthModal';
 import AppTutorialModal from './components/common/AppTutorialModal';
+import AppUpdateModal from './components/common/AppUpdateModal';
 import { useTutorialStore } from './store/useTutorialStore';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { isNativeApp, isInAppMode, isRiderApp, redirectToRiderApp } from './utils/platform';
@@ -170,6 +171,7 @@ function AppContent() {
       {!isRider && <LocationModal />}
       <AuthModal />
       <AppTutorialModal />
+      <AppUpdateModal />
     </div>
   );
 }
